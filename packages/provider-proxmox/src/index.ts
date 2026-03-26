@@ -7,7 +7,7 @@ import {
   providerConfigSchema,
   allTargetConfigsSchema,
   type CheckResult,
-} from "../../thingy/src/framework/index.ts";
+} from "../../mantle/src/framework/index.ts";
 import { ProxmoxClient } from "./client.ts";
 
 const proxmoxConnectionConfig = z.object({

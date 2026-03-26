@@ -21,7 +21,7 @@ export default function App() {
 
 	return (
 		<div className="min-h-screen flex flex-col items-center justify-center gap-4">
-			<h1 className="text-4xl font-bold">Hello from Thingy</h1>
+			<h1 className="text-4xl font-bold">Hello from Mantle</h1>
 			<p>WebSocket: {status}</p>
 			<ul>
 				{messages.map((msg, i) => (

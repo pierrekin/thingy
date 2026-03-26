@@ -1,6 +1,6 @@
 # Concepts
 
-Thingy monitors infrastructure by running **checks** against **targets** from **providers**.
+Mantle monitors infrastructure by running **checks** against **targets** from **providers**.
 
 ## Core Model
 

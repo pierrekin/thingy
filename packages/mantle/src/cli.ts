@@ -8,6 +8,11 @@ import {
 import { handleOperationalErrors, OperationalError } from "./errors.ts";
 import { startHub } from "./hub/index.ts";
 import { startAgent } from "./agent/index.ts";
+import { SqliteOutcomeStore } from "./store/sqlite.ts";
+
+function createStore() {
+	return new SqliteOutcomeStore("mantle.db");
+}
 
 function getHubConfig(config: Config): HubConfig {
 	if (!config.hub) {
@@ -76,7 +81,8 @@ const agent = defineCommand({
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
-		startAgent(id, agentConfig, config.providers ?? {});
+		const store = new SqliteOutcomeStore("mantle.db");
+		startAgent(id, agentConfig, config.providers ?? {}, store);
 	}),
 });
 
@@ -86,8 +92,9 @@ const standalone = defineCommand({
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
+		const store = new SqliteOutcomeStore("mantle.db");
 		startHub(getHubConfig(config));
-		startAgent(id, agentConfig, config.providers ?? {});
+		startAgent(id, agentConfig, config.providers ?? {}, store);
 	}),
 });
 

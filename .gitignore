@@ -4,3 +4,6 @@
 # Configuration
 config.yaml
 
+# Database
+mantle.db
+

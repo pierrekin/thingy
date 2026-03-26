@@ -131,8 +131,8 @@ function getProviderDefinition(providerType: string) {
 export function startAgent(
 	agentId: string,
 	agentConfig: AgentConfig,
-	providerConfigs: ProviderConfigs = {},
-	store?: OutcomeStore,
+	providerConfigs: ProviderConfigs,
+	store: OutcomeStore,
 ) {
 	validateAgentConfig(agentConfig, providerConfigs);
 
@@ -173,26 +173,22 @@ export function startAgent(
 				for (const result of results) {
 					if (isCheckError(result)) {
 						console.log(`[${resolved.name}] ${result.check}: ERROR - ${result.error.message}`);
-						if (store) {
-							await store.recordCheckOutcome(
-								resolved.provider,
-								resolved.name,
-								result.check,
-								time,
-								{ error: result.error }
-							);
-						}
+						await store.recordCheckOutcome(
+							resolved.provider,
+							resolved.name,
+							result.check,
+							time,
+							{ error: result.error }
+						);
 					} else {
 						console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
-						if (store) {
-							await store.recordCheckOutcome(
-								resolved.provider,
-								resolved.name,
-								result.check,
-								time,
-								{ value: result.measurement }
-							);
-						}
+						await store.recordCheckOutcome(
+							resolved.provider,
+							resolved.name,
+							result.check,
+							time,
+							{ value: result.measurement }
+						);
 					}
 				}
 			},

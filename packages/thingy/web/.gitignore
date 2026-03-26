@@ -1,0 +1,7 @@
+# Bun
+node_modules
+
+# Artefacts
+dist
+generated
+

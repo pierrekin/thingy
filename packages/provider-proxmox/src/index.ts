@@ -1,249 +1,170 @@
 import { z } from "zod";
-import type { Provider } from "../../thingy/src/provider.ts";
+import {
+  defineProvider,
+  bindCheck,
+  stateCheck,
+  onlineCheck,
+  providerConfigSchema,
+  allTargetConfigsSchema,
+  type CheckResult,
+} from "../../thingy/src/framework/index.ts";
+import { ProxmoxClient } from "./client.ts";
 
-const ENABLED = "__enabled__";
-const DISABLED = "__disabled__";
-
-const stateCheckConfigSchema = z.object({
-	state: z.enum(["running", "stopped"]),
+const proxmoxConnectionConfig = z.object({
+  url: z.string(),
+  tokenId: z.string(),
+  tokenSecret: z.string(),
 });
 
-const stateCheckSchema = z.union([
-	z.literal(DISABLED),
-	z.literal(ENABLED),
-	stateCheckConfigSchema,
-]);
-
-const onlineCheckConfigSchema = z.object({
-	// Currently no config options, but structured for future expansion
+export const proxmoxProvider = defineProvider({
+  name: "proxmox",
+  config: proxmoxConnectionConfig,
+  defaultInterval: "30s",
+  targetTypes: {
+    vm: {
+      schema: z.object({ vmId: z.number() }),
+      checks: {
+        state: bindCheck(stateCheck, {
+          defaults: { equals: "running", over: "5m" },
+        }),
+      },
+      defaultInterval: "30s",
+    },
+    lxc: {
+      schema: z.object({ vmId: z.number() }),
+      checks: {
+        state: bindCheck(stateCheck, {
+          defaults: { equals: "running", over: "5m" },
+        }),
+      },
+      defaultInterval: "30s",
+    },
+    node: {
+      schema: z.object({ node: z.string() }),
+      checks: {
+        online: bindCheck(onlineCheck, {
+          defaults: { equals: true, over: "1m" },
+        }),
+      },
+      defaultInterval: "10s",
+    },
+  },
 });
 
-const onlineCheckSchema = z.union([
-	z.literal(DISABLED),
-	z.literal(ENABLED),
-	onlineCheckConfigSchema,
-]);
+// Generate schemas from the provider definition
+export const proxmoxProviderConfigSchema = providerConfigSchema(
+  proxmoxProvider.config,
+  proxmoxProvider.targetTypes,
+  proxmoxProvider.name,
+);
 
-const vmChecksSchema = z
-	.object({
-		state: stateCheckSchema.optional(),
-	})
-	.optional();
+export const proxmoxTargetConfigSchema = allTargetConfigsSchema(
+  proxmoxProvider.targetTypes,
+);
 
-const lxcChecksSchema = z
-	.object({
-		state: stateCheckSchema.optional(),
-	})
-	.optional();
-
-const nodeChecksSchema = z
-	.object({
-		online: onlineCheckSchema.optional(),
-	})
-	.optional();
-
-const providerChecksSchema = z
-	.object({
-		vm: vmChecksSchema,
-		lxc: lxcChecksSchema,
-		node: nodeChecksSchema,
-	})
-	.optional();
-
-const intervalsSchema = z
-	.object({
-		vm: z.string().optional(),
-		lxc: z.string().optional(),
-		node: z.string().optional(),
-	})
-	.optional();
-
-export const providerConfigSchema = z.object({
-	type: z.literal("proxmox").optional(),
-	url: z.string(),
-	tokenId: z.string(),
-	tokenSecret: z.string(),
-	interval: z.string().optional(),
-	intervals: intervalsSchema,
-	checks: providerChecksSchema,
-});
-
-const baseTarget = {
-	name: z.string(),
-	provider: z.string(),
+export type ProxmoxProviderConfig = {
+  url: string;
+  tokenId: string;
+  tokenSecret: string;
+  type?: string;
+  interval?: string;
+  intervals?: Record<string, string>;
+  checks?: Record<string, unknown>;
 };
+export type ProxmoxTargetConfig = z.infer<typeof proxmoxTargetConfigSchema>;
 
-const nodeTargetSchema = z.object({
-	...baseTarget,
-	type: z.literal("node"),
-	node: z.string(),
-	interval: z.string().optional(),
-	checks: nodeChecksSchema,
-});
+// Provider instance
+export class ProxmoxProviderInstance {
+  private client: ProxmoxClient;
 
-const vmTargetSchema = z.object({
-	...baseTarget,
-	type: z.literal("vm"),
-	vmId: z.number(),
-	interval: z.string().optional(),
-	checks: vmChecksSchema,
-});
+  constructor(public config: ProxmoxProviderConfig) {
+    this.client = new ProxmoxClient({
+      url: config.url,
+      tokenId: config.tokenId,
+      tokenSecret: config.tokenSecret,
+    });
+  }
 
-const lxcTargetSchema = z.object({
-	...baseTarget,
-	type: z.literal("lxc"),
-	vmId: z.number(),
-	interval: z.string().optional(),
-	checks: lxcChecksSchema,
-});
+  async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
+    const t = target as { type: string; name: string; vmId?: number; node?: string };
+    const results: CheckResult[] = [];
 
-export const targetConfigSchema = z.discriminatedUnion("type", [
-	nodeTargetSchema,
-	vmTargetSchema,
-	lxcTargetSchema,
-]);
+    for (const checkName of checks) {
+      try {
+        const measurement = await this.runCheck(t, checkName);
+        results.push({ check: checkName, measurement });
+      } catch (err) {
+        results.push({
+          check: checkName,
+          error: {
+            level: "target",
+            message: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
+    }
 
-export type ProviderConfig = z.infer<typeof providerConfigSchema>;
-export type TargetConfig = z.infer<typeof targetConfigSchema>;
-export type NodeTarget = z.infer<typeof nodeTargetSchema>;
-export type VmTarget = z.infer<typeof vmTargetSchema>;
-export type LxcTarget = z.infer<typeof lxcTargetSchema>;
+    return results;
+  }
 
-// Built-in defaults (used when __enabled__ or omitted)
-const builtInDefaults = {
-	vm: { state: { state: "running" as const }, interval: "30s" },
-	lxc: { state: { state: "running" as const }, interval: "30s" },
-	node: { online: {}, interval: "10s" },
-};
+  private async runCheck(
+    target: { type: string; name: string; vmId?: number; node?: string },
+    checkName: string
+  ): Promise<Record<string, unknown>> {
+    switch (target.type) {
+      case "vm":
+        return this.runVmCheck(target.vmId!, checkName);
+      case "lxc":
+        return this.runLxcCheck(target.vmId!, checkName);
+      case "node":
+        return this.runNodeCheck(target.node!, checkName);
+      default:
+        throw new Error(`Unknown target type: ${target.type}`);
+    }
+  }
 
-const FRAMEWORK_FALLBACK_INTERVAL = "60s";
+  private async runVmCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
+    if (checkName !== "state") {
+      throw new Error(`Unknown check for vm: ${checkName}`);
+    }
 
-type StateCheckConfig = z.infer<typeof stateCheckConfigSchema>;
-type OnlineCheckConfig = z.infer<typeof onlineCheckConfigSchema>;
+    const node = await this.client.findVmNode(vmId, "qemu");
+    if (!node) {
+      throw new Error(`VM ${vmId} not found`);
+    }
 
-type ResolvedVmChecks = { state: StateCheckConfig | false };
-type ResolvedLxcChecks = { state: StateCheckConfig | false };
-type ResolvedNodeChecks = { online: OnlineCheckConfig | false };
+    const status = await this.client.getVmStatus(node, vmId);
+    return { state: status.status };
+  }
 
-type CheckValue<T> = typeof DISABLED | typeof ENABLED | T | undefined;
+  private async runLxcCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
+    if (checkName !== "state") {
+      throw new Error(`Unknown check for lxc: ${checkName}`);
+    }
 
-function resolveCheck<T>(
-	targetValue: CheckValue<T>,
-	providerValue: CheckValue<T>,
-	builtInDefault: T,
-): T | false {
-	// Target takes precedence
-	const value = targetValue !== undefined ? targetValue : providerValue;
+    const node = await this.client.findVmNode(vmId, "lxc");
+    if (!node) {
+      throw new Error(`LXC ${vmId} not found`);
+    }
 
-	if (value === DISABLED) return false;
-	if (value === ENABLED || value === undefined) return builtInDefault;
-	return value;
-}
+    const status = await this.client.getLxcStatus(node, vmId);
+    return { state: status.status };
+  }
 
-function resolveVmChecks(
-	target: VmTarget,
-	providerConfig: ProviderConfig,
-): ResolvedVmChecks {
-	const providerDefaults = providerConfig.checks?.vm;
-	const state = resolveCheck(
-		target.checks?.state,
-		providerDefaults?.state,
-		builtInDefaults.vm.state,
-	);
-	return { state };
-}
+  private async runNodeCheck(nodeName: string, checkName: string): Promise<Record<string, unknown>> {
+    if (checkName !== "online") {
+      throw new Error(`Unknown check for node: ${checkName}`);
+    }
 
-function resolveLxcChecks(
-	target: LxcTarget,
-	providerConfig: ProviderConfig,
-): ResolvedLxcChecks {
-	const providerDefaults = providerConfig.checks?.lxc;
-	const state = resolveCheck(
-		target.checks?.state,
-		providerDefaults?.state,
-		builtInDefaults.lxc.state,
-	);
-	return { state };
-}
-
-function resolveNodeChecks(
-	target: NodeTarget,
-	providerConfig: ProviderConfig,
-): ResolvedNodeChecks {
-	const providerDefaults = providerConfig.checks?.node;
-	const online = resolveCheck(
-		target.checks?.online,
-		providerDefaults?.online,
-		builtInDefaults.node.online,
-	);
-	return { online };
-}
-
-export function resolveTargetChecks(
-	target: TargetConfig,
-	providerConfig: ProviderConfig,
-): ResolvedVmChecks | ResolvedLxcChecks | ResolvedNodeChecks {
-	switch (target.type) {
-		case "vm":
-			return resolveVmChecks(target, providerConfig);
-		case "lxc":
-			return resolveLxcChecks(target, providerConfig);
-		case "node":
-			return resolveNodeChecks(target, providerConfig);
-	}
-}
-
-export function resolveInterval(
-	target: TargetConfig,
-	providerConfig: ProviderConfig,
-	agentInterval: string | undefined,
-): string {
-	// 1. Target config
-	if (target.interval) return target.interval;
-
-	// 2. Provider config (per target-type)
-	const providerTypeInterval = providerConfig.intervals?.[target.type];
-	if (providerTypeInterval) return providerTypeInterval;
-
-	// 3. Provider config (global)
-	if (providerConfig.interval) return providerConfig.interval;
-
-	// 4. Agent config
-	if (agentInterval) return agentInterval;
-
-	// 5. Provider built-in default
-	const builtIn = builtInDefaults[target.type].interval;
-	if (builtIn) return builtIn;
-
-	// 6. Framework fallback
-	return FRAMEWORK_FALLBACK_INTERVAL;
-}
-
-export function printResolvedConfig(
-	targets: TargetConfig[],
-	providerConfig: ProviderConfig,
-	agentInterval: string | undefined,
-): void {
-	console.log("Proxmox Provider Config:");
-	console.log(`  URL: ${providerConfig.url}`);
-	console.log("");
-	console.log("Resolved Targets:");
-	for (const target of targets) {
-		const checks = resolveTargetChecks(target, providerConfig);
-		const interval = resolveInterval(target, providerConfig, agentInterval);
-		console.log(`  ${target.name} (${target.type}):`);
-		if (target.type === "node") {
-			console.log(`    node: ${target.node}`);
-		} else {
-			console.log(`    vmId: ${target.vmId}`);
-		}
-		console.log(`    interval: ${interval}`);
-		console.log(`    checks: ${JSON.stringify(checks)}`);
-	}
+    // If we can reach the node status endpoint, it's online
+    await this.client.getNodeStatus(nodeName);
+    return { online: true };
+  }
 }
 
 export default {
-	name: "proxmox",
-	providerConfigSchema,
-	targetConfigSchema,
-} satisfies Provider;
+  name: "proxmox",
+  providerConfigSchema: proxmoxProviderConfigSchema,
+  targetConfigSchema: proxmoxTargetConfigSchema,
+  createInstance: (config: unknown) => new ProxmoxProviderInstance(config as ProxmoxProviderConfig),
+};

@@ -1,14 +1,44 @@
 import { z } from "zod";
 import {
+  defineCheck,
   defineProvider,
   bindCheck,
-  stateCheck,
-  onlineCheck,
+  resolveEnabledChecks,
   providerConfigSchema,
   allTargetConfigsSchema,
+  DISABLED,
   type CheckResult,
 } from "../../mantle/src/framework/index.ts";
 import { ProxmoxClient } from "./client.ts";
+
+// Proxmox-specific check definitions
+const stateCheck = defineCheck({
+  name: "state",
+  measurement: z.object({ state: z.string() }),
+  operators: ["equals", "not"] as const,
+  defaults: { equals: "running", over: "5m" },
+});
+
+const onlineCheck = defineCheck({
+  name: "online",
+  measurement: z.object({ online: z.boolean() }),
+  operators: ["equals"] as const,
+  defaults: { equals: true, over: "1m" },
+});
+
+const cpuCheck = defineCheck({
+  name: "cpu",
+  measurement: z.object({ usage_pct: z.number() }),
+  operators: ["max", "min"] as const,
+  defaults: { max: 80, over: "5m" },
+});
+
+const memoryCheck = defineCheck({
+  name: "memory",
+  measurement: z.object({ usage_pct: z.number() }),
+  operators: ["max", "min"] as const,
+  defaults: { max: 90, over: "5m" },
+});
 
 const proxmoxConnectionConfig = z.object({
   url: z.string(),
@@ -27,6 +57,8 @@ export const proxmoxProvider = defineProvider({
         state: bindCheck(stateCheck, {
           defaults: { equals: "running", over: "5m" },
         }),
+        cpu: bindCheck(cpuCheck),
+        memory: bindCheck(memoryCheck),
       },
       defaultInterval: "30s",
     },
@@ -36,6 +68,8 @@ export const proxmoxProvider = defineProvider({
         state: bindCheck(stateCheck, {
           defaults: { equals: "running", over: "5m" },
         }),
+        cpu: bindCheck(cpuCheck),
+        memory: bindCheck(memoryCheck),
       },
       defaultInterval: "30s",
     },
@@ -45,6 +79,8 @@ export const proxmoxProvider = defineProvider({
         online: bindCheck(onlineCheck, {
           defaults: { equals: true, over: "1m" },
         }),
+        cpu: bindCheck(cpuCheck),
+        memory: bindCheck(memoryCheck),
       },
       defaultInterval: "10s",
     },
@@ -124,46 +160,64 @@ export class ProxmoxProviderInstance {
   }
 
   private async runVmCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
-    if (checkName !== "state") {
-      throw new Error(`Unknown check for vm: ${checkName}`);
-    }
-
     const node = await this.client.findVmNode(vmId, "qemu");
     if (!node) {
       throw new Error(`VM ${vmId} not found`);
     }
 
     const status = await this.client.getVmStatus(node, vmId);
-    return { state: status.status };
+
+    switch (checkName) {
+      case "state":
+        return { state: status.status };
+      case "cpu":
+        return { usage_pct: status.cpu * 100 };
+      case "memory":
+        return { usage_pct: (status.mem / status.maxmem) * 100 };
+      default:
+        throw new Error(`Unknown check for vm: ${checkName}`);
+    }
   }
 
   private async runLxcCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
-    if (checkName !== "state") {
-      throw new Error(`Unknown check for lxc: ${checkName}`);
-    }
-
     const node = await this.client.findVmNode(vmId, "lxc");
     if (!node) {
       throw new Error(`LXC ${vmId} not found`);
     }
 
     const status = await this.client.getLxcStatus(node, vmId);
-    return { state: status.status };
+
+    switch (checkName) {
+      case "state":
+        return { state: status.status };
+      case "cpu":
+        return { usage_pct: status.cpu * 100 };
+      case "memory":
+        return { usage_pct: (status.mem / status.maxmem) * 100 };
+      default:
+        throw new Error(`Unknown check for lxc: ${checkName}`);
+    }
   }
 
   private async runNodeCheck(nodeName: string, checkName: string): Promise<Record<string, unknown>> {
-    if (checkName !== "online") {
-      throw new Error(`Unknown check for node: ${checkName}`);
-    }
+    const status = await this.client.getNodeStatus(nodeName);
 
-    // If we can reach the node status endpoint, it's online
-    await this.client.getNodeStatus(nodeName);
-    return { online: true };
+    switch (checkName) {
+      case "online":
+        return { online: true };
+      case "cpu":
+        return { usage_pct: status.cpu * 100 };
+      case "memory":
+        return { usage_pct: (status.memory.used / status.memory.total) * 100 };
+      default:
+        throw new Error(`Unknown check for node: ${checkName}`);
+    }
   }
 }
 
 export default {
   name: "proxmox",
+  definition: proxmoxProvider,
   providerConfigSchema: proxmoxProviderConfigSchema,
   targetConfigSchema: proxmoxTargetConfigSchema,
   createInstance: (config: unknown) => new ProxmoxProviderInstance(config as ProxmoxProviderConfig),

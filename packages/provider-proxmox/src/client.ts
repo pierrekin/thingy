@@ -52,6 +52,10 @@ export class ProxmoxClient {
     status: string;
     name: string;
     vmid: number;
+    cpu: number;      // CPU usage as decimal (0.0 to ~N for N cores)
+    cpus: number;     // Number of CPUs allocated
+    mem: number;      // Current memory usage in bytes
+    maxmem: number;   // Max memory allocated in bytes
   }> {
     return this.request(`/api2/json/nodes/${node}/qemu/${vmId}/status/current`);
   }
@@ -60,12 +64,21 @@ export class ProxmoxClient {
     status: string;
     name: string;
     vmid: number;
+    cpu: number;      // CPU usage as decimal
+    cpus: number;     // Number of CPUs allocated
+    mem: number;      // Current memory usage in bytes
+    maxmem: number;   // Max memory allocated in bytes
   }> {
     return this.request(`/api2/json/nodes/${node}/lxc/${vmId}/status/current`);
   }
 
   async getNodeStatus(node: string): Promise<{
-    // Node status returns lots of data, we just care it responds
+    cpu: number;      // CPU usage as decimal
+    cpuinfo: { cpus: number };  // CPU info with core count
+    memory: {
+      used: number;   // Used memory in bytes
+      total: number;  // Total memory in bytes
+    };
   }> {
     return this.request(`/api2/json/nodes/${node}/status`);
   }

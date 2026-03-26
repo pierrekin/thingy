@@ -3,9 +3,8 @@ import { OperationalError } from "../errors.ts";
 import { getProvider } from "../providers.ts";
 import type { ProviderInstance } from "../provider.ts";
 import { IntervalScheduler } from "../scheduler/index.ts";
-import { parseInterval } from "../util/index.ts";
 import {
-  resolveEnabledChecks,
+  resolveAgentConfig,
   isCheckError,
 } from "../framework/index.ts";
 import type { OutcomeStore } from "../store/types.ts";
@@ -124,19 +123,9 @@ function validateAgentConfig(
 	}
 }
 
-// Get available checks for a target type from provider definition
-function getAvailableChecks(targetType: string): string[] {
-	// TODO: This should come from the provider definition
-	// For now, hardcode based on proxmox
-	switch (targetType) {
-		case "vm":
-		case "lxc":
-			return ["state"];
-		case "node":
-			return ["online"];
-		default:
-			return [];
-	}
+function getProviderDefinition(providerType: string) {
+	const provider = getProvider(providerType);
+	return provider?.definition;
 }
 
 export function startAgent(
@@ -161,52 +150,44 @@ export function startAgent(
 		}
 	}
 
+	// Resolve targets using framework
+	const resolvedTargets = resolveAgentConfig(agentConfig, providerConfigs, getProviderDefinition);
+
 	// Set up scheduler
 	const scheduler = new IntervalScheduler();
 
-	for (const target of agentConfig.targets) {
-		const instance = providerInstances.get(target.provider);
+	for (const resolved of resolvedTargets) {
+		const instance = providerInstances.get(resolved.provider);
 		if (!instance) {
-			console.warn(`No provider instance for target '${target.name}'`);
+			console.warn(`No provider instance for target '${resolved.name}'`);
 			continue;
 		}
 
-		const targetInterval = "interval" in target ? (target.interval as string) : undefined;
-		const interval = targetInterval ?? agentConfig.interval ?? "30s";
-
-		// Resolve which checks to run
-		const targetChecks = "checks" in target ? (target.checks as Record<string, unknown>) : undefined;
-		const providerConfig = providerConfigs[target.provider] as Record<string, unknown> | undefined;
-		const providerChecks = providerConfig?.checks as Record<string, Record<string, unknown>> | undefined;
-		const targetTypeChecks = providerChecks?.[target.type as string];
-		const availableChecks = getAvailableChecks(target.type as string);
-		const enabledChecks = resolveEnabledChecks(targetChecks, targetTypeChecks, availableChecks);
-
 		scheduler.add({
-			id: `${target.provider}:${target.name}`,
-			interval: parseInterval(interval),
+			id: `${resolved.provider}:${resolved.name}`,
+			interval: resolved.interval,
 			run: async () => {
 				const time = new Date();
-				const results = await instance.check(target, enabledChecks);
+				const results = await instance.check(resolved.target, resolved.checks);
 
 				for (const result of results) {
 					if (isCheckError(result)) {
-						console.log(`[${target.name}] ${result.check}: ERROR - ${result.error.message}`);
+						console.log(`[${resolved.name}] ${result.check}: ERROR - ${result.error.message}`);
 						if (store) {
 							await store.recordCheckOutcome(
-								target.provider,
-								target.name,
+								resolved.provider,
+								resolved.name,
 								result.check,
 								time,
 								{ error: result.error }
 							);
 						}
 					} else {
-						console.log(`[${target.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
+						console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
 						if (store) {
 							await store.recordCheckOutcome(
-								target.provider,
-								target.name,
+								resolved.provider,
+								resolved.name,
 								result.check,
 								time,
 								{ value: result.measurement }
@@ -217,7 +198,8 @@ export function startAgent(
 			},
 		});
 
-		console.log(`Scheduled: ${target.name} (every ${interval}) - checks: [${enabledChecks.join(", ")}]`);
+		const intervalStr = `${resolved.interval}ms`;
+		console.log(`Scheduled: ${resolved.name} (every ${intervalStr}) - checks: [${resolved.checks.join(", ")}]`);
 	}
 
 	console.log("");

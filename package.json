@@ -4,7 +4,8 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "dev": "bun run packages/mantle/src/index.ts",
-    "build": "bun build packages/mantle/src/index.ts --compile --outfile dist/mantle",
+    "build:web": "bun run --cwd packages/mantle/web build",
+    "build": "bun run build:web && bun build packages/mantle/src/index.ts --compile --target=${TARGET:-bun} --outfile=${OUTFILE:-dist/mantle}",
     "clean": "rm -f .*.bun-build"
   },
   "devDependencies": {

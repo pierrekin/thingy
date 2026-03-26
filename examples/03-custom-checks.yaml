@@ -1,0 +1,47 @@
+# Custom checks: override default check behavior
+# Use when you need different checks for different targets
+
+providers:
+  proxmox:
+    url: https://proxmox.example.com:8006
+    tokenId: root@pam!monitor
+    tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    # Set defaults for all VMs from this provider
+    checks:
+      vm:
+        state:
+          state: running
+
+agent:
+  name: homelab
+  targets:
+    # Uses provider default (running)
+    - name: web-server
+      provider: proxmox
+      type: vm
+      vmId: 100
+
+    # Override: this VM should be stopped
+    - name: backup-server
+      provider: proxmox
+      type: vm
+      vmId: 101
+      checks:
+        state:
+          state: stopped
+
+    # Disable state check entirely (dev VM, don't care)
+    - name: dev-sandbox
+      provider: proxmox
+      type: vm
+      vmId: 102
+      checks:
+        state: __disabled__
+
+    # Use built-in default, ignoring provider config
+    - name: legacy-vm
+      provider: proxmox
+      type: vm
+      vmId: 103
+      checks:
+        state: __enabled__

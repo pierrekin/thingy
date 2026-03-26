@@ -1,0 +1,6 @@
+# Bun
+.*.bun-build
+
+# Configuration
+config.yaml
+

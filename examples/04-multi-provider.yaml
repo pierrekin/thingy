@@ -1,0 +1,55 @@
+# Multi-provider: multiple environments or clusters
+# Use when monitoring prod/staging or multiple provider instances
+
+providers:
+  # Production cluster
+  proxmox-prod:
+    type: proxmox
+    url: https://proxmox-prod.example.com:8006
+    tokenId: root@pam!monitor
+    tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    checks:
+      vm:
+        state:
+          state: running
+
+  # Staging cluster
+  proxmox-staging:
+    type: proxmox
+    url: https://proxmox-staging.example.com:8006
+    tokenId: root@pam!monitor
+    tokenSecret: yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy
+    # Staging VMs can be stopped, no default state check
+    checks:
+      vm:
+        state: __disabled__
+
+agent:
+  name: multi-env
+  targets:
+    # Production targets
+    - name: prod-web
+      provider: proxmox-prod
+      type: vm
+      vmId: 100
+
+    - name: prod-api
+      provider: proxmox-prod
+      type: vm
+      vmId: 101
+
+    - name: prod-db
+      provider: proxmox-prod
+      type: vm
+      vmId: 102
+
+    # Staging targets (state checks disabled via provider)
+    - name: staging-web
+      provider: proxmox-staging
+      type: vm
+      vmId: 200
+
+    - name: staging-api
+      provider: proxmox-staging
+      type: vm
+      vmId: 201

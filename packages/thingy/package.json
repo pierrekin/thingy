@@ -1,0 +1,11 @@
+{
+  "name": "thingy",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "citty": "^0.2.1",
+    "provider-proxmox": "workspace:*",
+    "yaml": "^2.7.0"
+  }
+}

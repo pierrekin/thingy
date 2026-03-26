@@ -1,0 +1,33 @@
+# Basic config: single provider, multiple targets
+# Good starting point for monitoring a single environment
+
+providers:
+  proxmox:
+    url: https://proxmox.example.com:8006
+    tokenId: root@pam!monitor
+    tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+agent:
+  name: homelab
+  targets:
+    # Monitor the hypervisor node itself
+    - name: pve1
+      provider: proxmox
+      type: node
+      node: pve1
+
+    # VMs
+    - name: web-server
+      provider: proxmox
+      type: vm
+      vmId: 100
+
+    - name: database
+      provider: proxmox
+      type: vm
+      vmId: 101
+
+    - name: media-server
+      provider: proxmox
+      type: vm
+      vmId: 102

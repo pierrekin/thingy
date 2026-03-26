@@ -1,0 +1,16 @@
+# Minimal config: a single provider with a single target
+# Copy this to config.yaml and fill in your provider credentials
+
+providers:
+  proxmox:
+    url: https://proxmox.example.com:8006
+    tokenId: root@pam!monitor
+    tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+agent:
+  name: my-agent
+  targets:
+    - name: web-server
+      provider: proxmox
+      type: vm
+      vmId: 100

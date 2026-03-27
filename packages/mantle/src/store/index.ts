@@ -1,2 +1,10 @@
-export type { OutcomeStore, OutcomeError, Violation } from "./types.ts";
-export { SqliteOutcomeStore } from "./sqlite.ts";
+export type {
+  OutcomeStore,
+  EventStore,
+  OutcomeError,
+  Violation,
+  ProviderOutcome,
+  TargetOutcome,
+  CheckOutcome,
+} from "./types.ts";
+export { SqliteOutcomeStore, SqliteEventStore, createSqliteStores } from "./sqlite.ts";

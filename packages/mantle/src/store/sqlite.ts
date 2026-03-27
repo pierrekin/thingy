@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import type {
   OutcomeStore,
+  EventStore,
   ProviderOutcome,
   TargetOutcome,
   CheckOutcome,
@@ -12,8 +13,7 @@ CREATE TABLE IF NOT EXISTS provider_outcomes (
   provider TEXT NOT NULL,
   time INTEGER NOT NULL,
   success INTEGER NOT NULL,
-  error TEXT,
-  UNIQUE(provider, time)
+  error TEXT
 );
 
 CREATE TABLE IF NOT EXISTS target_outcomes (
@@ -22,8 +22,7 @@ CREATE TABLE IF NOT EXISTS target_outcomes (
   target TEXT NOT NULL,
   time INTEGER NOT NULL,
   success INTEGER NOT NULL,
-  error TEXT,
-  UNIQUE(provider, target, time)
+  error TEXT
 );
 
 CREATE TABLE IF NOT EXISTS check_outcomes (
@@ -35,8 +34,7 @@ CREATE TABLE IF NOT EXISTS check_outcomes (
   success INTEGER NOT NULL,
   value TEXT,
   violation TEXT,
-  error TEXT,
-  UNIQUE(provider, target, check_name, time)
+  error TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_provider_outcomes_time ON provider_outcomes(provider, time);
@@ -45,15 +43,45 @@ CREATE INDEX IF NOT EXISTS idx_target_outcomes_time ON target_outcomes(provider,
 CREATE INDEX IF NOT EXISTS idx_target_outcomes_success ON target_outcomes(provider, target, success);
 CREATE INDEX IF NOT EXISTS idx_check_outcomes_time ON check_outcomes(provider, target, check_name, time);
 CREATE INDEX IF NOT EXISTS idx_check_outcomes_success ON check_outcomes(provider, target, check_name, success);
+
+CREATE TABLE IF NOT EXISTS provider_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  code TEXT NOT NULL,
+  start_time INTEGER NOT NULL,
+  end_time INTEGER,
+  message TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS target_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  target TEXT NOT NULL,
+  code TEXT NOT NULL,
+  start_time INTEGER NOT NULL,
+  end_time INTEGER,
+  message TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS check_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  target TEXT NOT NULL,
+  check_name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  start_time INTEGER NOT NULL,
+  end_time INTEGER,
+  kind TEXT NOT NULL,
+  message TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_events_open ON provider_events(provider, code) WHERE end_time IS NULL;
+CREATE INDEX IF NOT EXISTS idx_target_events_open ON target_events(provider, target, code) WHERE end_time IS NULL;
+CREATE INDEX IF NOT EXISTS idx_check_events_open ON check_events(provider, target, check_name, code) WHERE end_time IS NULL;
 `;
 
 export class SqliteOutcomeStore implements OutcomeStore {
-  private db: Database;
-
-  constructor(path: string) {
-    this.db = new Database(path);
-    this.db.exec(SCHEMA);
-  }
+  constructor(private db: Database) {}
 
   async recordProviderOutcome(
     provider: string,
@@ -117,4 +145,93 @@ export class SqliteOutcomeStore implements OutcomeStore {
   async close(): Promise<void> {
     this.db.close();
   }
+}
+
+export class SqliteEventStore implements EventStore {
+  constructor(private db: Database) {}
+
+  async openProviderEvent(
+    provider: string,
+    code: string,
+    time: Date,
+    message: string
+  ): Promise<number> {
+    const stmt = this.db.prepare(`
+      INSERT INTO provider_events (provider, code, start_time, message)
+      VALUES (?, ?, ?, ?)
+    `);
+    const result = stmt.run(provider, code, time.getTime(), message);
+    return Number(result.lastInsertRowid);
+  }
+
+  async closeProviderEvent(id: number, time: Date): Promise<void> {
+    const stmt = this.db.prepare(`
+      UPDATE provider_events SET end_time = ? WHERE id = ?
+    `);
+    stmt.run(time.getTime(), id);
+  }
+
+  async openTargetEvent(
+    provider: string,
+    target: string,
+    code: string,
+    time: Date,
+    message: string
+  ): Promise<number> {
+    const stmt = this.db.prepare(`
+      INSERT INTO target_events (provider, target, code, start_time, message)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(provider, target, code, time.getTime(), message);
+    return Number(result.lastInsertRowid);
+  }
+
+  async closeTargetEvent(id: number, time: Date): Promise<void> {
+    const stmt = this.db.prepare(`
+      UPDATE target_events SET end_time = ? WHERE id = ?
+    `);
+    stmt.run(time.getTime(), id);
+  }
+
+  async openCheckEvent(
+    provider: string,
+    target: string,
+    check: string,
+    code: string,
+    kind: "error" | "violation",
+    time: Date,
+    message: string
+  ): Promise<number> {
+    const stmt = this.db.prepare(`
+      INSERT INTO check_events (provider, target, check_name, code, start_time, kind, message)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(provider, target, check, code, time.getTime(), kind, message);
+    return Number(result.lastInsertRowid);
+  }
+
+  async closeCheckEvent(id: number, time: Date): Promise<void> {
+    const stmt = this.db.prepare(`
+      UPDATE check_events SET end_time = ? WHERE id = ?
+    `);
+    stmt.run(time.getTime(), id);
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
+export function createSqliteStores(path: string): {
+  outcomeStore: SqliteOutcomeStore;
+  eventStore: SqliteEventStore;
+  close: () => void;
+} {
+  const db = new Database(path);
+  db.exec(SCHEMA);
+  return {
+    outcomeStore: new SqliteOutcomeStore(db),
+    eventStore: new SqliteEventStore(db),
+    close: () => db.close(),
+  };
 }

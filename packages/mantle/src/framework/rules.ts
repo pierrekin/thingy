@@ -13,6 +13,7 @@ type EvaluationResult = {
  * by the agent when aggregating samples before calling this.
  */
 export function evaluate(
+  checkName: string,
   measurement: Record<string, unknown>,
   config: CheckConfig,
   operators: readonly Operator[],
@@ -25,7 +26,7 @@ export function evaluate(
     const threshold = config[op as keyof CheckConfig];
     if (threshold === undefined) continue;
 
-    const violation = evaluateOperator(op, measurement, threshold);
+    const violation = evaluateOperator(checkName, op, measurement, threshold);
     if (violation) {
       violations.push(violation);
     }
@@ -35,6 +36,7 @@ export function evaluate(
 }
 
 function evaluateOperator(
+  checkName: string,
   op: Operator,
   measurement: Record<string, unknown>,
   threshold: unknown,
@@ -48,7 +50,7 @@ function evaluateOperator(
       for (const [field, actual] of values) {
         if (typeof actual === "number" && typeof threshold === "number") {
           if (actual > threshold) {
-            return { rule: "max", threshold, actual };
+            return { code: `${checkName}:max`, rule: "max", threshold, actual };
           }
         }
       }
@@ -59,7 +61,7 @@ function evaluateOperator(
       for (const [field, actual] of values) {
         if (typeof actual === "number" && typeof threshold === "number") {
           if (actual < threshold) {
-            return { rule: "min", threshold, actual };
+            return { code: `${checkName}:min`, rule: "min", threshold, actual };
           }
         }
       }
@@ -69,7 +71,7 @@ function evaluateOperator(
     case "equals": {
       for (const [field, actual] of values) {
         if (actual !== threshold) {
-          return { rule: "equals", threshold, actual };
+          return { code: `${checkName}:equals`, rule: "equals", threshold, actual };
         }
       }
       return null;
@@ -78,7 +80,7 @@ function evaluateOperator(
     case "not": {
       for (const [field, actual] of values) {
         if (actual === threshold) {
-          return { rule: "not", threshold, actual };
+          return { code: `${checkName}:not`, rule: "not", threshold, actual };
         }
       }
       return null;

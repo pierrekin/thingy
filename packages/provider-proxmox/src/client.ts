@@ -4,6 +4,17 @@ export type ProxmoxClientConfig = {
   tokenSecret: string;
 };
 
+export class ProxmoxApiError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly statusCode?: number
+  ) {
+    super(message);
+    this.name = "ProxmoxApiError";
+  }
+}
+
 export type VmStatus = {
   vmid: number;
   name: string;
@@ -21,15 +32,25 @@ export class ProxmoxClient {
 
   private async request<T>(path: string): Promise<T> {
     const url = `${this.config.url}${path}`;
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `PVEAPIToken=${this.config.tokenId}=${this.config.tokenSecret}`,
-      },
-    });
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          Authorization: `PVEAPIToken=${this.config.tokenId}=${this.config.tokenSecret}`,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ProxmoxApiError("unreachable", `Failed to connect to Proxmox: ${message}`);
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`Proxmox API error ${res.status}: ${text}`);
+      if (res.status === 401 || res.status === 403) {
+        throw new ProxmoxApiError("auth_failed", `Proxmox authentication failed: ${text}`, res.status);
+      }
+      throw new ProxmoxApiError("api_error", `Proxmox API error ${res.status}: ${text}`, res.status);
     }
 
     const json = await res.json();

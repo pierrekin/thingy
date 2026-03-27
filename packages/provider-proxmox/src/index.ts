@@ -9,7 +9,17 @@ import {
   DISABLED,
   type CheckResult,
 } from "../../mantle/src/framework/index.ts";
-import { ProxmoxClient } from "./client.ts";
+import { ProxmoxClient, ProxmoxApiError } from "./client.ts";
+
+class TargetNotFoundError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string
+  ) {
+    super(message);
+    this.name = "TargetNotFoundError";
+  }
+}
 
 // Proxmox-specific check definitions
 const stateCheck = defineCheck({
@@ -130,13 +140,36 @@ export class ProxmoxProviderInstance {
         const measurement = await this.runCheck(t, checkName);
         results.push({ check: checkName, measurement });
       } catch (err) {
-        results.push({
-          check: checkName,
-          error: {
-            level: "target",
-            message: err instanceof Error ? err.message : String(err),
-          },
-        });
+        if (err instanceof ProxmoxApiError) {
+          // API errors are provider-level
+          results.push({
+            check: checkName,
+            error: {
+              level: "provider",
+              code: err.code,
+              message: err.message,
+            },
+          });
+        } else if (err instanceof TargetNotFoundError) {
+          results.push({
+            check: checkName,
+            error: {
+              level: "target",
+              code: err.code,
+              message: err.message,
+            },
+          });
+        } else {
+          // Unknown errors default to check-level
+          results.push({
+            check: checkName,
+            error: {
+              level: "check",
+              code: "unknown",
+              message: err instanceof Error ? err.message : String(err),
+            },
+          });
+        }
       }
     }
 
@@ -162,7 +195,7 @@ export class ProxmoxProviderInstance {
   private async runVmCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
     const node = await this.client.findVmNode(vmId, "qemu");
     if (!node) {
-      throw new Error(`VM ${vmId} not found`);
+      throw new TargetNotFoundError("vm_not_found", `VM ${vmId} not found`);
     }
 
     const status = await this.client.getVmStatus(node, vmId);
@@ -182,7 +215,7 @@ export class ProxmoxProviderInstance {
   private async runLxcCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
     const node = await this.client.findVmNode(vmId, "lxc");
     if (!node) {
-      throw new Error(`LXC ${vmId} not found`);
+      throw new TargetNotFoundError("lxc_not_found", `LXC ${vmId} not found`);
     }
 
     const status = await this.client.getLxcStatus(node, vmId);

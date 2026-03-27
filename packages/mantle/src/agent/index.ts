@@ -7,7 +7,8 @@ import {
   resolveAgentConfig,
   isCheckError,
 } from "../framework/index.ts";
-import type { OutcomeStore } from "../store/types.ts";
+import type { OutcomeStore, EventStore } from "../store/types.ts";
+import { EventTracker } from "./events.ts";
 
 type ProviderConfigs = Record<string, unknown>;
 
@@ -133,6 +134,7 @@ export function startAgent(
 	agentConfig: AgentConfig,
 	providerConfigs: ProviderConfigs,
 	store: OutcomeStore,
+	eventStore: EventStore,
 ) {
 	validateAgentConfig(agentConfig, providerConfigs);
 
@@ -153,8 +155,9 @@ export function startAgent(
 	// Resolve targets using framework
 	const resolvedTargets = resolveAgentConfig(agentConfig, providerConfigs, getProviderDefinition);
 
-	// Set up scheduler
+	// Set up scheduler and event tracker
 	const scheduler = new IntervalScheduler();
+	const events = new EventTracker(eventStore);
 
 	for (const resolved of resolvedTargets) {
 		const instance = providerInstances.get(resolved.provider);
@@ -172,27 +175,40 @@ export function startAgent(
 
 				for (const result of results) {
 					if (isCheckError(result)) {
-						const { level, message } = result.error;
+						const { level, code, message } = result.error;
 						console.log(`[${resolved.name}] ${result.check}: ${level.toUpperCase()} ERROR - ${message}`);
 
-						// Record outcomes based on error level
+						// Record outcomes and events based on error level
 						if (level === "provider") {
 							await store.recordProviderOutcome(resolved.provider, time, {
 								success: false,
 								error: result.error,
 							});
+							await events.handleProviderOutcome(resolved.provider, time, { code, message });
+							await events.handleTargetOutcome(resolved.provider, resolved.name, time, null);
+							await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, null);
 						} else if (level === "target") {
 							await store.recordProviderOutcome(resolved.provider, time, { success: true });
 							await store.recordTargetOutcome(resolved.provider, resolved.name, time, {
 								success: false,
 								error: result.error,
 							});
+							await events.handleProviderOutcome(resolved.provider, time, null);
+							await events.handleTargetOutcome(resolved.provider, resolved.name, time, { code, message });
+							await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, null);
 						} else {
 							await store.recordProviderOutcome(resolved.provider, time, { success: true });
 							await store.recordTargetOutcome(resolved.provider, resolved.name, time, { success: true });
 							await store.recordCheckOutcome(resolved.provider, resolved.name, result.check, time, {
 								success: false,
 								error: result.error,
+							});
+							await events.handleProviderOutcome(resolved.provider, time, null);
+							await events.handleTargetOutcome(resolved.provider, resolved.name, time, null);
+							await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, {
+								code,
+								kind: "error",
+								message,
 							});
 						}
 					} else {
@@ -203,6 +219,10 @@ export function startAgent(
 							success: true,
 							value: result.measurement,
 						});
+						await events.handleProviderOutcome(resolved.provider, time, null);
+						await events.handleTargetOutcome(resolved.provider, resolved.name, time, null);
+						// TODO: handle violations once they're implemented
+						await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, null);
 					}
 				}
 			},

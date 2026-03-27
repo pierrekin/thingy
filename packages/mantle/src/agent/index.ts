@@ -9,8 +9,7 @@ import {
   evaluate,
   type ResolvedCheck,
 } from "../framework/index.ts";
-import type { OutcomeStore, EventStore } from "../store/types.ts";
-import { EventTracker } from "./events.ts";
+import type { CheckReporter } from "./hub-client.ts";
 
 type ProviderConfigs = Record<string, unknown>;
 
@@ -135,8 +134,7 @@ export function startAgent(
 	agentId: string,
 	agentConfig: AgentConfig,
 	providerConfigs: ProviderConfigs,
-	store: OutcomeStore,
-	eventStore: EventStore,
+	checkReporter: CheckReporter,
 ) {
 	validateAgentConfig(agentConfig, providerConfigs);
 
@@ -157,9 +155,8 @@ export function startAgent(
 	// Resolve targets using framework
 	const resolvedTargets = resolveAgentConfig(agentConfig, providerConfigs, getProviderDefinition);
 
-	// Set up scheduler and event tracker
+	// Set up scheduler
 	const scheduler = new IntervalScheduler();
-	const events = new EventTracker(eventStore);
 
 	for (const resolved of resolvedTargets) {
 		const instance = providerInstances.get(resolved.provider);
@@ -184,42 +181,16 @@ export function startAgent(
 
 				for (const result of results) {
 					if (isCheckError(result)) {
-						const { level, code, message } = result.error;
+						const { level, message } = result.error;
 						console.log(`[${resolved.name}] ${result.check}: ${level.toUpperCase()} ERROR - ${message}`);
 
-						// Record outcomes and events based on error level
-						if (level === "provider") {
-							await store.recordProviderOutcome(resolved.provider, time, {
-								success: false,
-								error: result.error,
-							});
-							await events.handleProviderOutcome(resolved.provider, time, { code, message });
-							await events.handleTargetOutcome(resolved.provider, resolved.name, time, null);
-							await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, null);
-						} else if (level === "target") {
-							await store.recordProviderOutcome(resolved.provider, time, { success: true });
-							await store.recordTargetOutcome(resolved.provider, resolved.name, time, {
-								success: false,
-								error: result.error,
-							});
-							await events.handleProviderOutcome(resolved.provider, time, null);
-							await events.handleTargetOutcome(resolved.provider, resolved.name, time, { code, message });
-							await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, null);
-						} else {
-							await store.recordProviderOutcome(resolved.provider, time, { success: true });
-							await store.recordTargetOutcome(resolved.provider, resolved.name, time, { success: true });
-							await store.recordCheckOutcome(resolved.provider, resolved.name, result.check, time, {
-								success: false,
-								error: result.error,
-							});
-							await events.handleProviderOutcome(resolved.provider, time, null);
-							await events.handleTargetOutcome(resolved.provider, resolved.name, time, null);
-							await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, {
-								code,
-								kind: "error",
-								message,
-							});
-						}
+						checkReporter.sendCheckResult(
+							resolved.provider,
+							resolved.name,
+							result.check,
+							time,
+							{ ok: false, error: result.error },
+						);
 					} else {
 						// Evaluate measurement against rules
 						const checkConfig = checkConfigMap.get(result.check);
@@ -227,7 +198,7 @@ export function startAgent(
 							? evaluate(result.check, result.measurement, checkConfig.config, checkConfig.operators)
 							: { violations: [] };
 
-						const violation = violations[0]; // For now, just use the first violation
+						const violation = violations[0];
 
 						if (violation) {
 							console.log(`[${resolved.name}] ${result.check}: VIOLATION ${violation.code} (${violation.actual} ${violation.rule} ${violation.threshold})`);
@@ -235,23 +206,12 @@ export function startAgent(
 							console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
 						}
 
-						await store.recordProviderOutcome(resolved.provider, time, { success: true });
-						await store.recordTargetOutcome(resolved.provider, resolved.name, time, { success: true });
-						await store.recordCheckOutcome(resolved.provider, resolved.name, result.check, time, {
-							success: true,
-							value: result.measurement,
-							violation,
-						});
-						await events.handleProviderOutcome(resolved.provider, time, null);
-						await events.handleTargetOutcome(resolved.provider, resolved.name, time, null);
-						await events.handleCheckOutcome(
+						checkReporter.sendCheckResult(
 							resolved.provider,
 							resolved.name,
 							result.check,
 							time,
-							violation
-								? { code: violation.code, kind: "violation", message: `${violation.actual} ${violation.rule} ${violation.threshold}` }
-								: null
+							{ ok: true, measurement: result.measurement, violation },
 						);
 					}
 				}

@@ -1,5 +1,7 @@
 import type { Hono } from "hono";
 import type { Server, ServerWebSocket } from "bun";
+import type { AgentMessage } from "../protocol.ts";
+import type { HubService } from "./service.ts";
 
 type WebSocketData = { audience: "web" | "agent" };
 
@@ -23,15 +25,19 @@ export function createFetchHandler(app: Hono) {
 	};
 }
 
-export const websocket = {
-	open(ws: ServerWebSocket<WebSocketData>) {
-		console.log(`WebSocket connected: ${ws.data.audience}`);
-	},
-	message(ws: ServerWebSocket<WebSocketData>, message: string | Buffer) {
-		console.log(`WebSocket message (${ws.data.audience}):`, message);
-		ws.send(`echo: ${message}`);
-	},
-	close(ws: ServerWebSocket<WebSocketData>) {
-		console.log(`WebSocket disconnected: ${ws.data.audience}`);
-	},
-};
+export function createWebSocketHandler(service: HubService) {
+	return {
+		open(ws: ServerWebSocket<WebSocketData>) {
+			if (ws.data.audience === "agent") {
+				ws.send(JSON.stringify({ type: "hub_hello" }));
+			}
+		},
+		async message(ws: ServerWebSocket<WebSocketData>, message: string | Buffer) {
+			if (ws.data.audience === "agent") {
+				const msg = JSON.parse(message.toString()) as AgentMessage;
+				await service.handleAgentMessage(msg);
+			}
+		},
+		close(ws: ServerWebSocket<WebSocketData>) {},
+	};
+}

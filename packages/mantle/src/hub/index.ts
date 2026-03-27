@@ -1,12 +1,19 @@
 import { Hono } from "hono";
 import type { HubConfig } from "../config.ts";
+import type { OutcomeStore, EventStore } from "../store/types.ts";
 import { createWebApp } from "./web.ts";
 import { createAgentApp } from "./agent.ts";
-import { createFetchHandler, websocket } from "./server.ts";
+import { createFetchHandler, createWebSocketHandler } from "./server.ts";
+import { HubService } from "./service.ts";
 
-export function startHub(config: HubConfig) {
+export function startHub(
+	config: HubConfig,
+	outcomeStore: OutcomeStore,
+	eventStore: EventStore,
+) {
+	const service = new HubService(outcomeStore, eventStore);
+
 	const app = new Hono();
-
 	app.route("/agent-api", createAgentApp());
 	app.route("/", createWebApp());
 
@@ -16,7 +23,7 @@ export function startHub(config: HubConfig) {
 		hostname: ip,
 		port,
 		fetch: createFetchHandler(app),
-		websocket,
+		websocket: createWebSocketHandler(service),
 	});
 
 	console.log(`Hub listening on ${ip}:${port}`);

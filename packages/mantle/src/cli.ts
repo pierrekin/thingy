@@ -9,6 +9,7 @@ import { handleOperationalErrors, OperationalError } from "./errors.ts";
 import { startHub } from "./hub/index.ts";
 import { startAgent } from "./agent/index.ts";
 import { createSqliteStores } from "./store/index.ts";
+import { createHubReporters } from "./agent/hub-client.ts";
 
 function getHubConfig(config: Config): HubConfig {
 	if (!config.hub) {
@@ -17,11 +18,16 @@ function getHubConfig(config: Config): HubConfig {
 	return config.hub;
 }
 
+function getHubUrl(hubConfig: HubConfig): string {
+	const { ip, port } = hubConfig.listen;
+	const host = ip.includes(":") ? `[${ip}]` : ip;
+	return `http://${host}:${port}`;
+}
+
 function getAgentConfig(
 	config: Config,
 	agent?: string,
 ): { id: string; config: AgentConfig } {
-	// Build map of available agents
 	const agents: Record<string, AgentConfig> = {};
 
 	if (config.agent) {
@@ -38,7 +44,6 @@ function getAgentConfig(
 		throw new OperationalError("No agent defined in config");
 	}
 
-	// Default to first available if not specified
 	const id = agent ?? availableIds[0]!;
 	const agentConfig = agents[id];
 
@@ -67,18 +72,26 @@ const hub = defineCommand({
 	args: { config: configArg },
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
-		startHub(getHubConfig(config));
+		const hubConfig = getHubConfig(config);
+		const { outcomeStore, eventStore } = createSqliteStores("mantle.db");
+		startHub(hubConfig, outcomeStore, eventStore);
 	}),
 });
 
 const agent = defineCommand({
 	meta: { name: "agent", description: "Run agent" },
-	args: { config: configArg, agent: agentArg },
+	args: { config: configArg, agent: agentArg, hub: { type: "string", description: "Hub URL" } },
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
-		const { outcomeStore, eventStore } = createSqliteStores("mantle.db");
-		startAgent(id, agentConfig, config.providers ?? {}, outcomeStore, eventStore);
+
+		const hubUrl = args.hub;
+		if (!hubUrl) {
+			throw new OperationalError("Hub URL required (--hub)");
+		}
+
+		const { checkReporter } = await createHubReporters(id, hubUrl);
+		startAgent(id, agentConfig, config.providers ?? {}, checkReporter);
 	}),
 });
 
@@ -87,10 +100,14 @@ const standalone = defineCommand({
 	args: { config: configArg, agent: agentArg },
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
+		const hubConfig = getHubConfig(config);
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
+
 		const { outcomeStore, eventStore } = createSqliteStores("mantle.db");
-		startHub(getHubConfig(config));
-		startAgent(id, agentConfig, config.providers ?? {}, outcomeStore, eventStore);
+		startHub(hubConfig, outcomeStore, eventStore);
+
+		const { checkReporter } = await createHubReporters(id, getHubUrl(hubConfig));
+		startAgent(id, agentConfig, config.providers ?? {}, checkReporter);
 	}),
 });
 

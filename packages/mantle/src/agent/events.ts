@@ -45,11 +45,13 @@ export class EventTracker {
         outcome.message
       );
       this.providerEvents.set(key, { id, code: outcome.code });
+      console.log(`[${provider}] EVENT OPENED: ${outcome.code} - ${outcome.message}`);
     } else {
       // Success
       if (open) {
         await this.store.closeProviderEvent(open.id, time);
         this.providerEvents.delete(key);
+        console.log(`[${provider}] EVENT CLOSED: ${open.code}`);
       }
     }
   }
@@ -78,10 +80,12 @@ export class EventTracker {
         outcome.message
       );
       this.targetEvents.set(key, { id, code: outcome.code });
+      console.log(`[${target}] EVENT OPENED: ${outcome.code} - ${outcome.message}`);
     } else {
       if (open) {
         await this.store.closeTargetEvent(open.id, time);
         this.targetEvents.delete(key);
+        console.log(`[${target}] EVENT CLOSED: ${open.code}`);
       }
     }
   }
@@ -113,10 +117,12 @@ export class EventTracker {
         outcome.message
       );
       this.checkEvents.set(key, { id, code: outcome.code });
+      console.log(`[${target}] ${check} EVENT OPENED: ${outcome.code} - ${outcome.message}`);
     } else {
       if (open) {
         await this.store.closeCheckEvent(open.id, time);
         this.checkEvents.delete(key);
+        console.log(`[${target}] ${check} EVENT CLOSED: ${open.code}`);
       }
     }
   }

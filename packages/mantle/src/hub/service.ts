@@ -1,15 +1,22 @@
-import type { OutcomeStore, EventStore } from "../store/types.ts";
+import type { OutcomeStore, EventStore, BucketStore, BucketStatus } from "../store/types.ts";
 import type { AgentMessage } from "../protocol.ts";
 import { EventTracker } from "../agent/events.ts";
+import type { BucketPublisher } from "./pubsub.ts";
+import { getBucketBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
 export class HubService {
 	private events: EventTracker;
+	private bucketConfig: BucketConfig;
 
 	constructor(
 		private outcomeStore: OutcomeStore,
 		eventStore: EventStore,
+		private bucketStore: BucketStore,
+		private publisher: BucketPublisher,
+		bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
 	) {
 		this.events = new EventTracker(eventStore);
+		this.bucketConfig = bucketConfig;
 	}
 
 	async init(): Promise<void> {
@@ -66,6 +73,14 @@ export class HubService {
 		} else {
 			await this.events.handleCheckOutcome(provider, target, check, time, null);
 		}
+
+		// Update bucket statuses
+		const checkStatus: BucketStatus = violation ? "red" : "green";
+		await this.updateBuckets(provider, target, check, time, {
+			provider: "green",
+			target: "green",
+			check: checkStatus,
+		});
 	}
 
 	private async recordError(
@@ -82,12 +97,24 @@ export class HubService {
 			await this.events.handleProviderOutcome(provider, time, { code, message });
 			await this.events.handleTargetOutcome(provider, target, time, null);
 			await this.events.handleCheckOutcome(provider, target, check, time, null);
+
+			await this.updateBuckets(provider, target, check, time, {
+				provider: "red",
+				target: "grey",
+				check: "grey",
+			});
 		} else if (level === "target") {
 			await this.outcomeStore.recordProviderOutcome(provider, time, { success: true });
 			await this.outcomeStore.recordTargetOutcome(provider, target, time, { success: false, error });
 			await this.events.handleProviderOutcome(provider, time, null);
 			await this.events.handleTargetOutcome(provider, target, time, { code, message });
 			await this.events.handleCheckOutcome(provider, target, check, time, null);
+
+			await this.updateBuckets(provider, target, check, time, {
+				provider: "green",
+				target: "red",
+				check: "grey",
+			});
 		} else {
 			await this.outcomeStore.recordProviderOutcome(provider, time, { success: true });
 			await this.outcomeStore.recordTargetOutcome(provider, target, time, { success: true });
@@ -95,6 +122,90 @@ export class HubService {
 			await this.events.handleProviderOutcome(provider, time, null);
 			await this.events.handleTargetOutcome(provider, target, time, null);
 			await this.events.handleCheckOutcome(provider, target, check, time, { code, kind: "error", message });
+
+			await this.updateBuckets(provider, target, check, time, {
+				provider: "green",
+				target: "green",
+				check: "red",
+			});
 		}
+	}
+
+	private async updateBuckets(
+		provider: string,
+		target: string,
+		check: string,
+		time: Date,
+		statuses: { provider: BucketStatus; target: BucketStatus; check: BucketStatus },
+	): Promise<void> {
+		const { start, end } = getBucketBounds(time, this.bucketConfig);
+
+		// Update check bucket and publish if changed
+		const oldCheckStatus = await this.bucketStore.upsertCheckBucket(
+			provider, target, check, start, end,
+			this.mergeStatus(undefined, statuses.check)
+		);
+		const newCheckStatus = this.mergeStatus(oldCheckStatus, statuses.check);
+
+		if (oldCheckStatus !== newCheckStatus) {
+			await this.bucketStore.upsertCheckBucket(provider, target, check, start, end, newCheckStatus);
+			this.publisher.publish({
+				provider,
+				target,
+				check,
+				bucketStart: start,
+				bucketEnd: end,
+				status: newCheckStatus,
+			});
+		}
+
+		// Update target bucket (aggregated)
+		const oldTargetStatus = await this.bucketStore.upsertTargetBucket(
+			provider, target, start, end,
+			this.mergeStatus(undefined, statuses.target)
+		);
+		const newTargetStatus = this.mergeStatus(oldTargetStatus, this.aggregateUp(statuses.target, newCheckStatus));
+
+		if (oldTargetStatus !== newTargetStatus) {
+			await this.bucketStore.upsertTargetBucket(provider, target, start, end, newTargetStatus);
+			this.publisher.publish({
+				provider,
+				target,
+				bucketStart: start,
+				bucketEnd: end,
+				status: newTargetStatus,
+			});
+		}
+
+		// Update provider bucket (aggregated)
+		const oldProviderStatus = await this.bucketStore.upsertProviderBucket(
+			provider, start, end,
+			this.mergeStatus(undefined, statuses.provider)
+		);
+		const newProviderStatus = this.mergeStatus(oldProviderStatus, this.aggregateUp(statuses.provider, newTargetStatus));
+
+		if (oldProviderStatus !== newProviderStatus) {
+			await this.bucketStore.upsertProviderBucket(provider, start, end, newProviderStatus);
+			this.publisher.publish({
+				provider,
+				bucketStart: start,
+				bucketEnd: end,
+				status: newProviderStatus,
+			});
+		}
+	}
+
+	private mergeStatus(existing: BucketStatus | undefined, incoming: BucketStatus): BucketStatus {
+		if (existing === "red" || incoming === "red") return "red";
+		if (existing === "green" || incoming === "green") return "green";
+		if (existing === "grey" || incoming === "grey") return "grey";
+		return null;
+	}
+
+	private aggregateUp(parentDirect: BucketStatus, childStatus: BucketStatus): BucketStatus {
+		if (parentDirect === "red" || childStatus === "red") return "red";
+		if (parentDirect === "green" || childStatus === "green") return "green";
+		if (parentDirect === "grey" || childStatus === "grey") return "grey";
+		return null;
 	}
 }

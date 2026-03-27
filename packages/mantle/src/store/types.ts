@@ -107,3 +107,47 @@ export interface EventStore {
 
   close(): Promise<void>;
 }
+
+export type BucketStatus = "green" | "red" | "grey" | null;
+
+export type BucketState = {
+  provider: string;
+  target?: string;
+  check?: string;
+  bucketStart: number;
+  bucketEnd: number;
+  status: BucketStatus;
+};
+
+export interface BucketStore {
+  upsertProviderBucket(
+    provider: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus
+  ): Promise<BucketStatus | undefined>;
+
+  upsertTargetBucket(
+    provider: string,
+    target: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus
+  ): Promise<BucketStatus | undefined>;
+
+  upsertCheckBucket(
+    provider: string,
+    target: string,
+    check: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus
+  ): Promise<BucketStatus | undefined>;
+
+  getBuckets(
+    startTime: number,
+    endTime: number
+  ): Promise<BucketState[]>;
+
+  close(): Promise<void>;
+}

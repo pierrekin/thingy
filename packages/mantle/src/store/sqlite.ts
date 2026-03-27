@@ -2,9 +2,12 @@ import { Database } from "bun:sqlite";
 import type {
   OutcomeStore,
   EventStore,
+  BucketStore,
   ProviderOutcome,
   TargetOutcome,
   CheckOutcome,
+  BucketStatus,
+  BucketState,
 } from "./types.ts";
 
 const SCHEMA = `
@@ -78,6 +81,37 @@ CREATE TABLE IF NOT EXISTS check_events (
 CREATE INDEX IF NOT EXISTS idx_provider_events_open ON provider_events(provider, code) WHERE end_time IS NULL;
 CREATE INDEX IF NOT EXISTS idx_target_events_open ON target_events(provider, target, code) WHERE end_time IS NULL;
 CREATE INDEX IF NOT EXISTS idx_check_events_open ON check_events(provider, target, check_name, code) WHERE end_time IS NULL;
+
+CREATE TABLE IF NOT EXISTS provider_buckets (
+  provider TEXT NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  bucket_end INTEGER NOT NULL,
+  status TEXT,
+  PRIMARY KEY (provider, bucket_start)
+);
+
+CREATE TABLE IF NOT EXISTS target_buckets (
+  provider TEXT NOT NULL,
+  target TEXT NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  bucket_end INTEGER NOT NULL,
+  status TEXT,
+  PRIMARY KEY (provider, target, bucket_start)
+);
+
+CREATE TABLE IF NOT EXISTS check_buckets (
+  provider TEXT NOT NULL,
+  target TEXT NOT NULL,
+  check_name TEXT NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  bucket_end INTEGER NOT NULL,
+  status TEXT,
+  PRIMARY KEY (provider, target, check_name, bucket_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_buckets_time ON provider_buckets(bucket_start, bucket_end);
+CREATE INDEX IF NOT EXISTS idx_target_buckets_time ON target_buckets(bucket_start, bucket_end);
+CREATE INDEX IF NOT EXISTS idx_check_buckets_time ON check_buckets(bucket_start, bucket_end);
 `;
 
 export class SqliteOutcomeStore implements OutcomeStore {
@@ -243,9 +277,141 @@ export class SqliteEventStore implements EventStore {
   }
 }
 
+export class SqliteBucketStore implements BucketStore {
+  constructor(private db: Database) {}
+
+  async upsertProviderBucket(
+    provider: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus
+  ): Promise<BucketStatus | undefined> {
+    const existing = this.db.prepare(`
+      SELECT status FROM provider_buckets WHERE provider = ? AND bucket_start = ?
+    `).get(provider, bucketStart) as { status: string | null } | undefined;
+
+    const oldStatus = existing?.status as BucketStatus | undefined;
+
+    this.db.prepare(`
+      INSERT INTO provider_buckets (provider, bucket_start, bucket_end, status)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT (provider, bucket_start)
+      DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
+    `).run(provider, bucketStart, bucketEnd, status);
+
+    return oldStatus;
+  }
+
+  async upsertTargetBucket(
+    provider: string,
+    target: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus
+  ): Promise<BucketStatus | undefined> {
+    const existing = this.db.prepare(`
+      SELECT status FROM target_buckets WHERE provider = ? AND target = ? AND bucket_start = ?
+    `).get(provider, target, bucketStart) as { status: string | null } | undefined;
+
+    const oldStatus = existing?.status as BucketStatus | undefined;
+
+    this.db.prepare(`
+      INSERT INTO target_buckets (provider, target, bucket_start, bucket_end, status)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (provider, target, bucket_start)
+      DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
+    `).run(provider, target, bucketStart, bucketEnd, status);
+
+    return oldStatus;
+  }
+
+  async upsertCheckBucket(
+    provider: string,
+    target: string,
+    check: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus
+  ): Promise<BucketStatus | undefined> {
+    const existing = this.db.prepare(`
+      SELECT status FROM check_buckets WHERE provider = ? AND target = ? AND check_name = ? AND bucket_start = ?
+    `).get(provider, target, check, bucketStart) as { status: string | null } | undefined;
+
+    const oldStatus = existing?.status as BucketStatus | undefined;
+
+    this.db.prepare(`
+      INSERT INTO check_buckets (provider, target, check_name, bucket_start, bucket_end, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT (provider, target, check_name, bucket_start)
+      DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
+    `).run(provider, target, check, bucketStart, bucketEnd, status);
+
+    return oldStatus;
+  }
+
+  async getBuckets(startTime: number, endTime: number): Promise<BucketState[]> {
+    const providerBuckets = this.db.prepare(`
+      SELECT provider, bucket_start, bucket_end, status
+      FROM provider_buckets
+      WHERE bucket_start >= ? AND bucket_start < ?
+    `).all(startTime, endTime) as { provider: string; bucket_start: number; bucket_end: number; status: string | null }[];
+
+    const targetBuckets = this.db.prepare(`
+      SELECT provider, target, bucket_start, bucket_end, status
+      FROM target_buckets
+      WHERE bucket_start >= ? AND bucket_start < ?
+    `).all(startTime, endTime) as { provider: string; target: string; bucket_start: number; bucket_end: number; status: string | null }[];
+
+    const checkBuckets = this.db.prepare(`
+      SELECT provider, target, check_name as "check", bucket_start, bucket_end, status
+      FROM check_buckets
+      WHERE bucket_start >= ? AND bucket_start < ?
+    `).all(startTime, endTime) as { provider: string; target: string; check: string; bucket_start: number; bucket_end: number; status: string | null }[];
+
+    const results: BucketState[] = [];
+
+    for (const b of providerBuckets) {
+      results.push({
+        provider: b.provider,
+        bucketStart: b.bucket_start,
+        bucketEnd: b.bucket_end,
+        status: b.status as BucketStatus,
+      });
+    }
+
+    for (const b of targetBuckets) {
+      results.push({
+        provider: b.provider,
+        target: b.target,
+        bucketStart: b.bucket_start,
+        bucketEnd: b.bucket_end,
+        status: b.status as BucketStatus,
+      });
+    }
+
+    for (const b of checkBuckets) {
+      results.push({
+        provider: b.provider,
+        target: b.target,
+        check: b.check,
+        bucketStart: b.bucket_start,
+        bucketEnd: b.bucket_end,
+        status: b.status as BucketStatus,
+      });
+    }
+
+    return results;
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
 export function createSqliteStores(path: string): {
   outcomeStore: SqliteOutcomeStore;
   eventStore: SqliteEventStore;
+  bucketStore: SqliteBucketStore;
   close: () => void;
 } {
   const db = new Database(path);
@@ -253,6 +419,7 @@ export function createSqliteStores(path: string): {
   return {
     outcomeStore: new SqliteOutcomeStore(db),
     eventStore: new SqliteEventStore(db),
+    bucketStore: new SqliteBucketStore(db),
     close: () => db.close(),
   };
 }

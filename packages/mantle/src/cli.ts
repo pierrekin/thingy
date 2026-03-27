@@ -74,7 +74,7 @@ const hub = defineCommand({
 		const config = await loadConfig(args.config);
 		const hubConfig = getHubConfig(config);
 		const { outcomeStore, eventStore } = createSqliteStores("mantle.db");
-		startHub(hubConfig, outcomeStore, eventStore);
+		await startHub(hubConfig, outcomeStore, eventStore);
 	}),
 });
 
@@ -104,7 +104,7 @@ const standalone = defineCommand({
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
 
 		const { outcomeStore, eventStore } = createSqliteStores("mantle.db");
-		startHub(hubConfig, outcomeStore, eventStore);
+		await startHub(hubConfig, outcomeStore, eventStore);
 
 		const { checkReporter } = await createHubReporters(id, getHubUrl(hubConfig));
 		startAgent(id, agentConfig, config.providers ?? {}, checkReporter);

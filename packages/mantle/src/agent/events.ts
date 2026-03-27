@@ -19,6 +19,31 @@ export class EventTracker {
     this.store = store;
   }
 
+  async loadOpenEvents(): Promise<void> {
+    const [providerEvents, targetEvents, checkEvents] = await Promise.all([
+      this.store.getOpenProviderEvents(),
+      this.store.getOpenTargetEvents(),
+      this.store.getOpenCheckEvents(),
+    ]);
+
+    for (const e of providerEvents) {
+      this.providerEvents.set(e.provider, { id: e.id, code: e.code });
+    }
+
+    for (const e of targetEvents) {
+      this.targetEvents.set(`${e.provider}:${e.target}`, { id: e.id, code: e.code });
+    }
+
+    for (const e of checkEvents) {
+      this.checkEvents.set(`${e.provider}:${e.target}:${e.check}`, { id: e.id, code: e.code });
+    }
+
+    const total = providerEvents.length + targetEvents.length + checkEvents.length;
+    if (total > 0) {
+      console.log(`Loaded ${total} open events from database`);
+    }
+  }
+
   async handleProviderOutcome(
     provider: string,
     time: Date,

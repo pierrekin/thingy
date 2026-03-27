@@ -48,7 +48,32 @@ export interface OutcomeStore {
   close(): Promise<void>;
 }
 
+export type OpenProviderEvent = {
+  id: number;
+  provider: string;
+  code: string;
+};
+
+export type OpenTargetEvent = {
+  id: number;
+  provider: string;
+  target: string;
+  code: string;
+};
+
+export type OpenCheckEvent = {
+  id: number;
+  provider: string;
+  target: string;
+  check: string;
+  code: string;
+};
+
 export interface EventStore {
+  getOpenProviderEvents(): Promise<OpenProviderEvent[]>;
+  getOpenTargetEvents(): Promise<OpenTargetEvent[]>;
+  getOpenCheckEvents(): Promise<OpenCheckEvent[]>;
+
   openProviderEvent(
     provider: string,
     code: string,

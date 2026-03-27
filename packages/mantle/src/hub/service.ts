@@ -12,6 +12,10 @@ export class HubService {
 		this.events = new EventTracker(eventStore);
 	}
 
+	async init(): Promise<void> {
+		await this.events.loadOpenEvents();
+	}
+
 	async handleAgentMessage(msg: AgentMessage): Promise<void> {
 		switch (msg.type) {
 			case "agent_hello":

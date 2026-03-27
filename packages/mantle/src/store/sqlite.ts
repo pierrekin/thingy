@@ -150,6 +150,27 @@ export class SqliteOutcomeStore implements OutcomeStore {
 export class SqliteEventStore implements EventStore {
   constructor(private db: Database) {}
 
+  async getOpenProviderEvents(): Promise<{ id: number; provider: string; code: string }[]> {
+    const stmt = this.db.prepare(`
+      SELECT id, provider, code FROM provider_events WHERE end_time IS NULL
+    `);
+    return stmt.all() as { id: number; provider: string; code: string }[];
+  }
+
+  async getOpenTargetEvents(): Promise<{ id: number; provider: string; target: string; code: string }[]> {
+    const stmt = this.db.prepare(`
+      SELECT id, provider, target, code FROM target_events WHERE end_time IS NULL
+    `);
+    return stmt.all() as { id: number; provider: string; target: string; code: string }[];
+  }
+
+  async getOpenCheckEvents(): Promise<{ id: number; provider: string; target: string; check: string; code: string }[]> {
+    const stmt = this.db.prepare(`
+      SELECT id, provider, target, check_name as "check", code FROM check_events WHERE end_time IS NULL
+    `);
+    return stmt.all() as { id: number; provider: string; target: string; check: string; code: string }[];
+  }
+
   async openProviderEvent(
     provider: string,
     code: string,

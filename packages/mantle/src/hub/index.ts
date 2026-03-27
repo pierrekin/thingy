@@ -6,12 +6,13 @@ import { createAgentApp } from "./agent.ts";
 import { createFetchHandler, createWebSocketHandler } from "./server.ts";
 import { HubService } from "./service.ts";
 
-export function startHub(
+export async function startHub(
 	config: HubConfig,
 	outcomeStore: OutcomeStore,
 	eventStore: EventStore,
 ) {
 	const service = new HubService(outcomeStore, eventStore);
+	await service.init();
 
 	const app = new Hono();
 	app.route("/agent-api", createAgentApp());

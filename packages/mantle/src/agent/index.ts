@@ -172,23 +172,37 @@ export function startAgent(
 
 				for (const result of results) {
 					if (isCheckError(result)) {
-						console.log(`[${resolved.name}] ${result.check}: ERROR - ${result.error.message}`);
-						await store.recordCheckOutcome(
-							resolved.provider,
-							resolved.name,
-							result.check,
-							time,
-							{ error: result.error }
-						);
+						const { level, message } = result.error;
+						console.log(`[${resolved.name}] ${result.check}: ${level.toUpperCase()} ERROR - ${message}`);
+
+						// Record outcomes based on error level
+						if (level === "provider") {
+							await store.recordProviderOutcome(resolved.provider, time, {
+								success: false,
+								error: result.error,
+							});
+						} else if (level === "target") {
+							await store.recordProviderOutcome(resolved.provider, time, { success: true });
+							await store.recordTargetOutcome(resolved.provider, resolved.name, time, {
+								success: false,
+								error: result.error,
+							});
+						} else {
+							await store.recordProviderOutcome(resolved.provider, time, { success: true });
+							await store.recordTargetOutcome(resolved.provider, resolved.name, time, { success: true });
+							await store.recordCheckOutcome(resolved.provider, resolved.name, result.check, time, {
+								success: false,
+								error: result.error,
+							});
+						}
 					} else {
 						console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
-						await store.recordCheckOutcome(
-							resolved.provider,
-							resolved.name,
-							result.check,
-							time,
-							{ value: result.measurement }
-						);
+						await store.recordProviderOutcome(resolved.provider, time, { success: true });
+						await store.recordTargetOutcome(resolved.provider, resolved.name, time, { success: true });
+						await store.recordCheckOutcome(resolved.provider, resolved.name, result.check, time, {
+							success: true,
+							value: result.measurement,
+						});
 					}
 				}
 			},

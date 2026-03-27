@@ -1,0 +1,53 @@
+import type { Hub } from "../mock-data";
+import { EntitySection } from "../components/EntitySection";
+
+type Props = {
+	hub: Hub;
+	onNavigateBack: () => void;
+};
+
+export function InfrastructurePage({ hub, onNavigateBack }: Props) {
+	return (
+		<div className="min-h-screen bg-gray-200">
+			<header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+				<h1 className="text-lg font-semibold text-gray-900">{hub.name}</h1>
+				<button
+					onClick={onNavigateBack}
+					className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
+				>
+					← Back
+				</button>
+			</header>
+
+			<main>
+				<section>
+					<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
+						Providers
+					</h2>
+					{hub.providers.map((provider) => (
+						<EntitySection
+							key={provider.name}
+							name={provider.name}
+							statusSlots={provider.statusSlots}
+							events={provider.events}
+						/>
+					))}
+				</section>
+
+				<section>
+					<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
+						Channels
+					</h2>
+					{hub.channels.map((channel) => (
+						<EntitySection
+							key={channel.name}
+							name={channel.name}
+							statusSlots={channel.statusSlots}
+							events={channel.events}
+						/>
+					))}
+				</section>
+			</main>
+		</div>
+	);
+}

@@ -1,14 +1,21 @@
-import { DISABLED, ENABLED } from "./check.ts";
+import { type CheckConfig, type Operator } from "./check.ts";
 import type { ProviderDefinition } from "./provider.ts";
 import type { AgentConfig } from "../config.ts";
 import { parseInterval } from "../util/interval.ts";
+import { resolveCheckConfig } from "./rules.ts";
+
+export type ResolvedCheck = {
+  name: string;
+  config: CheckConfig;
+  operators: readonly Operator[];
+};
 
 export type ResolvedTarget = {
   name: string;
   provider: string;
   type: string;
   interval: number;
-  checks: string[];
+  checks: ResolvedCheck[];
   target: unknown;
 };
 
@@ -61,25 +68,36 @@ export function resolveAgentConfig(
     const providerChecks = providerConfig?.checks as Record<string, Record<string, unknown>> | undefined;
     const providerTypeChecks = providerChecks?.[targetType];
 
-    const availableChecks = Object.keys(targetTypeDef.checks);
-    const defaultEnabled: Record<string, boolean> = {};
-    for (const [name, binding] of Object.entries(targetTypeDef.checks)) {
-      defaultEnabled[name] = binding.enabled !== false;
-    }
+    const resolvedChecks: ResolvedCheck[] = [];
 
-    const enabledChecks = resolveEnabledChecks(
-      targetChecks,
-      providerTypeChecks,
-      availableChecks,
-      defaultEnabled,
-    );
+    for (const [checkName, binding] of Object.entries(targetTypeDef.checks)) {
+      const targetCheckConfig = targetChecks?.[checkName];
+      const providerCheckConfig = providerTypeChecks?.[checkName];
+      const defaultConfig = binding.defaults ?? binding.check.defaults;
+      const enabledByDefault = binding.enabled !== false;
+
+      const config = resolveCheckConfig(
+        targetCheckConfig as "__enabled__" | "__disabled__" | Partial<CheckConfig> | undefined,
+        providerCheckConfig as "__enabled__" | "__disabled__" | Partial<CheckConfig> | undefined,
+        defaultConfig,
+        enabledByDefault,
+      );
+
+      if (config !== false) {
+        resolvedChecks.push({
+          name: checkName,
+          config,
+          operators: binding.check.operators,
+        });
+      }
+    }
 
     resolved.push({
       name: target.name,
       provider: target.provider,
       type: targetType,
       interval: parseInterval(intervalStr),
-      checks: enabledChecks,
+      checks: resolvedChecks,
       target,
     });
   }
@@ -97,38 +115,4 @@ function getProviderType(instanceName: string, instanceConfig: unknown): string 
     return instanceConfig.type;
   }
   return instanceName;
-}
-
-/**
- * Get the list of enabled check names for a target.
- */
-export function resolveEnabledChecks(
-  targetChecks: Record<string, unknown> | undefined,
-  providerChecks: Record<string, unknown> | undefined,
-  availableChecks: string[],
-  defaultEnabled: Record<string, boolean> = {},
-): string[] {
-  const enabled: string[] = [];
-
-  for (const checkName of availableChecks) {
-    const targetValue = targetChecks?.[checkName];
-    const providerValue = providerChecks?.[checkName];
-    const value = targetValue !== undefined ? targetValue : providerValue;
-
-    if (value === DISABLED) {
-      continue;
-    }
-
-    if (value === ENABLED || value !== undefined) {
-      enabled.push(checkName);
-      continue;
-    }
-
-    // Neither specified - use default
-    if (defaultEnabled[checkName] !== false) {
-      enabled.push(checkName);
-    }
-  }
-
-  return enabled;
 }

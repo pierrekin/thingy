@@ -6,6 +6,8 @@ import { IntervalScheduler } from "../scheduler/index.ts";
 import {
   resolveAgentConfig,
   isCheckError,
+  evaluate,
+  type ResolvedCheck,
 } from "../framework/index.ts";
 import type { OutcomeStore, EventStore } from "../store/types.ts";
 import { EventTracker } from "./events.ts";
@@ -166,12 +168,19 @@ export function startAgent(
 			continue;
 		}
 
+		// Build a map for quick lookup of check configs
+		const checkConfigMap = new Map<string, ResolvedCheck>();
+		for (const check of resolved.checks) {
+			checkConfigMap.set(check.name, check);
+		}
+		const checkNames = resolved.checks.map((c) => c.name);
+
 		scheduler.add({
 			id: `${resolved.provider}:${resolved.name}`,
 			interval: resolved.interval,
 			run: async () => {
 				const time = new Date();
-				const results = await instance.check(resolved.target, resolved.checks);
+				const results = await instance.check(resolved.target, checkNames);
 
 				for (const result of results) {
 					if (isCheckError(result)) {
@@ -212,24 +221,45 @@ export function startAgent(
 							});
 						}
 					} else {
-						console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
+						// Evaluate measurement against rules
+						const checkConfig = checkConfigMap.get(result.check);
+						const { violations } = checkConfig
+							? evaluate(result.check, result.measurement, checkConfig.config, checkConfig.operators)
+							: { violations: [] };
+
+						const violation = violations[0]; // For now, just use the first violation
+
+						if (violation) {
+							console.log(`[${resolved.name}] ${result.check}: VIOLATION ${violation.code} (${violation.actual} ${violation.rule} ${violation.threshold})`);
+						} else {
+							console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
+						}
+
 						await store.recordProviderOutcome(resolved.provider, time, { success: true });
 						await store.recordTargetOutcome(resolved.provider, resolved.name, time, { success: true });
 						await store.recordCheckOutcome(resolved.provider, resolved.name, result.check, time, {
 							success: true,
 							value: result.measurement,
+							violation,
 						});
 						await events.handleProviderOutcome(resolved.provider, time, null);
 						await events.handleTargetOutcome(resolved.provider, resolved.name, time, null);
-						// TODO: handle violations once they're implemented
-						await events.handleCheckOutcome(resolved.provider, resolved.name, result.check, time, null);
+						await events.handleCheckOutcome(
+							resolved.provider,
+							resolved.name,
+							result.check,
+							time,
+							violation
+								? { code: violation.code, kind: "violation", message: `${violation.actual} ${violation.rule} ${violation.threshold}` }
+								: null
+						);
 					}
 				}
 			},
 		});
 
 		const intervalStr = `${resolved.interval}ms`;
-		console.log(`Scheduled: ${resolved.name} (every ${intervalStr}) - checks: [${resolved.checks.join(", ")}]`);
+		console.log(`Scheduled: ${resolved.name} (every ${intervalStr}) - checks: [${checkNames.join(", ")}]`);
 	}
 
 	console.log("");

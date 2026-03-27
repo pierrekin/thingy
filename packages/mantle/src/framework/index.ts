@@ -20,7 +20,7 @@ export {
 } from "./provider.ts";
 
 export { evaluate, resolveCheckConfig } from "./rules.ts";
-export { resolveEnabledChecks, resolveAgentConfig, type ResolvedTarget } from "./resolve.ts";
+export { resolveAgentConfig, type ResolvedTarget, type ResolvedCheck } from "./resolve.ts";
 
 export {
   type CheckResult,

@@ -7,8 +7,14 @@ import type {
   TargetOutcome,
   CheckOutcome,
   BucketStatus,
-  BucketState,
-  EventRecord,
+  ProviderBucket,
+  TargetBucket,
+  CheckBucket,
+  StoredBuckets,
+  ProviderEventRecord,
+  TargetEventRecord,
+  CheckEventRecord,
+  StoredEvents,
   OpenProviderEvent,
   OpenTargetEvent,
   OpenCheckEvent,
@@ -276,10 +282,10 @@ export class SqliteEventStore implements EventStore {
     stmt.run(time.getTime(), id);
   }
 
-  async getEventsInRange(startTime: number, endTime: number): Promise<EventRecord[]> {
+  async getEventsInRange(startTime: number, endTime: number): Promise<StoredEvents> {
     // Events that overlap with the time window:
     // startTime < rangeEnd AND (endTime > rangeStart OR endTime IS NULL)
-    const providerEvents = this.db.prepare(`
+    const providerRows = this.db.prepare(`
       SELECT id, provider, code, start_time, end_time, message
       FROM provider_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
@@ -292,7 +298,7 @@ export class SqliteEventStore implements EventStore {
       message: string;
     }[];
 
-    const targetEvents = this.db.prepare(`
+    const targetRows = this.db.prepare(`
       SELECT id, provider, target, code, start_time, end_time, message
       FROM target_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
@@ -306,7 +312,7 @@ export class SqliteEventStore implements EventStore {
       message: string;
     }[];
 
-    const checkEvents = this.db.prepare(`
+    const checkRows = this.db.prepare(`
       SELECT id, provider, target, check_name as "check", code, start_time, end_time, message
       FROM check_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
@@ -321,45 +327,37 @@ export class SqliteEventStore implements EventStore {
       message: string;
     }[];
 
-    const results: EventRecord[] = [];
+    const providers: ProviderEventRecord[] = providerRows.map((e) => ({
+      id: e.id,
+      provider: e.provider,
+      code: e.code,
+      startTime: e.start_time,
+      endTime: e.end_time,
+      message: e.message,
+    }));
 
-    for (const e of providerEvents) {
-      results.push({
-        id: e.id,
-        provider: e.provider,
-        code: e.code,
-        startTime: e.start_time,
-        endTime: e.end_time,
-        message: e.message,
-      });
-    }
+    const targets: TargetEventRecord[] = targetRows.map((e) => ({
+      id: e.id,
+      provider: e.provider,
+      target: e.target,
+      code: e.code,
+      startTime: e.start_time,
+      endTime: e.end_time,
+      message: e.message,
+    }));
 
-    for (const e of targetEvents) {
-      results.push({
-        id: e.id,
-        provider: e.provider,
-        target: e.target,
-        code: e.code,
-        startTime: e.start_time,
-        endTime: e.end_time,
-        message: e.message,
-      });
-    }
+    const checks: CheckEventRecord[] = checkRows.map((e) => ({
+      id: e.id,
+      provider: e.provider,
+      target: e.target,
+      check: e.check,
+      code: e.code,
+      startTime: e.start_time,
+      endTime: e.end_time,
+      message: e.message,
+    }));
 
-    for (const e of checkEvents) {
-      results.push({
-        id: e.id,
-        provider: e.provider,
-        target: e.target,
-        check: e.check,
-        code: e.code,
-        startTime: e.start_time,
-        endTime: e.end_time,
-        message: e.message,
-      });
-    }
-
-    return results;
+    return { providers, targets, checks };
   }
 
   async close(): Promise<void> {
@@ -439,58 +437,50 @@ export class SqliteBucketStore implements BucketStore {
     return oldStatus;
   }
 
-  async getBuckets(startTime: number, endTime: number): Promise<BucketState[]> {
-    const providerBuckets = this.db.prepare(`
+  async getBuckets(startTime: number, endTime: number): Promise<StoredBuckets> {
+    const providerRows = this.db.prepare(`
       SELECT provider, bucket_start, bucket_end, status
       FROM provider_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
     `).all(startTime, endTime) as { provider: string; bucket_start: number; bucket_end: number; status: string | null }[];
 
-    const targetBuckets = this.db.prepare(`
+    const targetRows = this.db.prepare(`
       SELECT provider, target, bucket_start, bucket_end, status
       FROM target_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
     `).all(startTime, endTime) as { provider: string; target: string; bucket_start: number; bucket_end: number; status: string | null }[];
 
-    const checkBuckets = this.db.prepare(`
+    const checkRows = this.db.prepare(`
       SELECT provider, target, check_name as "check", bucket_start, bucket_end, status
       FROM check_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
     `).all(startTime, endTime) as { provider: string; target: string; check: string; bucket_start: number; bucket_end: number; status: string | null }[];
 
-    const results: BucketState[] = [];
+    const providers: ProviderBucket[] = providerRows.map((b) => ({
+      provider: b.provider,
+      bucketStart: b.bucket_start,
+      bucketEnd: b.bucket_end,
+      status: b.status as BucketStatus,
+    }));
 
-    for (const b of providerBuckets) {
-      results.push({
-        provider: b.provider,
-        bucketStart: b.bucket_start,
-        bucketEnd: b.bucket_end,
-        status: b.status as BucketStatus,
-      });
-    }
+    const targets: TargetBucket[] = targetRows.map((b) => ({
+      provider: b.provider,
+      target: b.target,
+      bucketStart: b.bucket_start,
+      bucketEnd: b.bucket_end,
+      status: b.status as BucketStatus,
+    }));
 
-    for (const b of targetBuckets) {
-      results.push({
-        provider: b.provider,
-        target: b.target,
-        bucketStart: b.bucket_start,
-        bucketEnd: b.bucket_end,
-        status: b.status as BucketStatus,
-      });
-    }
+    const checks: CheckBucket[] = checkRows.map((b) => ({
+      provider: b.provider,
+      target: b.target,
+      check: b.check,
+      bucketStart: b.bucket_start,
+      bucketEnd: b.bucket_end,
+      status: b.status as BucketStatus,
+    }));
 
-    for (const b of checkBuckets) {
-      results.push({
-        provider: b.provider,
-        target: b.target,
-        check: b.check,
-        bucketStart: b.bucket_start,
-        bucketEnd: b.bucket_end,
-        status: b.status as BucketStatus,
-      });
-    }
-
-    return results;
+    return { providers, targets, checks };
   }
 
   async close(): Promise<void> {

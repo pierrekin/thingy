@@ -114,7 +114,7 @@ const standalone = defineCommand({
 export const main = defineCommand({
 	meta: {
 		name: "mantle",
-		version: "0.0.2",
+		version: "0.0.3",
 		description: "Mantle CLI",
 	},
 	subCommands: {

@@ -1,5 +1,5 @@
-import type { EventStore } from "../store/types.ts";
-import type { EventPublisher, EventState } from "../hub/pubsub.ts";
+import type { EventStore, ProviderEventRecord, TargetEventRecord, CheckEventRecord } from "../store/types.ts";
+import type { ProviderEventPublisher, TargetEventPublisher, CheckEventPublisher } from "../hub/pubsub.ts";
 
 type OpenEvent = {
   id: number;
@@ -8,9 +8,15 @@ type OpenEvent = {
   message: string;
 };
 
+type EventPublishers = {
+  provider: ProviderEventPublisher;
+  target: TargetEventPublisher;
+  check: CheckEventPublisher;
+};
+
 export class EventTracker {
   private store: EventStore;
-  private publisher: EventPublisher;
+  private publishers: EventPublishers;
 
   // Keys: provider
   private providerEvents = new Map<string, OpenEvent>();
@@ -19,9 +25,9 @@ export class EventTracker {
   // Keys: provider:target:check
   private checkEvents = new Map<string, OpenEvent>();
 
-  constructor(store: EventStore, publisher: EventPublisher) {
+  constructor(store: EventStore, publishers: EventPublishers) {
     this.store = store;
-    this.publisher = publisher;
+    this.publishers = publishers;
   }
 
   async loadOpenEvents(): Promise<void> {
@@ -81,7 +87,7 @@ export class EventTracker {
       if (open) {
         // Different error, close old one first
         await this.store.closeProviderEvent(open.id, time);
-        const closedEvent: EventState = {
+        const closedEvent: ProviderEventRecord = {
           id: open.id,
           provider,
           code: open.code,
@@ -89,7 +95,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        this.publisher.publish(closedEvent);
+        this.publishers.provider.publish(closedEvent);
       }
       // Open new event
       const startTime = time.getTime();
@@ -100,7 +106,7 @@ export class EventTracker {
         outcome.message
       );
       this.providerEvents.set(key, { id, code: outcome.code, startTime, message: outcome.message });
-      const openedEvent: EventState = {
+      const openedEvent: ProviderEventRecord = {
         id,
         provider,
         code: outcome.code,
@@ -108,13 +114,13 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
-      this.publisher.publish(openedEvent);
+      this.publishers.provider.publish(openedEvent);
       console.log(`[${provider}] EVENT OPENED: ${outcome.code} - ${outcome.message}`);
     } else {
       // Success
       if (open) {
         await this.store.closeProviderEvent(open.id, time);
-        const closedEvent: EventState = {
+        const closedEvent: ProviderEventRecord = {
           id: open.id,
           provider,
           code: open.code,
@@ -122,7 +128,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        this.publisher.publish(closedEvent);
+        this.publishers.provider.publish(closedEvent);
         this.providerEvents.delete(key);
         console.log(`[${provider}] EVENT CLOSED: ${open.code}`);
       }
@@ -144,7 +150,7 @@ export class EventTracker {
       }
       if (open) {
         await this.store.closeTargetEvent(open.id, time);
-        const closedEvent: EventState = {
+        const closedEvent: TargetEventRecord = {
           id: open.id,
           provider,
           target,
@@ -153,7 +159,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        this.publisher.publish(closedEvent);
+        this.publishers.target.publish(closedEvent);
       }
       const startTime = time.getTime();
       const id = await this.store.openTargetEvent(
@@ -164,7 +170,7 @@ export class EventTracker {
         outcome.message
       );
       this.targetEvents.set(key, { id, code: outcome.code, startTime, message: outcome.message });
-      const openedEvent: EventState = {
+      const openedEvent: TargetEventRecord = {
         id,
         provider,
         target,
@@ -173,12 +179,12 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
-      this.publisher.publish(openedEvent);
+      this.publishers.target.publish(openedEvent);
       console.log(`[${target}] EVENT OPENED: ${outcome.code} - ${outcome.message}`);
     } else {
       if (open) {
         await this.store.closeTargetEvent(open.id, time);
-        const closedEvent: EventState = {
+        const closedEvent: TargetEventRecord = {
           id: open.id,
           provider,
           target,
@@ -187,7 +193,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        this.publisher.publish(closedEvent);
+        this.publishers.target.publish(closedEvent);
         this.targetEvents.delete(key);
         console.log(`[${target}] EVENT CLOSED: ${open.code}`);
       }
@@ -210,7 +216,7 @@ export class EventTracker {
       }
       if (open) {
         await this.store.closeCheckEvent(open.id, time);
-        const closedEvent: EventState = {
+        const closedEvent: CheckEventRecord = {
           id: open.id,
           provider,
           target,
@@ -220,7 +226,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        this.publisher.publish(closedEvent);
+        this.publishers.check.publish(closedEvent);
       }
       const startTime = time.getTime();
       const id = await this.store.openCheckEvent(
@@ -233,7 +239,7 @@ export class EventTracker {
         outcome.message
       );
       this.checkEvents.set(key, { id, code: outcome.code, startTime, message: outcome.message });
-      const openedEvent: EventState = {
+      const openedEvent: CheckEventRecord = {
         id,
         provider,
         target,
@@ -243,12 +249,12 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
-      this.publisher.publish(openedEvent);
+      this.publishers.check.publish(openedEvent);
       console.log(`[${target}] ${check} EVENT OPENED: ${outcome.code} - ${outcome.message}`);
     } else {
       if (open) {
         await this.store.closeCheckEvent(open.id, time);
-        const closedEvent: EventState = {
+        const closedEvent: CheckEventRecord = {
           id: open.id,
           provider,
           target,
@@ -258,7 +264,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        this.publisher.publish(closedEvent);
+        this.publishers.check.publish(closedEvent);
         this.checkEvents.delete(key);
         console.log(`[${target}] ${check} EVENT CLOSED: ${open.code}`);
       }

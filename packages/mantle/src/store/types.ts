@@ -111,16 +111,35 @@ export interface EventStore {
 
   closeCheckEvent(id: number, time: Date): Promise<void>;
 
-  getEventsInRange(startTime: number, endTime: number): Promise<EventRecord[]>;
+  getEventsInRange(startTime: number, endTime: number): Promise<StoredEvents>;
 
   close(): Promise<void>;
 }
 
-export type EventRecord = {
+export type ProviderEventRecord = {
   id: number;
   provider: string;
-  target?: string;
-  check?: string;
+  code: string;
+  startTime: number;
+  endTime: number | null;
+  message: string;
+};
+
+export type TargetEventRecord = {
+  id: number;
+  provider: string;
+  target: string;
+  code: string;
+  startTime: number;
+  endTime: number | null;
+  message: string;
+};
+
+export type CheckEventRecord = {
+  id: number;
+  provider: string;
+  target: string;
+  check: string;
   code: string;
   startTime: number;
   endTime: number | null;
@@ -129,13 +148,40 @@ export type EventRecord = {
 
 export type BucketStatus = "green" | "red" | "grey" | null;
 
-export type BucketState = {
+export type ProviderBucket = {
   provider: string;
-  target?: string;
-  check?: string;
   bucketStart: number;
   bucketEnd: number;
   status: BucketStatus;
+};
+
+export type TargetBucket = {
+  provider: string;
+  target: string;
+  bucketStart: number;
+  bucketEnd: number;
+  status: BucketStatus;
+};
+
+export type CheckBucket = {
+  provider: string;
+  target: string;
+  check: string;
+  bucketStart: number;
+  bucketEnd: number;
+  status: BucketStatus;
+};
+
+export type StoredBuckets = {
+  providers: ProviderBucket[];
+  targets: TargetBucket[];
+  checks: CheckBucket[];
+};
+
+export type StoredEvents = {
+  providers: ProviderEventRecord[];
+  targets: TargetEventRecord[];
+  checks: CheckEventRecord[];
 };
 
 export interface BucketStore {
@@ -163,10 +209,7 @@ export interface BucketStore {
     status: BucketStatus
   ): Promise<BucketStatus | undefined>;
 
-  getBuckets(
-    startTime: number,
-    endTime: number
-  ): Promise<BucketState[]>;
+  getBuckets(startTime: number, endTime: number): Promise<StoredBuckets>;
 
   close(): Promise<void>;
 }

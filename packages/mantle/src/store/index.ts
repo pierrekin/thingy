@@ -8,6 +8,13 @@ export type {
   TargetOutcome,
   CheckOutcome,
   BucketStatus,
-  BucketState,
+  ProviderBucket,
+  TargetBucket,
+  CheckBucket,
+  StoredBuckets,
+  ProviderEventRecord,
+  TargetEventRecord,
+  CheckEventRecord,
+  StoredEvents,
 } from "./types.ts";
 export { SqliteOutcomeStore, SqliteEventStore, SqliteBucketStore, createSqliteStores } from "./sqlite.ts";

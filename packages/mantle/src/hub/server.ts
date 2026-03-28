@@ -6,7 +6,7 @@ import type { WebService } from "./web-service.ts";
 
 type WebSocketData = {
 	audience: "web" | "agent";
-	unsubscribe?: () => void;
+	unsubscribers?: (() => void)[];
 };
 
 export function createFetchHandler(app: Hono) {

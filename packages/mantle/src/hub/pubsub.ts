@@ -1,30 +1,35 @@
-import type { BucketState } from "../store/types.ts";
+import type {
+	ProviderBucket,
+	TargetBucket,
+	CheckBucket,
+	ProviderEventRecord,
+	TargetEventRecord,
+	CheckEventRecord,
+} from "../store/types.ts";
 
-export type BucketMessage = BucketState & {
-	index: number;
-	indexHwm: number;
-};
+// Bucket messages with index tracking for initial load progress
+export type ProviderBucketMessage = ProviderBucket & { index: number; indexHwm: number };
+export type TargetBucketMessage = TargetBucket & { index: number; indexHwm: number };
+export type CheckBucketMessage = CheckBucket & { index: number; indexHwm: number };
 
-export type BucketSubscriber = (message: BucketMessage) => void;
+export type ProviderBucketSubscriber = (msg: ProviderBucketMessage) => void;
+export type TargetBucketSubscriber = (msg: TargetBucketMessage) => void;
+export type CheckBucketSubscriber = (msg: CheckBucketMessage) => void;
 
-export class BucketPublisher {
-	private subscribers = new Set<BucketSubscriber>();
+export class ProviderBucketPublisher {
+	private subscribers = new Set<ProviderBucketSubscriber>();
 	private index = 0;
 
-	subscribe(fn: BucketSubscriber): () => void {
+	subscribe(fn: ProviderBucketSubscriber): () => void {
 		this.subscribers.add(fn);
 		return () => this.subscribers.delete(fn);
 	}
 
-	publish(state: BucketState): void {
+	publish(bucket: ProviderBucket): void {
 		this.index++;
-		const message: BucketMessage = {
-			...state,
-			index: this.index,
-			indexHwm: this.index,
-		};
+		const msg: ProviderBucketMessage = { ...bucket, index: this.index, indexHwm: this.index };
 		for (const fn of this.subscribers) {
-			fn(message);
+			fn(msg);
 		}
 	}
 
@@ -33,28 +38,94 @@ export class BucketPublisher {
 	}
 }
 
-export type EventState = {
-	id: number;
-	provider: string;
-	target?: string;
-	check?: string;
-	code: string;
-	startTime: number;
-	endTime: number | null;
-	message: string;
-};
+export class TargetBucketPublisher {
+	private subscribers = new Set<TargetBucketSubscriber>();
+	private index = 0;
 
-export type EventSubscriber = (event: EventState) => void;
-
-export class EventPublisher {
-	private subscribers = new Set<EventSubscriber>();
-
-	subscribe(fn: EventSubscriber): () => void {
+	subscribe(fn: TargetBucketSubscriber): () => void {
 		this.subscribers.add(fn);
 		return () => this.subscribers.delete(fn);
 	}
 
-	publish(event: EventState): void {
+	publish(bucket: TargetBucket): void {
+		this.index++;
+		const msg: TargetBucketMessage = { ...bucket, index: this.index, indexHwm: this.index };
+		for (const fn of this.subscribers) {
+			fn(msg);
+		}
+	}
+
+	getIndex(): number {
+		return this.index;
+	}
+}
+
+export class CheckBucketPublisher {
+	private subscribers = new Set<CheckBucketSubscriber>();
+	private index = 0;
+
+	subscribe(fn: CheckBucketSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(bucket: CheckBucket): void {
+		this.index++;
+		const msg: CheckBucketMessage = { ...bucket, index: this.index, indexHwm: this.index };
+		for (const fn of this.subscribers) {
+			fn(msg);
+		}
+	}
+
+	getIndex(): number {
+		return this.index;
+	}
+}
+
+// Event types match the store record types
+export type ProviderEventSubscriber = (event: ProviderEventRecord) => void;
+export type TargetEventSubscriber = (event: TargetEventRecord) => void;
+export type CheckEventSubscriber = (event: CheckEventRecord) => void;
+
+export class ProviderEventPublisher {
+	private subscribers = new Set<ProviderEventSubscriber>();
+
+	subscribe(fn: ProviderEventSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(event: ProviderEventRecord): void {
+		for (const fn of this.subscribers) {
+			fn(event);
+		}
+	}
+}
+
+export class TargetEventPublisher {
+	private subscribers = new Set<TargetEventSubscriber>();
+
+	subscribe(fn: TargetEventSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(event: TargetEventRecord): void {
+		for (const fn of this.subscribers) {
+			fn(event);
+		}
+	}
+}
+
+export class CheckEventPublisher {
+	private subscribers = new Set<CheckEventSubscriber>();
+
+	subscribe(fn: CheckEventSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(event: CheckEventRecord): void {
 		for (const fn of this.subscribers) {
 			fn(event);
 		}

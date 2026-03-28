@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import type { BucketMessage, EventMessage } from "../types";
+import type { WebSocketMessage } from "../types";
 import type { Store } from "../store";
-import { createStore, updateStoreWithBucket, updateStoreWithEvent } from "../store";
+import {
+	createStore,
+	updateStoreWithProviderBucket,
+	updateStoreWithTargetBucket,
+	updateStoreWithCheckBucket,
+	updateStoreWithProviderEvent,
+	updateStoreWithTargetEvent,
+	updateStoreWithCheckEvent,
+} from "../store";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
-
-type WebSocketMessage = BucketMessage | EventMessage;
 
 export function useWebSocket() {
 	const [store, setStore] = useState<Store>(createStore);
@@ -31,10 +37,25 @@ export function useWebSocket() {
 				if (cleaned) return;
 				try {
 					const msg = JSON.parse(event.data) as WebSocketMessage;
-					if (msg.type === "bucket_state") {
-						setStore((prev) => updateStoreWithBucket(prev, msg));
-					} else if (msg.type === "event") {
-						setStore((prev) => updateStoreWithEvent(prev, msg));
+					switch (msg.type) {
+						case "provider_bucket":
+							setStore((prev) => updateStoreWithProviderBucket(prev, msg));
+							break;
+						case "target_bucket":
+							setStore((prev) => updateStoreWithTargetBucket(prev, msg));
+							break;
+						case "check_bucket":
+							setStore((prev) => updateStoreWithCheckBucket(prev, msg));
+							break;
+						case "provider_event":
+							setStore((prev) => updateStoreWithProviderEvent(prev, msg));
+							break;
+						case "target_event":
+							setStore((prev) => updateStoreWithTargetEvent(prev, msg));
+							break;
+						case "check_event":
+							setStore((prev) => updateStoreWithCheckEvent(prev, msg));
+							break;
 					}
 				} catch {
 					// Ignore invalid messages

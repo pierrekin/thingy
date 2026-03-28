@@ -1,22 +1,43 @@
 import type { OutcomeStore, EventStore, BucketStore, BucketStatus } from "../store/types.ts";
 import type { AgentMessage } from "../protocol.ts";
 import { EventTracker } from "../agent/events.ts";
-import type { BucketPublisher, EventPublisher } from "./pubsub.ts";
+import type {
+	ProviderBucketPublisher,
+	TargetBucketPublisher,
+	CheckBucketPublisher,
+	ProviderEventPublisher,
+	TargetEventPublisher,
+	CheckEventPublisher,
+} from "./pubsub.ts";
 import { getBucketBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
+
+type BucketPublishers = {
+	provider: ProviderBucketPublisher;
+	target: TargetBucketPublisher;
+	check: CheckBucketPublisher;
+};
+
+type EventPublishers = {
+	provider: ProviderEventPublisher;
+	target: TargetEventPublisher;
+	check: CheckEventPublisher;
+};
 
 export class HubService {
 	private events: EventTracker;
 	private bucketConfig: BucketConfig;
+	private bucketPublishers: BucketPublishers;
 
 	constructor(
 		private outcomeStore: OutcomeStore,
 		eventStore: EventStore,
 		private bucketStore: BucketStore,
-		private bucketPublisher: BucketPublisher,
-		eventPublisher: EventPublisher,
+		bucketPublishers: BucketPublishers,
+		eventPublishers: EventPublishers,
 		bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
 	) {
-		this.events = new EventTracker(eventStore, eventPublisher);
+		this.bucketPublishers = bucketPublishers;
+		this.events = new EventTracker(eventStore, eventPublishers);
 		this.bucketConfig = bucketConfig;
 	}
 
@@ -150,7 +171,7 @@ export class HubService {
 
 		if (oldCheckStatus !== newCheckStatus) {
 			await this.bucketStore.upsertCheckBucket(provider, target, check, start, end, newCheckStatus);
-			this.bucketPublisher.publish({
+			this.bucketPublishers.check.publish({
 				provider,
 				target,
 				check,
@@ -169,7 +190,7 @@ export class HubService {
 
 		if (oldTargetStatus !== newTargetStatus) {
 			await this.bucketStore.upsertTargetBucket(provider, target, start, end, newTargetStatus);
-			this.bucketPublisher.publish({
+			this.bucketPublishers.target.publish({
 				provider,
 				target,
 				bucketStart: start,
@@ -187,7 +208,7 @@ export class HubService {
 
 		if (oldProviderStatus !== newProviderStatus) {
 			await this.bucketStore.upsertProviderBucket(provider, start, end, newProviderStatus);
-			this.bucketPublisher.publish({
+			this.bucketPublishers.provider.publish({
 				provider,
 				bucketStart: start,
 				bucketEnd: end,

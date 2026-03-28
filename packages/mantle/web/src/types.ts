@@ -6,11 +6,10 @@ export type StatusSlot = {
 	status: SlotStatus;
 };
 
-export type BucketMessage = {
-	type: "bucket_state";
+// Bucket messages
+export type ProviderBucketMessage = {
+	type: "provider_bucket";
 	provider: string;
-	target?: string;
-	check?: string;
 	bucketStart: number;
 	bucketEnd: number;
 	status: SlotStatus;
@@ -18,17 +17,66 @@ export type BucketMessage = {
 	indexHwm: number;
 };
 
-export type EventMessage = {
-	type: "event";
+export type TargetBucketMessage = {
+	type: "target_bucket";
+	provider: string;
+	target: string;
+	bucketStart: number;
+	bucketEnd: number;
+	status: SlotStatus;
+	index: number;
+	indexHwm: number;
+};
+
+export type CheckBucketMessage = {
+	type: "check_bucket";
+	provider: string;
+	target: string;
+	check: string;
+	bucketStart: number;
+	bucketEnd: number;
+	status: SlotStatus;
+	index: number;
+	indexHwm: number;
+};
+
+// Event messages
+export type ProviderEventMessage = {
+	type: "provider_event";
 	id: number;
 	provider: string;
-	target?: string;
-	check?: string;
 	code: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
 };
+
+export type TargetEventMessage = {
+	type: "target_event";
+	id: number;
+	provider: string;
+	target: string;
+	code: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
+export type CheckEventMessage = {
+	type: "check_event";
+	id: number;
+	provider: string;
+	target: string;
+	check: string;
+	code: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
+export type BucketMessage = ProviderBucketMessage | TargetBucketMessage | CheckBucketMessage;
+export type EventMessage = ProviderEventMessage | TargetEventMessage | CheckEventMessage;
+export type WebSocketMessage = BucketMessage | EventMessage;
 
 export type Event = {
 	id: number;

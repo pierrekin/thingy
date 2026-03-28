@@ -5,6 +5,8 @@ on:
     tags:
       - 'v*'
 
+run-name: Release Mantle ${{ github.ref_name }}
+
 permissions:
   contents: write
 
@@ -48,6 +50,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -67,4 +70,29 @@ jobs:
           files: |
             artifacts/*
           generate_release_notes: true
+
+      - name: Upload binaries to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+
+          # Install AWS CLI
+          pip install awscli
+
+          # Upload each binary to R2 with version prefix
+          cd artifacts
+          for file in mantle-*; do
+            aws s3 cp "$file" "s3://mantle-team-mantle-binaries/releases/v${VERSION}/$file" --endpoint-url "$AWS_ENDPOINT_URL"
+          done
+
+          # Upload checksums
+          aws s3 cp checksums.txt "s3://mantle-team-mantle-binaries/releases/v${VERSION}/checksums.txt" --endpoint-url "$AWS_ENDPOINT_URL"
+
+          # Create/update latest.txt with the current version
+          echo "v${VERSION}" > latest.txt
+          aws s3 cp latest.txt "s3://mantle-team-mantle-binaries/latest.txt" --endpoint-url "$AWS_ENDPOINT_URL"
 

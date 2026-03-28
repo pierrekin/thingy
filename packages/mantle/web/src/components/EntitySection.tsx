@@ -1,4 +1,4 @@
-import type { Event, StatusSlot } from "../mock-data";
+import type { Event, StatusSlot } from "../types";
 import { EventTable } from "./EventTable";
 import { StatusBar } from "./StatusBar";
 

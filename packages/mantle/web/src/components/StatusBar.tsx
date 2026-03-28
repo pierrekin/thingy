@@ -1,4 +1,4 @@
-import type { StatusSlot } from "../mock-data";
+import type { StatusSlot } from "../types";
 
 const statusColors = {
 	green: "bg-green-500",

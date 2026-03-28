@@ -60,4 +60,12 @@ export const assets: Record<string, { content: string; contentType: string }> = 
 
 export default defineConfig({
 	plugins: [tailwindcss(), react(), embedAssets()],
+	server: {
+		proxy: {
+			"/api": {
+				target: "http://localhost:8080",
+				ws: true,
+			},
+		},
+	},
 });

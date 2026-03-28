@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Target } from "../mock-data";
+import type { Target } from "../types";
 import { EventTable } from "./EventTable";
 import { StatusBar } from "./StatusBar";
 

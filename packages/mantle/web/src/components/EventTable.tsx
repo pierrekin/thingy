@@ -1,4 +1,4 @@
-import type { Event } from "../mock-data";
+import type { Event } from "../types";
 
 function formatTime(date: Date): string {
 	return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });

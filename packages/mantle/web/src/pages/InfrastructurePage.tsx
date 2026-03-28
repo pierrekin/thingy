@@ -1,4 +1,4 @@
-import type { Hub } from "../mock-data";
+import type { Hub } from "../types";
 import { EntitySection } from "../components/EntitySection";
 
 type Props = {

@@ -1,10 +1,12 @@
 import type {
 	BucketMessage,
+	EventMessage,
 	StatusSlot,
 	Hub,
 	Provider,
 	Target,
 	Check,
+	Event,
 } from "./types";
 
 type BucketData = {
@@ -15,21 +17,34 @@ type BucketData = {
 
 type EntityBuckets = Map<number, BucketData>;
 
-export type BucketStore = {
+type StoredEvent = {
+	id: number;
+	provider: string;
+	target?: string;
+	check?: string;
+	code: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
+export type Store = {
 	buckets: Map<string, EntityBuckets>;
+	events: Map<number, StoredEvent>;
 	index: number;
 	indexHwm: number;
 };
 
-export function createStore(): BucketStore {
+export function createStore(): Store {
 	return {
 		buckets: new Map(),
+		events: new Map(),
 		index: 0,
 		indexHwm: 0,
 	};
 }
 
-function getEntityKey(msg: BucketMessage): string {
+function getBucketEntityKey(msg: BucketMessage): string {
 	if (msg.check && msg.target) {
 		return `${msg.provider}/${msg.target}/${msg.check}`;
 	}
@@ -39,8 +54,8 @@ function getEntityKey(msg: BucketMessage): string {
 	return msg.provider;
 }
 
-export function updateStore(store: BucketStore, msg: BucketMessage): BucketStore {
-	const key = getEntityKey(msg);
+export function updateStoreWithBucket(store: Store, msg: BucketMessage): Store {
+	const key = getBucketEntityKey(msg);
 	const entityBuckets = store.buckets.get(key) ?? new Map<number, BucketData>();
 
 	entityBuckets.set(msg.bucketStart, {
@@ -53,9 +68,29 @@ export function updateStore(store: BucketStore, msg: BucketMessage): BucketStore
 	newBuckets.set(key, entityBuckets);
 
 	return {
+		...store,
 		buckets: newBuckets,
 		index: msg.index,
 		indexHwm: Math.max(store.indexHwm, msg.indexHwm),
+	};
+}
+
+export function updateStoreWithEvent(store: Store, msg: EventMessage): Store {
+	const newEvents = new Map(store.events);
+	newEvents.set(msg.id, {
+		id: msg.id,
+		provider: msg.provider,
+		target: msg.target,
+		check: msg.check,
+		code: msg.code,
+		startTime: msg.startTime,
+		endTime: msg.endTime,
+		message: msg.message,
+	});
+
+	return {
+		...store,
+		events: newEvents,
 	};
 }
 
@@ -72,7 +107,44 @@ function bucketsToSlots(entityBuckets: EntityBuckets | undefined): StatusSlot[] 
 	}));
 }
 
-export function deriveHub(store: BucketStore): Hub {
+function storedEventToEvent(e: StoredEvent): Event {
+	return {
+		id: e.id,
+		code: e.code,
+		message: e.message,
+		startTime: new Date(e.startTime),
+		endTime: e.endTime ? new Date(e.endTime) : null,
+	};
+}
+
+function getEventsForEntity(
+	events: Map<number, StoredEvent>,
+	provider: string,
+	target?: string,
+	check?: string,
+): Event[] {
+	const result: Event[] = [];
+	for (const e of events.values()) {
+		if (e.provider === provider) {
+			if (check !== undefined) {
+				if (e.target === target && e.check === check) {
+					result.push(storedEventToEvent(e));
+				}
+			} else if (target !== undefined) {
+				if (e.target === target && e.check === undefined) {
+					result.push(storedEventToEvent(e));
+				}
+			} else {
+				if (e.target === undefined) {
+					result.push(storedEventToEvent(e));
+				}
+			}
+		}
+	}
+	return result.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+}
+
+export function deriveHub(store: Store): Hub {
 	const providerNames = new Set<string>();
 	const targetKeys = new Map<string, { provider: string; target: string }>();
 	const checkKeys = new Map<
@@ -104,7 +176,7 @@ export function deriveHub(store: BucketStore): Hub {
 		.map((name) => ({
 			name,
 			statusSlots: bucketsToSlots(store.buckets.get(name)),
-			events: [],
+			events: getEventsForEntity(store.events, name),
 		}));
 
 	const targetsByProvider = new Map<string, Target[]>();
@@ -115,7 +187,7 @@ export function deriveHub(store: BucketStore): Hub {
 				checksForTarget.push({
 					name: checkInfo.check,
 					statusSlots: bucketsToSlots(store.buckets.get(checkKey)),
-					events: [],
+					events: getEventsForEntity(store.events, provider, target, checkInfo.check),
 				});
 			}
 		}
@@ -125,7 +197,7 @@ export function deriveHub(store: BucketStore): Hub {
 			name: target,
 			provider,
 			statusSlots: bucketsToSlots(store.buckets.get(key)),
-			events: [],
+			events: getEventsForEntity(store.events, provider, target),
 			checks: checksForTarget,
 		};
 
@@ -148,12 +220,12 @@ export function deriveHub(store: BucketStore): Hub {
 	};
 }
 
-export function getLoadingProgress(store: BucketStore): number {
+export function getLoadingProgress(store: Store): number {
 	if (store.indexHwm === 0) return 0;
 	return Math.min(100, (store.index / store.indexHwm) * 100);
 }
 
-export function isLoading(store: BucketStore): boolean {
+export function isLoading(store: Store): boolean {
 	const threshold = 5;
 	return store.indexHwm - store.index > threshold;
 }

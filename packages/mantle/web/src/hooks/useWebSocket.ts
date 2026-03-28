@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import type { BucketMessage } from "../types";
-import type { BucketStore } from "../store";
-import { createStore, updateStore } from "../store";
+import type { BucketMessage, EventMessage } from "../types";
+import type { Store } from "../store";
+import { createStore, updateStoreWithBucket, updateStoreWithEvent } from "../store";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
+type WebSocketMessage = BucketMessage | EventMessage;
+
 export function useWebSocket() {
-	const [store, setStore] = useState<BucketStore>(createStore);
+	const [store, setStore] = useState<Store>(createStore);
 	const [status, setStatus] = useState<ConnectionStatus>("connecting");
 	const reconnectTimeoutRef = useRef<number | null>(null);
 
@@ -28,9 +30,11 @@ export function useWebSocket() {
 			ws.onmessage = (event) => {
 				if (cleaned) return;
 				try {
-					const msg = JSON.parse(event.data) as BucketMessage;
+					const msg = JSON.parse(event.data) as WebSocketMessage;
 					if (msg.type === "bucket_state") {
-						setStore((prev) => updateStore(prev, msg));
+						setStore((prev) => updateStoreWithBucket(prev, msg));
+					} else if (msg.type === "event") {
+						setStore((prev) => updateStoreWithEvent(prev, msg));
 					}
 				} catch {
 					// Ignore invalid messages

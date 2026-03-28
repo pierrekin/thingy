@@ -8,6 +8,10 @@ import type {
   CheckOutcome,
   BucketStatus,
   BucketState,
+  EventRecord,
+  OpenProviderEvent,
+  OpenTargetEvent,
+  OpenCheckEvent,
 } from "./types.ts";
 
 const SCHEMA = `
@@ -184,25 +188,25 @@ export class SqliteOutcomeStore implements OutcomeStore {
 export class SqliteEventStore implements EventStore {
   constructor(private db: Database) {}
 
-  async getOpenProviderEvents(): Promise<{ id: number; provider: string; code: string }[]> {
+  async getOpenProviderEvents(): Promise<OpenProviderEvent[]> {
     const stmt = this.db.prepare(`
-      SELECT id, provider, code FROM provider_events WHERE end_time IS NULL
+      SELECT id, provider, code, start_time as startTime, message FROM provider_events WHERE end_time IS NULL
     `);
-    return stmt.all() as { id: number; provider: string; code: string }[];
+    return stmt.all() as OpenProviderEvent[];
   }
 
-  async getOpenTargetEvents(): Promise<{ id: number; provider: string; target: string; code: string }[]> {
+  async getOpenTargetEvents(): Promise<OpenTargetEvent[]> {
     const stmt = this.db.prepare(`
-      SELECT id, provider, target, code FROM target_events WHERE end_time IS NULL
+      SELECT id, provider, target, code, start_time as startTime, message FROM target_events WHERE end_time IS NULL
     `);
-    return stmt.all() as { id: number; provider: string; target: string; code: string }[];
+    return stmt.all() as OpenTargetEvent[];
   }
 
-  async getOpenCheckEvents(): Promise<{ id: number; provider: string; target: string; check: string; code: string }[]> {
+  async getOpenCheckEvents(): Promise<OpenCheckEvent[]> {
     const stmt = this.db.prepare(`
-      SELECT id, provider, target, check_name as "check", code FROM check_events WHERE end_time IS NULL
+      SELECT id, provider, target, check_name as "check", code, start_time as startTime, message FROM check_events WHERE end_time IS NULL
     `);
-    return stmt.all() as { id: number; provider: string; target: string; check: string; code: string }[];
+    return stmt.all() as OpenCheckEvent[];
   }
 
   async openProviderEvent(
@@ -270,6 +274,92 @@ export class SqliteEventStore implements EventStore {
       UPDATE check_events SET end_time = ? WHERE id = ?
     `);
     stmt.run(time.getTime(), id);
+  }
+
+  async getEventsInRange(startTime: number, endTime: number): Promise<EventRecord[]> {
+    // Events that overlap with the time window:
+    // startTime < rangeEnd AND (endTime > rangeStart OR endTime IS NULL)
+    const providerEvents = this.db.prepare(`
+      SELECT id, provider, code, start_time, end_time, message
+      FROM provider_events
+      WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
+    `).all(endTime, startTime) as {
+      id: number;
+      provider: string;
+      code: string;
+      start_time: number;
+      end_time: number | null;
+      message: string;
+    }[];
+
+    const targetEvents = this.db.prepare(`
+      SELECT id, provider, target, code, start_time, end_time, message
+      FROM target_events
+      WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
+    `).all(endTime, startTime) as {
+      id: number;
+      provider: string;
+      target: string;
+      code: string;
+      start_time: number;
+      end_time: number | null;
+      message: string;
+    }[];
+
+    const checkEvents = this.db.prepare(`
+      SELECT id, provider, target, check_name as "check", code, start_time, end_time, message
+      FROM check_events
+      WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
+    `).all(endTime, startTime) as {
+      id: number;
+      provider: string;
+      target: string;
+      check: string;
+      code: string;
+      start_time: number;
+      end_time: number | null;
+      message: string;
+    }[];
+
+    const results: EventRecord[] = [];
+
+    for (const e of providerEvents) {
+      results.push({
+        id: e.id,
+        provider: e.provider,
+        code: e.code,
+        startTime: e.start_time,
+        endTime: e.end_time,
+        message: e.message,
+      });
+    }
+
+    for (const e of targetEvents) {
+      results.push({
+        id: e.id,
+        provider: e.provider,
+        target: e.target,
+        code: e.code,
+        startTime: e.start_time,
+        endTime: e.end_time,
+        message: e.message,
+      });
+    }
+
+    for (const e of checkEvents) {
+      results.push({
+        id: e.id,
+        provider: e.provider,
+        target: e.target,
+        check: e.check,
+        code: e.code,
+        startTime: e.start_time,
+        endTime: e.end_time,
+        message: e.message,
+      });
+    }
+
+    return results;
   }
 
   async close(): Promise<void> {

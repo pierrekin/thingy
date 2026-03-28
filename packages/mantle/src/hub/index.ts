@@ -6,7 +6,7 @@ import { createAgentApp } from "./agent.ts";
 import { createFetchHandler, createWebSocketHandler } from "./server.ts";
 import { HubService } from "./service.ts";
 import { WebService } from "./web-service.ts";
-import { BucketPublisher } from "./pubsub.ts";
+import { BucketPublisher, EventPublisher } from "./pubsub.ts";
 
 export async function startHub(
 	config: HubConfig,
@@ -14,9 +14,10 @@ export async function startHub(
 	eventStore: EventStore,
 	bucketStore: BucketStore,
 ) {
-	const publisher = new BucketPublisher();
-	const hubService = new HubService(outcomeStore, eventStore, bucketStore, publisher);
-	const webService = new WebService(bucketStore, publisher);
+	const bucketPublisher = new BucketPublisher();
+	const eventPublisher = new EventPublisher();
+	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublisher, eventPublisher);
+	const webService = new WebService(bucketStore, eventStore, bucketPublisher, eventPublisher);
 
 	await hubService.init();
 

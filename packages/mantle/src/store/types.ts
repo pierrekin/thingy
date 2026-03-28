@@ -52,6 +52,8 @@ export type OpenProviderEvent = {
   id: number;
   provider: string;
   code: string;
+  startTime: number;
+  message: string;
 };
 
 export type OpenTargetEvent = {
@@ -59,6 +61,8 @@ export type OpenTargetEvent = {
   provider: string;
   target: string;
   code: string;
+  startTime: number;
+  message: string;
 };
 
 export type OpenCheckEvent = {
@@ -67,6 +71,8 @@ export type OpenCheckEvent = {
   target: string;
   check: string;
   code: string;
+  startTime: number;
+  message: string;
 };
 
 export interface EventStore {
@@ -105,8 +111,21 @@ export interface EventStore {
 
   closeCheckEvent(id: number, time: Date): Promise<void>;
 
+  getEventsInRange(startTime: number, endTime: number): Promise<EventRecord[]>;
+
   close(): Promise<void>;
 }
+
+export type EventRecord = {
+  id: number;
+  provider: string;
+  target?: string;
+  check?: string;
+  code: string;
+  startTime: number;
+  endTime: number | null;
+  message: string;
+};
 
 export type BucketStatus = "green" | "red" | "grey" | null;
 

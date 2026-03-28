@@ -1,7 +1,7 @@
 import type { OutcomeStore, EventStore, BucketStore, BucketStatus } from "../store/types.ts";
 import type { AgentMessage } from "../protocol.ts";
 import { EventTracker } from "../agent/events.ts";
-import type { BucketPublisher } from "./pubsub.ts";
+import type { BucketPublisher, EventPublisher } from "./pubsub.ts";
 import { getBucketBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
 export class HubService {
@@ -12,10 +12,11 @@ export class HubService {
 		private outcomeStore: OutcomeStore,
 		eventStore: EventStore,
 		private bucketStore: BucketStore,
-		private publisher: BucketPublisher,
+		private bucketPublisher: BucketPublisher,
+		eventPublisher: EventPublisher,
 		bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
 	) {
-		this.events = new EventTracker(eventStore);
+		this.events = new EventTracker(eventStore, eventPublisher);
 		this.bucketConfig = bucketConfig;
 	}
 
@@ -149,7 +150,7 @@ export class HubService {
 
 		if (oldCheckStatus !== newCheckStatus) {
 			await this.bucketStore.upsertCheckBucket(provider, target, check, start, end, newCheckStatus);
-			this.publisher.publish({
+			this.bucketPublisher.publish({
 				provider,
 				target,
 				check,
@@ -168,7 +169,7 @@ export class HubService {
 
 		if (oldTargetStatus !== newTargetStatus) {
 			await this.bucketStore.upsertTargetBucket(provider, target, start, end, newTargetStatus);
-			this.publisher.publish({
+			this.bucketPublisher.publish({
 				provider,
 				target,
 				bucketStart: start,
@@ -186,7 +187,7 @@ export class HubService {
 
 		if (oldProviderStatus !== newProviderStatus) {
 			await this.bucketStore.upsertProviderBucket(provider, start, end, newProviderStatus);
-			this.publisher.publish({
+			this.bucketPublisher.publish({
 				provider,
 				bucketStart: start,
 				bucketEnd: end,

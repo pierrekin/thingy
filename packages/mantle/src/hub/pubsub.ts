@@ -32,3 +32,31 @@ export class BucketPublisher {
 		return this.index;
 	}
 }
+
+export type EventState = {
+	id: number;
+	provider: string;
+	target?: string;
+	check?: string;
+	code: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
+export type EventSubscriber = (event: EventState) => void;
+
+export class EventPublisher {
+	private subscribers = new Set<EventSubscriber>();
+
+	subscribe(fn: EventSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(event: EventState): void {
+		for (const fn of this.subscribers) {
+			fn(event);
+		}
+	}
+}

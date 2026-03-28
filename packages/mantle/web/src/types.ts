@@ -18,6 +18,18 @@ export type BucketMessage = {
 	indexHwm: number;
 };
 
+export type EventMessage = {
+	type: "event";
+	id: number;
+	provider: string;
+	target?: string;
+	check?: string;
+	code: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
 export type Event = {
 	id: number;
 	code: string;

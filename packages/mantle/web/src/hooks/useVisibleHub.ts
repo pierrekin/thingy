@@ -1,71 +1,115 @@
-import { useMemo } from "react";
 import { useDataStore } from "../subscriptions/data-store";
 import { subscriptionManager } from "../subscriptions/manager";
 import { deriveHub } from "../subscriptions/derive-hub";
 import type { Hub } from "../types";
+import { useRef, useEffect, useState } from "react";
 
 /**
  * Hook to get the visible Hub data for a subscription.
- * Uses Zustand selector to automatically re-render only when relevant data changes.
+ * Uses a single Zustand subscription with debouncing to avoid cascade re-renders.
  */
 export function useVisibleHub(subscriptionId: string | null): Hub {
-	// Subscribe to all relevant buckets and events for this subscription
-	const providerBuckets = useDataStore((state) =>
-		subscriptionId ? state.providerBuckets.get(subscriptionId) : undefined
-	);
-	const targetBuckets = useDataStore((state) =>
-		subscriptionId ? state.targetBuckets.get(subscriptionId) : undefined
-	);
-	const checkBuckets = useDataStore((state) =>
-		subscriptionId ? state.checkBuckets.get(subscriptionId) : undefined
-	);
-	const providerEvents = useDataStore((state) =>
-		subscriptionId ? state.providerEvents.get(subscriptionId) : undefined
-	);
-	const targetEvents = useDataStore((state) =>
-		subscriptionId ? state.targetEvents.get(subscriptionId) : undefined
-	);
-	const checkEvents = useDataStore((state) =>
-		subscriptionId ? state.checkEvents.get(subscriptionId) : undefined
-	);
+	const [hub, setHub] = useState<Hub>({ name: "Hub", providers: [], channels: [], targets: [] });
+	const rafRef = useRef<number | null>(null);
 
-	// Derive hub from the data - only recomputes when data changes
-	const hub = useMemo(() => {
+	useEffect(() => {
 		if (!subscriptionId) {
-			return { name: "Hub", providers: [], channels: [], targets: [] };
+			setHub({ name: "Hub", providers: [], channels: [], targets: [] });
+			return;
 		}
+
 		const params = subscriptionManager.getParams(subscriptionId);
 		if (!params) {
-			return { name: "Hub", providers: [], channels: [], targets: [] };
+			setHub({ name: "Hub", providers: [], channels: [], targets: [] });
+			return;
 		}
-		return deriveHub(subscriptionId, params);
-	}, [subscriptionId, providerBuckets, targetBuckets, checkBuckets, providerEvents, targetEvents, checkEvents]);
+
+		// Initial render
+		setHub(deriveHub(subscriptionId, params));
+
+		// Subscribe to store changes with RAF debouncing
+		const unsubscribe = useDataStore.subscribe(() => {
+			// Cancel any pending RAF
+			if (rafRef.current !== null) {
+				cancelAnimationFrame(rafRef.current);
+			}
+
+			// Schedule update on next animation frame (batches multiple updates)
+			rafRef.current = requestAnimationFrame(() => {
+				const params = subscriptionManager.getParams(subscriptionId);
+				if (params) {
+					setHub(deriveHub(subscriptionId, params));
+				}
+				rafRef.current = null;
+			});
+		});
+
+		return () => {
+			unsubscribe();
+			if (rafRef.current !== null) {
+				cancelAnimationFrame(rafRef.current);
+			}
+		};
+	}, [subscriptionId]);
 
 	return hub;
 }
 
 /**
  * Hook to get loading progress for a subscription
+ * Uses RAF debouncing to avoid re-rendering on every progress update
  */
 export function useLoadingProgress(subscriptionId: string | null): {
 	progress: number;
 	isLoading: boolean;
 } {
-	// Subscribe only to progress data for this subscription
-	const progressData = useDataStore((state) =>
-		subscriptionId ? state.progress.get(subscriptionId) : undefined
-	);
+	const [state, setState] = useState({ progress: 0, isLoading: false });
+	const rafRef = useRef<number | null>(null);
 
-	// Calculate progress percentage
-	const progress = useMemo(() => {
-		if (!progressData || progressData.indexHwm === 0) return 0;
-		return Math.round((progressData.index / progressData.indexHwm) * 100);
-	}, [progressData]);
+	useEffect(() => {
+		if (!subscriptionId) {
+			setState({ progress: 0, isLoading: false });
+			return;
+		}
 
-	const isLoading = useMemo(() => {
-		if (!progressData) return false;
-		return progressData.index < progressData.indexHwm;
-	}, [progressData]);
+		// Subscribe to store changes with RAF debouncing
+		const unsubscribe = useDataStore.subscribe(() => {
+			// Cancel any pending RAF
+			if (rafRef.current !== null) {
+				cancelAnimationFrame(rafRef.current);
+			}
 
-	return { progress, isLoading };
+			// Schedule update on next animation frame
+			rafRef.current = requestAnimationFrame(() => {
+				const progressData = useDataStore.getState().progress.get(subscriptionId);
+				if (progressData) {
+					const progress = progressData.indexHwm > 0
+						? Math.round((progressData.index / progressData.indexHwm) * 100)
+						: 0;
+					const isLoading = progressData.index < progressData.indexHwm;
+					setState({ progress, isLoading });
+				}
+				rafRef.current = null;
+			});
+		});
+
+		// Initial state
+		const progressData = useDataStore.getState().progress.get(subscriptionId);
+		if (progressData) {
+			const progress = progressData.indexHwm > 0
+				? Math.round((progressData.index / progressData.indexHwm) * 100)
+				: 0;
+			const isLoading = progressData.index < progressData.indexHwm;
+			setState({ progress, isLoading });
+		}
+
+		return () => {
+			unsubscribe();
+			if (rafRef.current !== null) {
+				cancelAnimationFrame(rafRef.current);
+			}
+		};
+	}, [subscriptionId]);
+
+	return state;
 }

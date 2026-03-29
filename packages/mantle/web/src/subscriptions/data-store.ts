@@ -107,7 +107,7 @@ interface DataStoreState {
  * Data is organized by subscription ID, allowing multiple subscriptions
  * (e.g., different time ranges) to coexist without conflict.
  */
-export const useDataStore = create<DataStoreState>((set, get) => ({
+export const useDataStore = create<DataStoreState>((set) => ({
 	providerBuckets: new Map(),
 	targetBuckets: new Map(),
 	checkBuckets: new Map(),

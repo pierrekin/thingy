@@ -6,7 +6,6 @@ import type { WebService } from "./web-service.ts";
 
 type WebSocketData = {
 	audience: "web" | "agent";
-	unsubscribers?: (() => void)[];
 };
 
 export function createFetchHandler(app: Hono) {
@@ -29,21 +28,23 @@ export function createFetchHandler(app: Hono) {
 	};
 }
 
-// TODO: Wire up open, message and close uniformly for hubService and webService.
 export function createWebSocketHandler(hubService: HubService, webService: WebService) {
 	return {
 		async open(ws: ServerWebSocket<WebSocketData>) {
-  		// TODO: Should call handleConnect on hubService.
 			if (ws.data.audience === "agent") {
 				ws.send(JSON.stringify({ type: "hub_hello" }));
-			} else if (ws.data.audience === "web") {
-				await webService.handleConnect(ws);
 			}
+			// Web clients now subscribe explicitly via messages
 		},
 		async message(ws: ServerWebSocket<WebSocketData>, message: string | Buffer) {
+			const msgStr = message.toString();
+
 			if (ws.data.audience === "agent") {
-				const msg = JSON.parse(message.toString()) as AgentMessage;
+				const msg = JSON.parse(msgStr) as AgentMessage;
 				await hubService.handleAgentMessage(msg);
+			} else if (ws.data.audience === "web") {
+				// Handle web client subscription messages
+				await webService.handleMessage(ws, msgStr);
 			}
 		},
 		close(ws: ServerWebSocket<WebSocketData>) {

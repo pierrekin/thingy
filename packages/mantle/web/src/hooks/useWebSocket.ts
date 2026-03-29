@@ -1,21 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import type { WebSocketMessage } from "../types";
-import type { Store } from "../store";
-import {
-	createStore,
-	updateStoreWithProviderBucket,
-	updateStoreWithTargetBucket,
-	updateStoreWithCheckBucket,
-	updateStoreWithProviderEvent,
-	updateStoreWithTargetEvent,
-	updateStoreWithCheckEvent,
-} from "../store";
+import { dataStore } from "../subscriptions/data-store";
+import { subscriptionManager } from "../subscriptions/manager";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
+type ServerMessage =
+	| { type: "subscription_ack"; id: string }
+	| { type: "subscription_error"; id: string; error: string }
+	| { type: "provider_bucket"; subscriptionId: string; [key: string]: unknown }
+	| { type: "target_bucket"; subscriptionId: string; [key: string]: unknown }
+	| { type: "check_bucket"; subscriptionId: string; [key: string]: unknown }
+	| { type: "provider_event"; subscriptionId: string; [key: string]: unknown }
+	| { type: "target_event"; subscriptionId: string; [key: string]: unknown }
+	| { type: "check_event"; subscriptionId: string; [key: string]: unknown };
+
+/**
+ * WebSocket hook that manages connection and message routing.
+ * Uses the subscription protocol - data only flows after explicit subscription.
+ */
 export function useWebSocket() {
-	const [store, setStore] = useState<Store>(createStore);
 	const [status, setStatus] = useState<ConnectionStatus>("connecting");
+	const wsRef = useRef<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<number | null>(null);
 
 	useEffect(() => {
@@ -27,6 +32,7 @@ export function useWebSocket() {
 
 			setStatus("connecting");
 			const ws = new WebSocket(wsUrl);
+			wsRef.current = ws;
 
 			ws.onopen = () => {
 				if (cleaned) return;
@@ -36,36 +42,55 @@ export function useWebSocket() {
 			ws.onmessage = (event) => {
 				if (cleaned) return;
 				try {
-					const msg = JSON.parse(event.data) as WebSocketMessage;
+					const msg = JSON.parse(event.data) as ServerMessage;
+
 					switch (msg.type) {
+						case "subscription_ack":
+							subscriptionManager.markActive(msg.id);
+							break;
+
+						case "subscription_error":
+							subscriptionManager.markError(msg.id, msg.error);
+							break;
+
 						case "provider_bucket":
-							setStore((prev) => updateStoreWithProviderBucket(prev, msg));
+							dataStore.addProviderBucket(msg as any);
 							break;
+
 						case "target_bucket":
-							setStore((prev) => updateStoreWithTargetBucket(prev, msg));
+							dataStore.addTargetBucket(msg as any);
 							break;
+
 						case "check_bucket":
-							setStore((prev) => updateStoreWithCheckBucket(prev, msg));
+							dataStore.addCheckBucket(msg as any);
 							break;
+
 						case "provider_event":
-							setStore((prev) => updateStoreWithProviderEvent(prev, msg));
+							dataStore.addProviderEvent(msg as any);
 							break;
+
 						case "target_event":
-							setStore((prev) => updateStoreWithTargetEvent(prev, msg));
+							dataStore.addTargetEvent(msg as any);
 							break;
+
 						case "check_event":
-							setStore((prev) => updateStoreWithCheckEvent(prev, msg));
+							dataStore.addCheckEvent(msg as any);
 							break;
+
+						default:
+							console.warn("Unknown message type:", (msg as any).type);
 					}
-				} catch {
-					// Ignore invalid messages
+				} catch (error) {
+					console.error("Error processing WebSocket message:", error);
 				}
 			};
 
 			ws.onclose = () => {
 				if (cleaned) return;
 				setStatus("disconnected");
+				wsRef.current = null;
 
+				// Reconnect after delay
 				reconnectTimeoutRef.current = window.setTimeout(() => {
 					connect();
 				}, 2000);
@@ -86,8 +111,20 @@ export function useWebSocket() {
 				clearTimeout(reconnectTimeoutRef.current);
 			}
 			ws.close();
+			wsRef.current = null;
 		};
 	}, []);
 
-	return { store, status };
+	/**
+	 * Send a message to the server
+	 */
+	const send = (message: string) => {
+		if (wsRef.current?.readyState === WebSocket.OPEN) {
+			wsRef.current.send(message);
+		} else {
+			console.warn("WebSocket not connected, cannot send message");
+		}
+	};
+
+	return { status, send, ws: wsRef.current };
 }

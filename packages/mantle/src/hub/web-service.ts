@@ -1,28 +1,30 @@
 import type { ServerWebSocket } from "bun";
-import type {
-	BucketStore,
-	EventStore,
-	ProviderBucket,
-	TargetBucket,
-	CheckBucket,
-	StoredBuckets,
-} from "../store/types.ts";
+import type { BucketStore, EventStore } from "../store/types.ts";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
 	CheckBucketPublisher,
-	ProviderBucketMessage,
-	TargetBucketMessage,
-	CheckBucketMessage,
 	ProviderEventPublisher,
 	TargetEventPublisher,
 	CheckEventPublisher,
 } from "./pubsub.ts";
-import { getTimeRangeBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
+import {
+	SubscriptionManager,
+	StateSubscription,
+	type ClientMessage,
+	type StateSubscriptionRequest,
+	type UnsubscribeRequest,
+	type ProviderBucketMessage,
+	type TargetBucketMessage,
+	type CheckBucketMessage,
+	type ProviderEventMessage,
+	type TargetEventMessage,
+	type CheckEventMessage,
+} from "./subscriptions/index.ts";
+import { DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
 type WebSocketData = {
 	audience: "web" | "agent";
-	unsubscribers?: (() => void)[];
 };
 
 type BucketPublishers = {
@@ -37,107 +39,14 @@ type EventPublishers = {
 	check: CheckEventPublisher;
 };
 
-function fillProviderBuckets(
-	stored: ProviderBucket[],
-	rangeStart: number,
-	config: BucketConfig,
-): ProviderBucket[] {
-	const lookup = new Map<string, ProviderBucket>();
-	const providers = new Set<string>();
-
-	for (const bucket of stored) {
-		providers.add(bucket.provider);
-		lookup.set(`${bucket.provider}:${bucket.bucketStart}`, bucket);
-	}
-
-	const result: ProviderBucket[] = [];
-
-	for (const provider of providers) {
-		for (let i = 0; i < config.count; i++) {
-			const bucketStart = rangeStart + i * config.durationMs;
-			const bucketEnd = bucketStart + config.durationMs;
-			const existing = lookup.get(`${provider}:${bucketStart}`);
-
-			if (existing) {
-				result.push(existing);
-			} else {
-				result.push({ provider, bucketStart, bucketEnd, status: null });
-			}
-		}
-	}
-
-	return result;
-}
-
-function fillTargetBuckets(
-	stored: TargetBucket[],
-	rangeStart: number,
-	config: BucketConfig,
-): TargetBucket[] {
-	const lookup = new Map<string, TargetBucket>();
-	const entities = new Set<string>();
-
-	for (const bucket of stored) {
-		const key = `${bucket.provider}/${bucket.target}`;
-		entities.add(key);
-		lookup.set(`${key}:${bucket.bucketStart}`, bucket);
-	}
-
-	const result: TargetBucket[] = [];
-
-	for (const entity of entities) {
-		const [provider, target] = entity.split("/") as [string, string];
-		for (let i = 0; i < config.count; i++) {
-			const bucketStart = rangeStart + i * config.durationMs;
-			const bucketEnd = bucketStart + config.durationMs;
-			const existing = lookup.get(`${entity}:${bucketStart}`);
-
-			if (existing) {
-				result.push(existing);
-			} else {
-				result.push({ provider, target, bucketStart, bucketEnd, status: null });
-			}
-		}
-	}
-
-	return result;
-}
-
-function fillCheckBuckets(
-	stored: CheckBucket[],
-	rangeStart: number,
-	config: BucketConfig,
-): CheckBucket[] {
-	const lookup = new Map<string, CheckBucket>();
-	const entities = new Set<string>();
-
-	for (const bucket of stored) {
-		const key = `${bucket.provider}/${bucket.target}/${bucket.check}`;
-		entities.add(key);
-		lookup.set(`${key}:${bucket.bucketStart}`, bucket);
-	}
-
-	const result: CheckBucket[] = [];
-
-	for (const entity of entities) {
-		const [provider, target, check] = entity.split("/") as [string, string, string];
-		for (let i = 0; i < config.count; i++) {
-			const bucketStart = rangeStart + i * config.durationMs;
-			const bucketEnd = bucketStart + config.durationMs;
-			const existing = lookup.get(`${entity}:${bucketStart}`);
-
-			if (existing) {
-				result.push(existing);
-			} else {
-				result.push({ provider, target, check, bucketStart, bucketEnd, status: null });
-			}
-		}
-	}
-
-	return result;
-}
-
+/**
+ * WebService manages WebSocket connections for web clients using the
+ * subscription protocol. Clients explicitly subscribe to data streams
+ * they need, and the service manages the lifecycle of those subscriptions.
+ */
 export class WebService {
+	private subscriptionManager = new SubscriptionManager();
+
 	constructor(
 		private bucketStore: BucketStore,
 		private eventStore: EventStore,
@@ -145,22 +54,91 @@ export class WebService {
 		private eventPublishers: EventPublishers,
 	) {}
 
-	async handleConnect(ws: ServerWebSocket<WebSocketData>): Promise<void> {
-		const { start, end } = getTimeRangeBounds(DEFAULT_BUCKET_CONFIG);
-		ws.data.unsubscribers = [];
+	/**
+	 * Handle incoming messages from web clients
+	 */
+	async handleMessage(ws: ServerWebSocket<WebSocketData>, message: string): Promise<void> {
+		let msg: ClientMessage;
+		try {
+			msg = JSON.parse(message) as ClientMessage;
+		} catch (error) {
+			this.sendError(ws, undefined, "Invalid JSON");
+			return;
+		}
 
-		// Get stored buckets and events
-		const storedBuckets = await this.bucketStore.getBuckets(start, end);
-		const storedEvents = await this.eventStore.getEventsInRange(start, end);
+		switch (msg.type) {
+			case "subscribe_state":
+				await this.handleStateSubscription(ws, msg);
+				break;
+			case "unsubscribe":
+				this.handleUnsubscribe(ws, msg);
+				break;
+			default:
+				this.sendError(ws, undefined, `Unknown message type: ${(msg as { type: string }).type}`);
+		}
+	}
 
-		// Fill buckets for the time range
-		const providerBuckets = fillProviderBuckets(storedBuckets.providers, start, DEFAULT_BUCKET_CONFIG);
-		const targetBuckets = fillTargetBuckets(storedBuckets.targets, start, DEFAULT_BUCKET_CONFIG);
-		const checkBuckets = fillCheckBuckets(storedBuckets.checks, start, DEFAULT_BUCKET_CONFIG);
+	/**
+	 * Handle state subscription requests
+	 */
+	private async handleStateSubscription(
+		ws: ServerWebSocket<WebSocketData>,
+		req: StateSubscriptionRequest,
+	): Promise<void> {
+		// Validate request
+		if (req.end !== null && req.end <= req.start) {
+			this.sendError(ws, req.id, "Invalid time range: end must be after start");
+			return;
+		}
 
-		// Calculate total count for loading progress
+		if (req.bucketDurationMs <= 0) {
+			this.sendError(ws, req.id, "Invalid bucket duration: must be positive");
+			return;
+		}
+
+		// Create subscription
+		const subscription = new StateSubscription(req.id, ws, req.start, req.end, req.bucketDurationMs);
+		this.subscriptionManager.add(subscription);
+
+		// Send acknowledgement
+		ws.send(JSON.stringify({ type: "subscription_ack", id: req.id }));
+
+		// Fetch and send historical data
+		await this.sendInitialData(subscription, req);
+
+		// Subscribe to real-time updates
+		this.subscribeToRealTimeUpdates(subscription);
+	}
+
+	/**
+	 * Send initial historical data for a subscription
+	 */
+	private async sendInitialData(
+		subscription: StateSubscription,
+		req: StateSubscriptionRequest,
+	): Promise<void> {
+		const { start, end } = req;
+		const endTime = end ?? Date.now();
+
+		// Calculate bucket configuration
+		const config: BucketConfig = {
+			count: Math.ceil((endTime - start) / req.bucketDurationMs),
+			durationMs: req.bucketDurationMs,
+		};
+
+		// Fetch stored data
+		const storedBuckets = await this.bucketStore.getBuckets(start, endTime);
+		const storedEvents = await this.eventStore.getEventsInRange(start, endTime);
+
+		// Fill gaps in buckets
+		const providerBuckets = this.fillProviderBuckets(storedBuckets.providers, start, config);
+		const targetBuckets = this.fillTargetBuckets(storedBuckets.targets, start, config);
+		const checkBuckets = this.fillCheckBuckets(storedBuckets.checks, start, config);
+
+		// Calculate progress indices
 		const totalBuckets = providerBuckets.length + targetBuckets.length + checkBuckets.length;
-		const baseIndex = this.bucketPublishers.provider.getIndex() +
+		const baseIndex =
+			this.bucketPublishers.provider.getIndex() +
 			this.bucketPublishers.target.getIndex() +
 			this.bucketPublishers.check.getIndex();
 		const indexHwm = baseIndex + totalBuckets;
@@ -169,73 +147,303 @@ export class WebService {
 		// Send provider buckets
 		for (const bucket of providerBuckets) {
 			currentIndex++;
-			const msg: ProviderBucketMessage = { ...bucket, index: currentIndex, indexHwm };
-			ws.send(JSON.stringify({ type: "provider_bucket", ...msg }));
+			const msg: ProviderBucketMessage = {
+				type: "provider_bucket",
+				subscriptionId: subscription.id,
+				...bucket,
+				index: currentIndex,
+				indexHwm,
+			};
+			subscription.ws.send(JSON.stringify(msg));
 		}
 
 		// Send target buckets
 		for (const bucket of targetBuckets) {
 			currentIndex++;
-			const msg: TargetBucketMessage = { ...bucket, index: currentIndex, indexHwm };
-			ws.send(JSON.stringify({ type: "target_bucket", ...msg }));
+			const msg: TargetBucketMessage = {
+				type: "target_bucket",
+				subscriptionId: subscription.id,
+				...bucket,
+				index: currentIndex,
+				indexHwm,
+			};
+			subscription.ws.send(JSON.stringify(msg));
 		}
 
 		// Send check buckets
 		for (const bucket of checkBuckets) {
 			currentIndex++;
-			const msg: CheckBucketMessage = { ...bucket, index: currentIndex, indexHwm };
-			ws.send(JSON.stringify({ type: "check_bucket", ...msg }));
+			const msg: CheckBucketMessage = {
+				type: "check_bucket",
+				subscriptionId: subscription.id,
+				...bucket,
+				index: currentIndex,
+				indexHwm,
+			};
+			subscription.ws.send(JSON.stringify(msg));
 		}
 
-		// Send initial events
+		// Send events
 		for (const event of storedEvents.providers) {
-			ws.send(JSON.stringify({ type: "provider_event", ...event }));
+			const msg: ProviderEventMessage = {
+				type: "provider_event",
+				subscriptionId: subscription.id,
+				...event,
+			};
+			subscription.ws.send(JSON.stringify(msg));
 		}
+
 		for (const event of storedEvents.targets) {
-			ws.send(JSON.stringify({ type: "target_event", ...event }));
+			const msg: TargetEventMessage = {
+				type: "target_event",
+				subscriptionId: subscription.id,
+				...event,
+			};
+			subscription.ws.send(JSON.stringify(msg));
 		}
+
 		for (const event of storedEvents.checks) {
-			ws.send(JSON.stringify({ type: "check_event", ...event }));
+			const msg: CheckEventMessage = {
+				type: "check_event",
+				subscriptionId: subscription.id,
+				...event,
+			};
+			subscription.ws.send(JSON.stringify(msg));
 		}
-
-		// Subscribe to real-time bucket updates
-		ws.data.unsubscribers.push(
-			this.bucketPublishers.provider.subscribe((msg) => {
-				ws.send(JSON.stringify({ type: "provider_bucket", ...msg }));
-			})
-		);
-		ws.data.unsubscribers.push(
-			this.bucketPublishers.target.subscribe((msg) => {
-				ws.send(JSON.stringify({ type: "target_bucket", ...msg }));
-			})
-		);
-		ws.data.unsubscribers.push(
-			this.bucketPublishers.check.subscribe((msg) => {
-				ws.send(JSON.stringify({ type: "check_bucket", ...msg }));
-			})
-		);
-
-		// Subscribe to real-time event updates
-		ws.data.unsubscribers.push(
-			this.eventPublishers.provider.subscribe((event) => {
-				ws.send(JSON.stringify({ type: "provider_event", ...event }));
-			})
-		);
-		ws.data.unsubscribers.push(
-			this.eventPublishers.target.subscribe((event) => {
-				ws.send(JSON.stringify({ type: "target_event", ...event }));
-			})
-		);
-		ws.data.unsubscribers.push(
-			this.eventPublishers.check.subscribe((event) => {
-				ws.send(JSON.stringify({ type: "check_event", ...event }));
-			})
-		);
 	}
 
+	/**
+	 * Subscribe to real-time publisher updates for a state subscription
+	 */
+	private subscribeToRealTimeUpdates(subscription: StateSubscription): void {
+		// Subscribe to provider bucket updates
+		const unsubProvider = this.bucketPublishers.provider.subscribe((bucketMsg) => {
+			if (!subscription.isInRange(bucketMsg.bucketStart)) {
+				return;
+			}
+
+			const msg: ProviderBucketMessage = {
+				type: "provider_bucket",
+				subscriptionId: subscription.id,
+				...bucketMsg,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubProvider);
+
+		// Subscribe to target bucket updates
+		const unsubTarget = this.bucketPublishers.target.subscribe((bucketMsg) => {
+			if (!subscription.isInRange(bucketMsg.bucketStart)) {
+				return;
+			}
+
+			const msg: TargetBucketMessage = {
+				type: "target_bucket",
+				subscriptionId: subscription.id,
+				...bucketMsg,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubTarget);
+
+		// Subscribe to check bucket updates
+		const unsubCheck = this.bucketPublishers.check.subscribe((bucketMsg) => {
+			if (!subscription.isInRange(bucketMsg.bucketStart)) {
+				return;
+			}
+
+			const msg: CheckBucketMessage = {
+				type: "check_bucket",
+				subscriptionId: subscription.id,
+				...bucketMsg,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubCheck);
+
+		// Subscribe to provider event updates
+		const unsubProviderEvent = this.eventPublishers.provider.subscribe((event) => {
+			if (!subscription.isInRange(event.startTime)) {
+				return;
+			}
+
+			const msg: ProviderEventMessage = {
+				type: "provider_event",
+				subscriptionId: subscription.id,
+				...event,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubProviderEvent);
+
+		// Subscribe to target event updates
+		const unsubTargetEvent = this.eventPublishers.target.subscribe((event) => {
+			if (!subscription.isInRange(event.startTime)) {
+				return;
+			}
+
+			const msg: TargetEventMessage = {
+				type: "target_event",
+				subscriptionId: subscription.id,
+				...event,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubTargetEvent);
+
+		// Subscribe to check event updates
+		const unsubCheckEvent = this.eventPublishers.check.subscribe((event) => {
+			if (!subscription.isInRange(event.startTime)) {
+				return;
+			}
+
+			const msg: CheckEventMessage = {
+				type: "check_event",
+				subscriptionId: subscription.id,
+				...event,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubCheckEvent);
+	}
+
+	/**
+	 * Handle unsubscribe requests
+	 */
+	private handleUnsubscribe(ws: ServerWebSocket<WebSocketData>, req: UnsubscribeRequest): void {
+		this.subscriptionManager.remove(req.id);
+	}
+
+	/**
+	 * Handle WebSocket disconnection
+	 */
 	handleDisconnect(ws: ServerWebSocket<WebSocketData>): void {
-		for (const unsub of ws.data.unsubscribers ?? []) {
-			unsub();
+		this.subscriptionManager.removeAllForWebSocket(ws);
+	}
+
+	/**
+	 * Send error message to client
+	 */
+	private sendError(ws: ServerWebSocket<WebSocketData>, subscriptionId: string | undefined, error: string): void {
+		if (subscriptionId) {
+			ws.send(JSON.stringify({ type: "subscription_error", id: subscriptionId, error }));
+		} else {
+			ws.send(JSON.stringify({ type: "error", error }));
 		}
+	}
+
+	// Helper methods for filling buckets (same logic as before)
+
+	private fillProviderBuckets(
+		stored: Array<{ provider: string; bucketStart: number; bucketEnd: number; status: string | null }>,
+		rangeStart: number,
+		config: BucketConfig,
+	) {
+		const lookup = new Map<string, (typeof stored)[0]>();
+		const providers = new Set<string>();
+
+		for (const bucket of stored) {
+			providers.add(bucket.provider);
+			lookup.set(`${bucket.provider}:${bucket.bucketStart}`, bucket);
+		}
+
+		const result: typeof stored = [];
+
+		for (const provider of providers) {
+			for (let i = 0; i < config.count; i++) {
+				const bucketStart = rangeStart + i * config.durationMs;
+				const bucketEnd = bucketStart + config.durationMs;
+				const existing = lookup.get(`${provider}:${bucketStart}`);
+
+				if (existing) {
+					result.push(existing);
+				} else {
+					result.push({ provider, bucketStart, bucketEnd, status: null });
+				}
+			}
+		}
+
+		return result;
+	}
+
+	private fillTargetBuckets(
+		stored: Array<{
+			provider: string;
+			target: string;
+			bucketStart: number;
+			bucketEnd: number;
+			status: string | null;
+		}>,
+		rangeStart: number,
+		config: BucketConfig,
+	) {
+		const lookup = new Map<string, (typeof stored)[0]>();
+		const entities = new Set<string>();
+
+		for (const bucket of stored) {
+			const key = `${bucket.provider}/${bucket.target}`;
+			entities.add(key);
+			lookup.set(`${key}:${bucket.bucketStart}`, bucket);
+		}
+
+		const result: typeof stored = [];
+
+		for (const entity of entities) {
+			const [provider, target] = entity.split("/") as [string, string];
+			for (let i = 0; i < config.count; i++) {
+				const bucketStart = rangeStart + i * config.durationMs;
+				const bucketEnd = bucketStart + config.durationMs;
+				const existing = lookup.get(`${entity}:${bucketStart}`);
+
+				if (existing) {
+					result.push(existing);
+				} else {
+					result.push({ provider, target, bucketStart, bucketEnd, status: null });
+				}
+			}
+		}
+
+		return result;
+	}
+
+	private fillCheckBuckets(
+		stored: Array<{
+			provider: string;
+			target: string;
+			check: string;
+			bucketStart: number;
+			bucketEnd: number;
+			status: string | null;
+		}>,
+		rangeStart: number,
+		config: BucketConfig,
+	) {
+		const lookup = new Map<string, (typeof stored)[0]>();
+		const entities = new Set<string>();
+
+		for (const bucket of stored) {
+			const key = `${bucket.provider}/${bucket.target}/${bucket.check}`;
+			entities.add(key);
+			lookup.set(`${key}:${bucket.bucketStart}`, bucket);
+		}
+
+		const result: typeof stored = [];
+
+		for (const entity of entities) {
+			const [provider, target, check] = entity.split("/") as [string, string, string];
+			for (let i = 0; i < config.count; i++) {
+				const bucketStart = rangeStart + i * config.durationMs;
+				const bucketEnd = bucketStart + config.durationMs;
+				const existing = lookup.get(`${entity}:${bucketStart}`);
+
+				if (existing) {
+					result.push(existing);
+				} else {
+					result.push({ provider, target, check, bucketStart, bucketEnd, status: null });
+				}
+			}
+		}
+
+		return result;
 	}
 }

@@ -1,19 +1,55 @@
-export type SlotStatus = "green" | "red" | "grey" | null;
+// ============================================================================
+// CLIENT → SERVER MESSAGES
+// ============================================================================
 
-export type StatusSlot = {
-	start: number;
-	end: number;
-	status: SlotStatus;
+export type ClientMessage = StateSubscriptionRequest | UnsubscribeRequest;
+
+export type StateSubscriptionRequest = {
+	type: "subscribe_state";
+	id: string; // client-generated subscription ID
+	start: number; // unix timestamp ms
+	end: number | null; // null = live mode (rolling window)
+	bucketDurationMs: number; // bucket size in milliseconds
 };
 
-// Bucket messages
+export type UnsubscribeRequest = {
+	type: "unsubscribe";
+	id: string;
+};
+
+// ============================================================================
+// SERVER → CLIENT MESSAGES
+// ============================================================================
+
+export type ServerMessage =
+	| SubscriptionAckMessage
+	| SubscriptionErrorMessage
+	| ProviderBucketMessage
+	| TargetBucketMessage
+	| CheckBucketMessage
+	| ProviderEventMessage
+	| TargetEventMessage
+	| CheckEventMessage;
+
+export type SubscriptionAckMessage = {
+	type: "subscription_ack";
+	id: string;
+};
+
+export type SubscriptionErrorMessage = {
+	type: "subscription_error";
+	id: string;
+	error: string;
+};
+
+// Bucket messages (now include subscriptionId)
 export type ProviderBucketMessage = {
 	type: "provider_bucket";
 	subscriptionId: string;
 	provider: string;
 	bucketStart: number;
 	bucketEnd: number;
-	status: SlotStatus;
+	status: "green" | "red" | "grey" | null;
 	index: number;
 	indexHwm: number;
 };
@@ -25,7 +61,7 @@ export type TargetBucketMessage = {
 	target: string;
 	bucketStart: number;
 	bucketEnd: number;
-	status: SlotStatus;
+	status: "green" | "red" | "grey" | null;
 	index: number;
 	indexHwm: number;
 };
@@ -38,12 +74,12 @@ export type CheckBucketMessage = {
 	check: string;
 	bucketStart: number;
 	bucketEnd: number;
-	status: SlotStatus;
+	status: "green" | "red" | "grey" | null;
 	index: number;
 	indexHwm: number;
 };
 
-// Event messages
+// Event messages (now include subscriptionId)
 export type ProviderEventMessage = {
 	type: "provider_event";
 	subscriptionId: string;
@@ -82,45 +118,3 @@ export type CheckEventMessage = {
 
 export type BucketMessage = ProviderBucketMessage | TargetBucketMessage | CheckBucketMessage;
 export type EventMessage = ProviderEventMessage | TargetEventMessage | CheckEventMessage;
-export type WebSocketMessage = BucketMessage | EventMessage;
-
-export type Event = {
-	id: number;
-	code: string;
-	message: string;
-	startTime: Date;
-	endTime: Date | null;
-};
-
-export type Check = {
-	name: string;
-	statusSlots: StatusSlot[];
-	events: Event[];
-};
-
-export type Target = {
-	name: string;
-	provider: string;
-	statusSlots: StatusSlot[];
-	events: Event[];
-	checks: Check[];
-};
-
-export type Provider = {
-	name: string;
-	statusSlots: StatusSlot[];
-	events: Event[];
-};
-
-export type Channel = {
-	name: string;
-	statusSlots: StatusSlot[];
-	events: Event[];
-};
-
-export type Hub = {
-	name: string;
-	providers: Provider[];
-	channels: Channel[];
-	targets: Target[];
-};

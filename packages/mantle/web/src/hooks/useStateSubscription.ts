@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { subscriptionManager } from "../subscriptions/manager";
 import type { StateSubscriptionParams } from "../subscriptions/types";
 import { useWebSocket } from "./useWebSocket";
@@ -12,25 +12,18 @@ import { useWebSocket } from "./useWebSocket";
  */
 export function useStateSubscription(params: StateSubscriptionParams): string | null {
 	const { send, status } = useWebSocket();
-	const subscriptionIdRef = useRef<string | null>(null);
-	const paramsRef = useRef<StateSubscriptionParams>(params);
-
-	// Track if params changed
-	const paramsChanged =
-		paramsRef.current.start !== params.start ||
-		paramsRef.current.end !== params.end ||
-		paramsRef.current.bucketDurationMs !== params.bucketDurationMs;
+	const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
 
 	useEffect(() => {
 		// Only create subscription when connected
 		if (status !== "connected") {
+			setSubscriptionId(null);
 			return;
 		}
 
 		// Create new subscription
 		const id = subscriptionManager.createStateSubscription(params);
-		subscriptionIdRef.current = id;
-		paramsRef.current = params;
+		setSubscriptionId(id);
 
 		// Send subscription request
 		send(
@@ -45,18 +38,17 @@ export function useStateSubscription(params: StateSubscriptionParams): string | 
 
 		// Cleanup: unsubscribe when unmounting or params change
 		return () => {
-			if (subscriptionIdRef.current) {
+			if (id) {
 				send(
 					JSON.stringify({
 						type: "unsubscribe",
-						id: subscriptionIdRef.current,
+						id,
 					}),
 				);
-				subscriptionManager.remove(subscriptionIdRef.current);
-				subscriptionIdRef.current = null;
+				subscriptionManager.remove(id);
 			}
 		};
 	}, [status, params.start, params.end, params.bucketDurationMs, send]);
 
-	return subscriptionIdRef.current;
+	return subscriptionId;
 }

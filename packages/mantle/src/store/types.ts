@@ -20,7 +20,7 @@ export type TargetOutcome =
   | { success: false; error: OutcomeError };
 
 export type CheckOutcome =
-  | { success: true; value: Record<string, unknown>; violation?: Violation }
+  | { success: true; value: number; violation?: Violation }
   | { success: false; error: OutcomeError };
 
 export interface OutcomeStore {
@@ -210,6 +210,29 @@ export interface BucketStore {
   ): Promise<BucketStatus | undefined>;
 
   getBuckets(startTime: number, endTime: number): Promise<StoredBuckets>;
+
+  close(): Promise<void>;
+}
+
+export type MetricBucket = {
+  bucketStart: number;
+  bucketEnd: number;
+  mean: number | null;
+};
+
+export interface MetricsStore {
+  /**
+   * Get aggregated metrics for a specific check in a time range.
+   * Groups raw values into buckets and computes mean per bucket.
+   */
+  getAggregatedMetrics(
+    provider: string,
+    target: string,
+    check: string,
+    startTime: number,
+    endTime: number,
+    bucketDurationMs: number
+  ): Promise<MetricBucket[]>;
 
   close(): Promise<void>;
 }

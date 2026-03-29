@@ -9,12 +9,32 @@ export type StateSubscriptionParams = {
 };
 
 /**
+ * Parameters for creating a metrics subscription.
+ */
+export type MetricsSubscriptionParams = {
+	provider: string;
+	target: string;
+	check: string;
+	start: number;
+	end: number | null;
+	bucketDurationMs: number;
+};
+
+/**
  * Metadata about an active subscription
  */
-export type SubscriptionMetadata = {
-	id: string;
-	type: "state";
-	params: StateSubscriptionParams;
-	status: "pending" | "active" | "error";
-	error?: string;
-};
+export type SubscriptionMetadata =
+	| {
+		id: string;
+		type: "state";
+		params: StateSubscriptionParams;
+		status: "pending" | "active" | "error";
+		error?: string;
+	}
+	| {
+		id: string;
+		type: "metrics";
+		params: MetricsSubscriptionParams;
+		status: "pending" | "active" | "error";
+		error?: string;
+	};

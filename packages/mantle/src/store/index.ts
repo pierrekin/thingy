@@ -2,6 +2,7 @@ export type {
   OutcomeStore,
   EventStore,
   BucketStore,
+  MetricsStore,
   OutcomeError,
   Violation,
   ProviderOutcome,
@@ -16,5 +17,6 @@ export type {
   TargetEventRecord,
   CheckEventRecord,
   StoredEvents,
+  MetricBucket,
 } from "./types.ts";
-export { SqliteOutcomeStore, SqliteEventStore, SqliteBucketStore, createSqliteStores } from "./sqlite.ts";
+export { SqliteOutcomeStore, SqliteEventStore, SqliteBucketStore, SqliteMetricsStore, createSqliteStores } from "./sqlite.ts";

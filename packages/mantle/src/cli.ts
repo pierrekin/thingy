@@ -73,8 +73,8 @@ const hub = defineCommand({
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
 		const hubConfig = getHubConfig(config);
-		const { outcomeStore, eventStore, bucketStore } = createSqliteStores("mantle.db");
-		await startHub(hubConfig, outcomeStore, eventStore, bucketStore);
+		const { outcomeStore, eventStore, bucketStore, metricsStore } = createSqliteStores("mantle.db");
+		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore);
 	}),
 });
 
@@ -103,8 +103,8 @@ const standalone = defineCommand({
 		const hubConfig = getHubConfig(config);
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
 
-		const { outcomeStore, eventStore, bucketStore } = createSqliteStores("mantle.db");
-		await startHub(hubConfig, outcomeStore, eventStore, bucketStore);
+		const { outcomeStore, eventStore, bucketStore, metricsStore } = createSqliteStores("mantle.db");
+		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore);
 
 		const { checkReporter } = await createHubReporters(id, getHubUrl(hubConfig));
 		startAgent(id, agentConfig, config.providers ?? {}, checkReporter);

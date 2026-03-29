@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { HubConfig } from "../config.ts";
-import type { OutcomeStore, EventStore, BucketStore } from "../store/types.ts";
+import type { OutcomeStore, EventStore, BucketStore, MetricsStore } from "../store/types.ts";
 import { createWebApp } from "./web.ts";
 import { createAgentApp } from "./agent.ts";
 import { createFetchHandler, createWebSocketHandler } from "./server.ts";
@@ -20,6 +20,7 @@ export async function startHub(
 	outcomeStore: OutcomeStore,
 	eventStore: EventStore,
 	bucketStore: BucketStore,
+	metricsStore: MetricsStore,
 ) {
 	const bucketPublishers = {
 		provider: new ProviderBucketPublisher(),
@@ -32,7 +33,7 @@ export async function startHub(
 		check: new CheckEventPublisher(),
 	};
 	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublishers, eventPublishers);
-	const webService = new WebService(bucketStore, eventStore, bucketPublishers, eventPublishers);
+	const webService = new WebService(bucketStore, eventStore, metricsStore, bucketPublishers, eventPublishers);
 
 	await hubService.init();
 

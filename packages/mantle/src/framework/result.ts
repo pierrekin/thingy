@@ -3,7 +3,7 @@ import type { OutcomeError } from "../store/types.ts";
 export type CheckResult =
   | {
       check: string;
-      measurement: Record<string, unknown>;
+      value: number;
     }
   | {
       check: string;
@@ -16,8 +16,8 @@ export function isCheckError(
   return "error" in result;
 }
 
-export function isCheckMeasurement(
+export function isCheckSuccess(
   result: CheckResult
-): result is { check: string; measurement: Record<string, unknown> } {
-  return "measurement" in result;
+): result is { check: string; value: number } {
+  return "value" in result;
 }

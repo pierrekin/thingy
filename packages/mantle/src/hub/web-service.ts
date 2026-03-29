@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { BucketStore, EventStore } from "../store/types.ts";
+import type { BucketStore, EventStore, MetricsStore } from "../store/types.ts";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
@@ -11,12 +11,15 @@ import type {
 import {
 	SubscriptionManager,
 	StateSubscription,
+	MetricsSubscription,
 	type ClientMessage,
 	type StateSubscriptionRequest,
+	type MetricsSubscriptionRequest,
 	type UnsubscribeRequest,
 	type ProviderBucketMessage,
 	type TargetBucketMessage,
 	type CheckBucketMessage,
+	type MetricsBucketMessage,
 	type ProviderEventMessage,
 	type TargetEventMessage,
 	type CheckEventMessage,
@@ -50,6 +53,7 @@ export class WebService {
 	constructor(
 		private bucketStore: BucketStore,
 		private eventStore: EventStore,
+		private metricsStore: MetricsStore,
 		private bucketPublishers: BucketPublishers,
 		private eventPublishers: EventPublishers,
 	) {}
@@ -69,6 +73,9 @@ export class WebService {
 		switch (msg.type) {
 			case "subscribe_state":
 				await this.handleStateSubscription(ws, msg);
+				break;
+			case "subscribe_metrics":
+				await this.handleMetricsSubscription(ws, msg);
 				break;
 			case "unsubscribe":
 				this.handleUnsubscribe(ws, msg);
@@ -108,6 +115,130 @@ export class WebService {
 
 		// Subscribe to real-time updates
 		this.subscribeToRealTimeUpdates(subscription);
+	}
+
+	/**
+	 * Handle metrics subscription requests
+	 */
+	private async handleMetricsSubscription(
+		ws: ServerWebSocket<WebSocketData>,
+		req: MetricsSubscriptionRequest,
+	): Promise<void> {
+		// Validate request
+		if (req.end !== null && req.end <= req.start) {
+			this.sendError(ws, req.id, "Invalid time range: end must be after start");
+			return;
+		}
+
+		if (req.bucketDurationMs <= 0) {
+			this.sendError(ws, req.id, "Invalid bucket duration: must be positive");
+			return;
+		}
+
+		// Create subscription
+		const subscription = new MetricsSubscription(
+			req.id,
+			ws,
+			req.provider,
+			req.target,
+			req.check,
+			req.start,
+			req.end,
+			req.bucketDurationMs,
+		);
+		this.subscriptionManager.add(subscription);
+
+		// Send acknowledgement
+		ws.send(JSON.stringify({ type: "subscription_ack", id: req.id }));
+
+		// Fetch and send metrics data
+		await this.sendMetricsData(subscription);
+	}
+
+	/**
+	 * Send metrics data for a subscription
+	 */
+	private async sendMetricsData(subscription: MetricsSubscription): Promise<void> {
+		const { provider, target, check, start, end } = subscription;
+		const endTime = end ?? Date.now();
+
+		// Query aggregated metrics from store
+		const buckets = await this.metricsStore.getAggregatedMetrics(
+			provider,
+			target,
+			check,
+			start,
+			endTime,
+			subscription.bucketDurationMs,
+		);
+
+		// Calculate bucket count to determine if we need to fill gaps
+		const expectedCount = Math.ceil((endTime - start) / subscription.bucketDurationMs);
+
+		// Fill gaps with null buckets
+		const filledBuckets = this.fillMetricsBuckets(
+			buckets,
+			provider,
+			target,
+			check,
+			start,
+			expectedCount,
+			subscription.bucketDurationMs,
+		);
+
+		// Send all buckets
+		const indexHwm = filledBuckets.length;
+		for (let i = 0; i < filledBuckets.length; i++) {
+			const bucket = filledBuckets[i];
+			const msg: MetricsBucketMessage = {
+				type: "metrics_bucket",
+				subscriptionId: subscription.id,
+				provider,
+				target,
+				check,
+				bucketStart: bucket.bucketStart,
+				bucketEnd: bucket.bucketEnd,
+				mean: bucket.mean,
+				index: i + 1,
+				indexHwm,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		}
+	}
+
+	/**
+	 * Fill gaps in metrics buckets with null values
+	 */
+	private fillMetricsBuckets(
+		stored: Array<{ bucketStart: number; bucketEnd: number; mean: number | null }>,
+		provider: string,
+		target: string,
+		check: string,
+		rangeStart: number,
+		count: number,
+		durationMs: number,
+	) {
+		const lookup = new Map<number, { bucketStart: number; bucketEnd: number; mean: number | null }>();
+
+		for (const bucket of stored) {
+			lookup.set(bucket.bucketStart, bucket);
+		}
+
+		const result: Array<{ bucketStart: number; bucketEnd: number; mean: number | null }> = [];
+
+		for (let i = 0; i < count; i++) {
+			const bucketStart = rangeStart + i * durationMs;
+			const bucketEnd = bucketStart + durationMs;
+			const existing = lookup.get(bucketStart);
+
+			if (existing) {
+				result.push(existing);
+			} else {
+				result.push({ bucketStart, bucketEnd, mean: null });
+			}
+		}
+
+		return result;
 	}
 
 	/**

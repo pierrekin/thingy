@@ -6,7 +6,7 @@ type EvaluationResult = {
 };
 
 /**
- * Evaluate a measurement against a resolved check config.
+ * Evaluate a value against a resolved check config.
  * Returns any violations found.
  *
  * Note: This is point-in-time evaluation. The `over` field is handled
@@ -14,7 +14,7 @@ type EvaluationResult = {
  */
 export function evaluate(
   checkName: string,
-  measurement: Record<string, unknown>,
+  value: number,
   config: CheckConfig,
   operators: readonly Operator[],
 ): EvaluationResult {
@@ -26,7 +26,7 @@ export function evaluate(
     const threshold = config[op as keyof CheckConfig];
     if (threshold === undefined) continue;
 
-    const violation = evaluateOperator(checkName, op, measurement, threshold);
+    const violation = evaluateOperator(checkName, op, value, threshold);
     if (violation) {
       violations.push(violation);
     }
@@ -38,50 +38,34 @@ export function evaluate(
 function evaluateOperator(
   checkName: string,
   op: Operator,
-  measurement: Record<string, unknown>,
+  actual: number,
   threshold: unknown,
 ): Violation | null {
-  // For now, assume the measurement has a single relevant field
-  // In future, we might need to specify which field to compare
-  const values = Object.entries(measurement);
-
   switch (op) {
     case "max": {
-      for (const [field, actual] of values) {
-        if (typeof actual === "number" && typeof threshold === "number") {
-          if (actual > threshold) {
-            return { code: `${checkName}:max`, rule: "max", threshold, actual };
-          }
-        }
+      if (typeof threshold === "number" && actual > threshold) {
+        return { code: `${checkName}:max`, rule: "max", threshold, actual };
       }
       return null;
     }
 
     case "min": {
-      for (const [field, actual] of values) {
-        if (typeof actual === "number" && typeof threshold === "number") {
-          if (actual < threshold) {
-            return { code: `${checkName}:min`, rule: "min", threshold, actual };
-          }
-        }
+      if (typeof threshold === "number" && actual < threshold) {
+        return { code: `${checkName}:min`, rule: "min", threshold, actual };
       }
       return null;
     }
 
     case "equals": {
-      for (const [field, actual] of values) {
-        if (actual !== threshold) {
-          return { code: `${checkName}:equals`, rule: "equals", threshold, actual };
-        }
+      if (actual !== threshold) {
+        return { code: `${checkName}:equals`, rule: "equals", threshold, actual };
       }
       return null;
     }
 
     case "not": {
-      for (const [field, actual] of values) {
-        if (actual === threshold) {
-          return { code: `${checkName}:not`, rule: "not", threshold, actual };
-        }
+      if (actual === threshold) {
+        return { code: `${checkName}:not`, rule: "not", threshold, actual };
       }
       return null;
     }

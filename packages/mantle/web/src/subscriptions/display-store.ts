@@ -9,10 +9,16 @@ import type { StateSubscriptionParams } from "./types";
  * Separates concerns: data storage vs. presentation logic.
  */
 export class DisplayStore {
+	private dataStore: SubscriptionDataStore;
+	private subscriptionParams: Map<string, StateSubscriptionParams>;
+
 	constructor(
-		private dataStore: SubscriptionDataStore,
-		private subscriptionParams: Map<string, StateSubscriptionParams>,
-	) {}
+		dataStore: SubscriptionDataStore,
+		subscriptionParams: Map<string, StateSubscriptionParams>,
+	) {
+		this.dataStore = dataStore;
+		this.subscriptionParams = subscriptionParams;
+	}
 
 	/**
 	 * Get the visible time window for a subscription.
@@ -40,10 +46,10 @@ export class DisplayStore {
 	}
 
 	/**
-	 * Filter buckets to only those in the visible window
+	 * Filter slots to only those in the visible window
 	 */
-	private filterBucketsInWindow<T extends { bucketStart: number }>(buckets: T[], window: { start: number; end: number }): T[] {
-		return buckets.filter((b) => b.bucketStart >= window.start && b.bucketStart < window.end);
+	private filterSlotsInWindow(slots: StatusSlot[], window: { start: number; end: number }): StatusSlot[] {
+		return slots.filter((s) => s.start >= window.start && s.start < window.end);
 	}
 
 	/**
@@ -97,6 +103,17 @@ export class DisplayStore {
 		const targetEventsMap = this.dataStore.getTargetEvents(subscriptionId);
 		const checkEventsMap = this.dataStore.getCheckEvents(subscriptionId);
 
+		console.log("deriveHub called", {
+			subscriptionId,
+			window,
+			providerCount: providerBucketsMap.size,
+			targetCount: targetBucketsMap.size,
+			checkCount: checkBucketsMap.size,
+			providers: Array.from(providerBucketsMap.keys()),
+			targets: Array.from(targetBucketsMap.keys()),
+			checks: Array.from(checkBucketsMap.keys()),
+		});
+
 		// Collect all unique provider names
 		const providerNames = new Set<string>();
 		for (const provider of providerBucketsMap.keys()) {
@@ -137,7 +154,7 @@ export class DisplayStore {
 
 				const bucketMap = providerBucketsMap.get(name);
 				const slots = bucketMap ? this.bucketsToSlots(bucketMap) : [];
-				const visibleSlots = this.filterBucketsInWindow(slots, window);
+				const visibleSlots = this.filterSlotsInWindow(slots, window);
 
 				return {
 					name,
@@ -163,7 +180,7 @@ export class DisplayStore {
 
 					const bucketMap = checkBucketsMap.get(checkKey);
 					const slots = bucketMap ? this.bucketsToSlots(bucketMap) : [];
-					const visibleSlots = this.filterBucketsInWindow(slots, window);
+					const visibleSlots = this.filterSlotsInWindow(slots, window);
 
 					checksForTarget.push({
 						name: checkInfo.check,
@@ -185,7 +202,7 @@ export class DisplayStore {
 
 			const bucketMap = targetBucketsMap.get(key);
 			const slots = bucketMap ? this.bucketsToSlots(bucketMap) : [];
-			const visibleSlots = this.filterBucketsInWindow(slots, window);
+			const visibleSlots = this.filterSlotsInWindow(slots, window);
 
 			const targetObj: Target = {
 				name: target,

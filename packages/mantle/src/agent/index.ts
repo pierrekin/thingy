@@ -195,7 +195,7 @@ export function startAgent(
 						// Evaluate measurement against rules
 						const checkConfig = checkConfigMap.get(result.check);
 						const { violations } = checkConfig
-							? evaluate(result.check, result.measurement, checkConfig.config, checkConfig.operators)
+							? evaluate(result.check, result.value, checkConfig.config, checkConfig.operators)
 							: { violations: [] };
 
 						const violation = violations[0];
@@ -203,7 +203,7 @@ export function startAgent(
 						if (violation) {
 							console.log(`[${resolved.name}] ${result.check}: VIOLATION ${violation.code} (${violation.actual} ${violation.rule} ${violation.threshold})`);
 						} else {
-							console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.measurement)}`);
+							console.log(`[${resolved.name}] ${result.check}: ${JSON.stringify(result.value)}`);
 						}
 
 						checkReporter.sendCheckResult(
@@ -211,7 +211,7 @@ export function startAgent(
 							resolved.name,
 							result.check,
 							time,
-							{ ok: true, measurement: result.measurement, violation },
+							{ ok: true, measurement: result.value, violation },
 						);
 					}
 				}

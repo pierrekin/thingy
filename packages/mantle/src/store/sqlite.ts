@@ -3,6 +3,7 @@ import type {
   OutcomeStore,
   EventStore,
   BucketStore,
+  MetricsStore,
   ProviderOutcome,
   TargetOutcome,
   CheckOutcome,
@@ -18,6 +19,7 @@ import type {
   OpenProviderEvent,
   OpenTargetEvent,
   OpenCheckEvent,
+  MetricBucket,
 } from "./types.ts";
 
 const SCHEMA = `
@@ -45,7 +47,7 @@ CREATE TABLE IF NOT EXISTS check_outcomes (
   check_name TEXT NOT NULL,
   time INTEGER NOT NULL,
   success INTEGER NOT NULL,
-  value TEXT,
+  value REAL,
   violation TEXT,
   error TEXT
 );
@@ -180,7 +182,7 @@ export class SqliteOutcomeStore implements OutcomeStore {
       check,
       time.getTime(),
       outcome.success ? 1 : 0,
-      outcome.success ? JSON.stringify(outcome.value) : null,
+      outcome.success ? outcome.value : null,
       outcome.success && outcome.violation ? JSON.stringify(outcome.violation) : null,
       outcome.success ? null : JSON.stringify(outcome.error)
     );
@@ -488,10 +490,57 @@ export class SqliteBucketStore implements BucketStore {
   }
 }
 
+export class SqliteMetricsStore implements MetricsStore {
+  constructor(private db: Database) {}
+
+  async getAggregatedMetrics(
+    provider: string,
+    target: string,
+    check: string,
+    startTime: number,
+    endTime: number,
+    bucketDurationMs: number
+  ): Promise<MetricBucket[]> {
+    const stmt = this.db.prepare(`
+      SELECT
+        (time / ?) * ? as bucketStart,
+        ((time / ?) * ? + ?) as bucketEnd,
+        AVG(value) as mean
+      FROM check_outcomes
+      WHERE provider = ? AND target = ? AND check_name = ?
+        AND time >= ? AND time < ?
+        AND success = 1
+        AND value IS NOT NULL
+      GROUP BY bucketStart
+      ORDER BY bucketStart ASC
+    `);
+
+    const rows = stmt.all(
+      bucketDurationMs,
+      bucketDurationMs,
+      bucketDurationMs,
+      bucketDurationMs,
+      bucketDurationMs,
+      provider,
+      target,
+      check,
+      startTime,
+      endTime
+    ) as Array<{ bucketStart: number; bucketEnd: number; mean: number | null }>;
+
+    return rows;
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
 export function createSqliteStores(path: string): {
   outcomeStore: SqliteOutcomeStore;
   eventStore: SqliteEventStore;
   bucketStore: SqliteBucketStore;
+  metricsStore: SqliteMetricsStore;
   close: () => void;
 } {
   const db = new Database(path);
@@ -500,6 +549,7 @@ export function createSqliteStores(path: string): {
     outcomeStore: new SqliteOutcomeStore(db),
     eventStore: new SqliteEventStore(db),
     bucketStore: new SqliteBucketStore(db),
+    metricsStore: new SqliteMetricsStore(db),
     close: () => db.close(),
   };
 }

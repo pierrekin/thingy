@@ -25,5 +25,5 @@ export { resolveAgentConfig, type ResolvedTarget, type ResolvedCheck } from "./r
 export {
   type CheckResult,
   isCheckError,
-  isCheckMeasurement,
+  isCheckSuccess,
 } from "./result.ts";

@@ -1,7 +1,7 @@
 import type { OutcomeError, Violation } from "./store/types.ts";
 
 export type CheckResultPayload =
-  | { ok: true; measurement: Record<string, unknown>; violation?: Violation }
+  | { ok: true; value: number; violation?: Violation }
   | { ok: false; error: OutcomeError };
 
 export type AgentMessage =

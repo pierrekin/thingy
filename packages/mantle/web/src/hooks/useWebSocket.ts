@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { dataStore } from "../subscriptions/data-store";
 import { subscriptionManager } from "../subscriptions/manager";
 
@@ -10,6 +10,7 @@ type ServerMessage =
 	| { type: "provider_bucket"; subscriptionId: string; [key: string]: unknown }
 	| { type: "target_bucket"; subscriptionId: string; [key: string]: unknown }
 	| { type: "check_bucket"; subscriptionId: string; [key: string]: unknown }
+	| { type: "metrics_bucket"; subscriptionId: string; [key: string]: unknown }
 	| { type: "provider_event"; subscriptionId: string; [key: string]: unknown }
 	| { type: "target_event"; subscriptionId: string; [key: string]: unknown }
 	| { type: "check_event"; subscriptionId: string; [key: string]: unknown };
@@ -65,6 +66,10 @@ export function useWebSocket() {
 							dataStore.addCheckBucket(msg as any);
 							break;
 
+						case "metrics_bucket":
+							dataStore.addMetricsBucket(msg as any);
+							break;
+
 						case "provider_event":
 							dataStore.addProviderEvent(msg as any);
 							break;
@@ -118,13 +123,13 @@ export function useWebSocket() {
 	/**
 	 * Send a message to the server
 	 */
-	const send = (message: string) => {
+	const send = useCallback((message: string) => {
 		if (wsRef.current?.readyState === WebSocket.OPEN) {
 			wsRef.current.send(message);
 		} else {
 			console.warn("WebSocket not connected, cannot send message");
 		}
-	};
+	}, []);
 
 	return { status, send, ws: wsRef.current };
 }

@@ -43,6 +43,19 @@ export type CheckBucketMessage = {
 	indexHwm: number;
 };
 
+export type MetricsBucketMessage = {
+	type: "metrics_bucket";
+	subscriptionId: string;
+	provider: string;
+	target: string;
+	check: string;
+	bucketStart: number;
+	bucketEnd: number;
+	mean: number | null;
+	index: number;
+	indexHwm: number;
+};
+
 // Event messages
 export type ProviderEventMessage = {
 	type: "provider_event";

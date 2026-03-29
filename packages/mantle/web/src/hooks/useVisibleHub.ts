@@ -13,16 +13,20 @@ export function useVisibleHub(subscriptionId: string | null): Hub {
 	);
 
 	useEffect(() => {
+		console.log("useVisibleHub effect", { subscriptionId });
 		if (!subscriptionId) {
 			setHub({ name: "Hub", providers: [], channels: [], targets: [] });
 			return;
 		}
 
 		// Initial load
-		setHub(displayStore.deriveHub(subscriptionId));
+		const initialHub = displayStore.deriveHub(subscriptionId);
+		console.log("Initial hub", initialHub);
+		setHub(initialHub);
 
 		// Subscribe to data changes
 		const unsubscribe = dataStore.subscribe(() => {
+			console.log("Data changed, re-deriving hub");
 			setHub(displayStore.deriveHub(subscriptionId));
 		});
 

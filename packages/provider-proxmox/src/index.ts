@@ -137,8 +137,8 @@ export class ProxmoxProviderInstance {
 
     for (const checkName of checks) {
       try {
-        const measurement = await this.runCheck(t, checkName);
-        results.push({ check: checkName, measurement });
+        const value = await this.runCheck(t, checkName);
+        results.push({ check: checkName, value });
       } catch (err) {
         if (err instanceof ProxmoxApiError) {
           // API errors are provider-level
@@ -179,7 +179,7 @@ export class ProxmoxProviderInstance {
   private async runCheck(
     target: { type: string; name: string; vmId?: number; node?: string },
     checkName: string
-  ): Promise<Record<string, unknown>> {
+  ): Promise<number> {
     switch (target.type) {
       case "vm":
         return this.runVmCheck(target.vmId!, checkName);
@@ -192,7 +192,7 @@ export class ProxmoxProviderInstance {
     }
   }
 
-  private async runVmCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
+  private async runVmCheck(vmId: number, checkName: string): Promise<number> {
     const node = await this.client.findVmNode(vmId, "qemu");
     if (!node) {
       throw new TargetNotFoundError("vm_not_found", `VM ${vmId} not found`);
@@ -202,17 +202,18 @@ export class ProxmoxProviderInstance {
 
     switch (checkName) {
       case "state":
-        return { state: status.status };
+        // Convert state to number: running=1, stopped=0, other=0.5
+        return status.status === "running" ? 1 : status.status === "stopped" ? 0 : 0.5;
       case "cpu":
-        return { usage_pct: status.cpu * 100 };
+        return status.cpu * 100;
       case "memory":
-        return { usage_pct: (status.mem / status.maxmem) * 100 };
+        return (status.mem / status.maxmem) * 100;
       default:
         throw new Error(`Unknown check for vm: ${checkName}`);
     }
   }
 
-  private async runLxcCheck(vmId: number, checkName: string): Promise<Record<string, unknown>> {
+  private async runLxcCheck(vmId: number, checkName: string): Promise<number> {
     const node = await this.client.findVmNode(vmId, "lxc");
     if (!node) {
       throw new TargetNotFoundError("lxc_not_found", `LXC ${vmId} not found`);
@@ -222,26 +223,28 @@ export class ProxmoxProviderInstance {
 
     switch (checkName) {
       case "state":
-        return { state: status.status };
+        // Convert state to number: running=1, stopped=0, other=0.5
+        return status.status === "running" ? 1 : status.status === "stopped" ? 0 : 0.5;
       case "cpu":
-        return { usage_pct: status.cpu * 100 };
+        return status.cpu * 100;
       case "memory":
-        return { usage_pct: (status.mem / status.maxmem) * 100 };
+        return (status.mem / status.maxmem) * 100;
       default:
         throw new Error(`Unknown check for lxc: ${checkName}`);
     }
   }
 
-  private async runNodeCheck(nodeName: string, checkName: string): Promise<Record<string, unknown>> {
+  private async runNodeCheck(nodeName: string, checkName: string): Promise<number> {
     const status = await this.client.getNodeStatus(nodeName);
 
     switch (checkName) {
       case "online":
-        return { online: true };
+        // Online is always true if we get here (would throw error otherwise)
+        return 1;
       case "cpu":
-        return { usage_pct: status.cpu * 100 };
+        return status.cpu * 100;
       case "memory":
-        return { usage_pct: (status.memory.used / status.memory.total) * 100 };
+        return (status.memory.used / status.memory.total) * 100;
       default:
         throw new Error(`Unknown check for node: ${checkName}`);
     }

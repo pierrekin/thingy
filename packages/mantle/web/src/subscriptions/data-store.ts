@@ -2,6 +2,7 @@ import type {
 	ProviderBucketMessage,
 	TargetBucketMessage,
 	CheckBucketMessage,
+	MetricsBucketMessage,
 	ProviderEventMessage,
 	TargetEventMessage,
 	CheckEventMessage,
@@ -14,6 +15,15 @@ type BucketData = {
 	bucketStart: number;
 	bucketEnd: number;
 	status: "green" | "red" | "grey" | null;
+};
+
+/**
+ * Raw metrics bucket data
+ */
+type MetricsBucketData = {
+	bucketStart: number;
+	bucketEnd: number;
+	mean: number | null;
 };
 
 /**
@@ -72,6 +82,9 @@ export class SubscriptionDataStore {
 	private targetBuckets = new Map<string, Map<string, Map<number, BucketData>>>();
 	private checkBuckets = new Map<string, Map<string, Map<number, BucketData>>>();
 
+	// Metrics buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
+	private metricsBuckets = new Map<string, Map<string, Map<number, MetricsBucketData>>>();
+
 	// Events organized by: subscriptionId -> eventId -> data
 	private providerEvents = new Map<string, Map<number, ProviderEvent>>();
 	private targetEvents = new Map<string, Map<number, TargetEvent>>();
@@ -104,6 +117,7 @@ export class SubscriptionDataStore {
 	 * Add a provider bucket
 	 */
 	addProviderBucket(msg: ProviderBucketMessage): void {
+		console.log("addProviderBucket", msg);
 		const subBuckets = this.providerBuckets.get(msg.subscriptionId) ?? new Map();
 		const entityBuckets = subBuckets.get(msg.provider) ?? new Map();
 
@@ -157,6 +171,27 @@ export class SubscriptionDataStore {
 
 		subBuckets.set(key, entityBuckets);
 		this.checkBuckets.set(msg.subscriptionId, subBuckets);
+
+		this.updateProgress(msg.subscriptionId, msg.index, msg.indexHwm);
+		this.notifyListeners();
+	}
+
+	/**
+	 * Add a metrics bucket
+	 */
+	addMetricsBucket(msg: MetricsBucketMessage): void {
+		const key = `${msg.provider}/${msg.target}/${msg.check}`;
+		const subBuckets = this.metricsBuckets.get(msg.subscriptionId) ?? new Map();
+		const entityBuckets = subBuckets.get(key) ?? new Map();
+
+		entityBuckets.set(msg.bucketStart, {
+			bucketStart: msg.bucketStart,
+			bucketEnd: msg.bucketEnd,
+			mean: msg.mean,
+		});
+
+		subBuckets.set(key, entityBuckets);
+		this.metricsBuckets.set(msg.subscriptionId, subBuckets);
 
 		this.updateProgress(msg.subscriptionId, msg.index, msg.indexHwm);
 		this.notifyListeners();
@@ -249,6 +284,27 @@ export class SubscriptionDataStore {
 	}
 
 	/**
+	 * Get all metrics buckets for a subscription
+	 */
+	getMetricsBuckets(subscriptionId: string): Map<string, Map<number, MetricsBucketData>> {
+		return this.metricsBuckets.get(subscriptionId) ?? new Map();
+	}
+
+	/**
+	 * Get metrics buckets for a specific check
+	 */
+	getMetricsBucketsForCheck(
+		subscriptionId: string,
+		provider: string,
+		target: string,
+		check: string
+	): Map<number, MetricsBucketData> {
+		const key = `${provider}/${target}/${check}`;
+		const subBuckets = this.metricsBuckets.get(subscriptionId);
+		return subBuckets?.get(key) ?? new Map();
+	}
+
+	/**
 	 * Get all provider events for a subscription
 	 */
 	getProviderEvents(subscriptionId: string): Map<number, ProviderEvent> {
@@ -283,6 +339,7 @@ export class SubscriptionDataStore {
 		this.providerBuckets.delete(subscriptionId);
 		this.targetBuckets.delete(subscriptionId);
 		this.checkBuckets.delete(subscriptionId);
+		this.metricsBuckets.delete(subscriptionId);
 		this.providerEvents.delete(subscriptionId);
 		this.targetEvents.delete(subscriptionId);
 		this.checkEvents.delete(subscriptionId);

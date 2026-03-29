@@ -2,11 +2,22 @@
 // CLIENT → SERVER MESSAGES
 // ============================================================================
 
-export type ClientMessage = StateSubscriptionRequest | UnsubscribeRequest;
+export type ClientMessage = StateSubscriptionRequest | MetricsSubscriptionRequest | UnsubscribeRequest;
 
 export type StateSubscriptionRequest = {
 	type: "subscribe_state";
 	id: string; // client-generated subscription ID
+	start: number; // unix timestamp ms
+	end: number | null; // null = live mode (rolling window)
+	bucketDurationMs: number; // bucket size in milliseconds
+};
+
+export type MetricsSubscriptionRequest = {
+	type: "subscribe_metrics";
+	id: string; // client-generated subscription ID
+	provider: string;
+	target: string;
+	check: string;
 	start: number; // unix timestamp ms
 	end: number | null; // null = live mode (rolling window)
 	bucketDurationMs: number; // bucket size in milliseconds
@@ -27,6 +38,7 @@ export type ServerMessage =
 	| ProviderBucketMessage
 	| TargetBucketMessage
 	| CheckBucketMessage
+	| MetricsBucketMessage
 	| ProviderEventMessage
 	| TargetEventMessage
 	| CheckEventMessage;
@@ -75,6 +87,19 @@ export type CheckBucketMessage = {
 	bucketStart: number;
 	bucketEnd: number;
 	status: "green" | "red" | "grey" | null;
+	index: number;
+	indexHwm: number;
+};
+
+export type MetricsBucketMessage = {
+	type: "metrics_bucket";
+	subscriptionId: string;
+	provider: string;
+	target: string;
+	check: string;
+	bucketStart: number;
+	bucketEnd: number;
+	mean: number | null;
 	index: number;
 	indexHwm: number;
 };

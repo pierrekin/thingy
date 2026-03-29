@@ -1,4 +1,4 @@
-import type { StateSubscriptionParams, SubscriptionMetadata } from "./types";
+import type { StateSubscriptionParams, MetricsSubscriptionParams, SubscriptionMetadata } from "./types";
 import { subscriptionParams } from "./display-store";
 
 type SubscriptionChangeListener = (subscriptions: Map<string, SubscriptionMetadata>) => void;
@@ -32,6 +32,24 @@ export class ClientSubscriptionManager {
 
 		this.subscriptions.set(id, metadata);
 		subscriptionParams.set(id, params); // Update display store params
+		this.notifyListeners();
+
+		return id;
+	}
+
+	/**
+	 * Create a new metrics subscription (pending state)
+	 */
+	createMetricsSubscription(params: MetricsSubscriptionParams): string {
+		const id = this.generateId();
+		const metadata: SubscriptionMetadata = {
+			id,
+			type: "metrics",
+			params,
+			status: "pending",
+		};
+
+		this.subscriptions.set(id, metadata);
 		this.notifyListeners();
 
 		return id;

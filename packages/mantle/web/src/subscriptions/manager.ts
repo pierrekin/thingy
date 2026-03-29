@@ -1,5 +1,4 @@
 import type { StateSubscriptionParams, MetricsSubscriptionParams, SubscriptionMetadata } from "./types";
-import { subscriptionParams } from "./display-store";
 
 type SubscriptionChangeListener = (subscriptions: Map<string, SubscriptionMetadata>) => void;
 
@@ -9,6 +8,7 @@ type SubscriptionChangeListener = (subscriptions: Map<string, SubscriptionMetada
  */
 export class ClientSubscriptionManager {
 	private subscriptions = new Map<string, SubscriptionMetadata>();
+	private subscriptionParams = new Map<string, StateSubscriptionParams>();
 	private listeners = new Set<SubscriptionChangeListener>();
 
 	/**
@@ -31,7 +31,7 @@ export class ClientSubscriptionManager {
 		};
 
 		this.subscriptions.set(id, metadata);
-		subscriptionParams.set(id, params); // Update display store params
+		this.subscriptionParams.set(id, params);
 		this.notifyListeners();
 
 		return id;
@@ -85,7 +85,7 @@ export class ClientSubscriptionManager {
 	 */
 	remove(id: string): void {
 		this.subscriptions.delete(id);
-		subscriptionParams.delete(id);
+		this.subscriptionParams.delete(id);
 		this.notifyListeners();
 	}
 
@@ -101,6 +101,13 @@ export class ClientSubscriptionManager {
 	 */
 	getAll(): Map<string, SubscriptionMetadata> {
 		return new Map(this.subscriptions);
+	}
+
+	/**
+	 * Get subscription params by ID
+	 */
+	getParams(id: string): StateSubscriptionParams | undefined {
+		return this.subscriptionParams.get(id);
 	}
 
 	/**
@@ -126,7 +133,7 @@ export class ClientSubscriptionManager {
 	 */
 	clear(): void {
 		this.subscriptions.clear();
-		subscriptionParams.clear();
+		this.subscriptionParams.clear();
 		this.notifyListeners();
 	}
 }

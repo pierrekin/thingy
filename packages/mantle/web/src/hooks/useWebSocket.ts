@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { dataStore } from "../subscriptions/data-store";
+import { useDataStore } from "../subscriptions/data-store";
 import { subscriptionManager } from "../subscriptions/manager";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
@@ -55,31 +55,31 @@ export function useWebSocket() {
 							break;
 
 						case "provider_bucket":
-							dataStore.addProviderBucket(msg as any);
+							useDataStore.getState().addProviderBucket(msg as any);
 							break;
 
 						case "target_bucket":
-							dataStore.addTargetBucket(msg as any);
+							useDataStore.getState().addTargetBucket(msg as any);
 							break;
 
 						case "check_bucket":
-							dataStore.addCheckBucket(msg as any);
+							useDataStore.getState().addCheckBucket(msg as any);
 							break;
 
 						case "metrics_bucket":
-							dataStore.addMetricsBucket(msg as any);
+							useDataStore.getState().addMetricsBucket(msg as any);
 							break;
 
 						case "provider_event":
-							dataStore.addProviderEvent(msg as any);
+							useDataStore.getState().addProviderEvent(msg as any);
 							break;
 
 						case "target_event":
-							dataStore.addTargetEvent(msg as any);
+							useDataStore.getState().addTargetEvent(msg as any);
 							break;
 
 						case "check_event":
-							dataStore.addCheckEvent(msg as any);
+							useDataStore.getState().addCheckEvent(msg as any);
 							break;
 
 						default:

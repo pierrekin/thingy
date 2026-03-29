@@ -1,37 +1,45 @@
-import { useEffect, useState } from "react";
-import { displayStore } from "../subscriptions/display-store";
-import { dataStore } from "../subscriptions/data-store";
+import { useMemo } from "react";
+import { useDataStore } from "../subscriptions/data-store";
+import { subscriptionManager } from "../subscriptions/manager";
+import { deriveHub } from "../subscriptions/derive-hub";
 import type { Hub } from "../types";
 
 /**
  * Hook to get the visible Hub data for a subscription.
- * Automatically re-renders when data changes.
+ * Uses Zustand selector to automatically re-render only when relevant data changes.
  */
 export function useVisibleHub(subscriptionId: string | null): Hub {
-	const [hub, setHub] = useState<Hub>(() =>
-		subscriptionId ? displayStore.deriveHub(subscriptionId) : { name: "Hub", providers: [], channels: [], targets: [] },
+	// Subscribe to all relevant buckets and events for this subscription
+	const providerBuckets = useDataStore((state) =>
+		subscriptionId ? state.providerBuckets.get(subscriptionId) : undefined
+	);
+	const targetBuckets = useDataStore((state) =>
+		subscriptionId ? state.targetBuckets.get(subscriptionId) : undefined
+	);
+	const checkBuckets = useDataStore((state) =>
+		subscriptionId ? state.checkBuckets.get(subscriptionId) : undefined
+	);
+	const providerEvents = useDataStore((state) =>
+		subscriptionId ? state.providerEvents.get(subscriptionId) : undefined
+	);
+	const targetEvents = useDataStore((state) =>
+		subscriptionId ? state.targetEvents.get(subscriptionId) : undefined
+	);
+	const checkEvents = useDataStore((state) =>
+		subscriptionId ? state.checkEvents.get(subscriptionId) : undefined
 	);
 
-	useEffect(() => {
-		console.log("useVisibleHub effect", { subscriptionId });
+	// Derive hub from the data - only recomputes when data changes
+	const hub = useMemo(() => {
 		if (!subscriptionId) {
-			setHub({ name: "Hub", providers: [], channels: [], targets: [] });
-			return;
+			return { name: "Hub", providers: [], channels: [], targets: [] };
 		}
-
-		// Initial load
-		const initialHub = displayStore.deriveHub(subscriptionId);
-		console.log("Initial hub", initialHub);
-		setHub(initialHub);
-
-		// Subscribe to data changes
-		const unsubscribe = dataStore.subscribe(() => {
-			console.log("Data changed, re-deriving hub");
-			setHub(displayStore.deriveHub(subscriptionId));
-		});
-
-		return unsubscribe;
-	}, [subscriptionId]);
+		const params = subscriptionManager.getParams(subscriptionId);
+		if (!params) {
+			return { name: "Hub", providers: [], channels: [], targets: [] };
+		}
+		return deriveHub(subscriptionId, params);
+	}, [subscriptionId, providerBuckets, targetBuckets, checkBuckets, providerEvents, targetEvents, checkEvents]);
 
 	return hub;
 }
@@ -43,33 +51,21 @@ export function useLoadingProgress(subscriptionId: string | null): {
 	progress: number;
 	isLoading: boolean;
 } {
-	const [state, setState] = useState(() => ({
-		progress: subscriptionId ? displayStore.getLoadingProgress(subscriptionId) : 0,
-		isLoading: subscriptionId ? displayStore.isLoading(subscriptionId) : false,
-	}));
+	// Subscribe only to progress data for this subscription
+	const progressData = useDataStore((state) =>
+		subscriptionId ? state.progress.get(subscriptionId) : undefined
+	);
 
-	useEffect(() => {
-		if (!subscriptionId) {
-			setState({ progress: 0, isLoading: false });
-			return;
-		}
+	// Calculate progress percentage
+	const progress = useMemo(() => {
+		if (!progressData || progressData.indexHwm === 0) return 0;
+		return Math.round((progressData.index / progressData.indexHwm) * 100);
+	}, [progressData]);
 
-		// Initial state
-		setState({
-			progress: displayStore.getLoadingProgress(subscriptionId),
-			isLoading: displayStore.isLoading(subscriptionId),
-		});
+	const isLoading = useMemo(() => {
+		if (!progressData) return false;
+		return progressData.index < progressData.indexHwm;
+	}, [progressData]);
 
-		// Subscribe to changes
-		const unsubscribe = dataStore.subscribe(() => {
-			setState({
-				progress: displayStore.getLoadingProgress(subscriptionId),
-				isLoading: displayStore.isLoading(subscriptionId),
-			});
-		});
-
-		return unsubscribe;
-	}, [subscriptionId]);
-
-	return state;
+	return { progress, isLoading };
 }

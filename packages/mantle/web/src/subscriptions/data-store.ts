@@ -1,3 +1,4 @@
+import { create } from "zustand";
 import type {
 	ProviderBucketMessage,
 	TargetBucketMessage,
@@ -67,328 +68,339 @@ type SubscriptionProgress = {
 	indexHwm: number;
 };
 
-type ChangeListener = () => void;
+/**
+ * The Zustand store state
+ */
+interface DataStoreState {
+	// Buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
+	providerBuckets: Map<string, Map<string, Map<number, BucketData>>>;
+	targetBuckets: Map<string, Map<string, Map<number, BucketData>>>;
+	checkBuckets: Map<string, Map<string, Map<number, BucketData>>>;
+
+	// Metrics buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
+	metricsBuckets: Map<string, Map<string, Map<number, MetricsBucketData>>>;
+
+	// Events organized by: subscriptionId -> eventId -> data
+	providerEvents: Map<string, Map<number, ProviderEvent>>;
+	targetEvents: Map<string, Map<number, TargetEvent>>;
+	checkEvents: Map<string, Map<number, CheckEvent>>;
+
+	// Progress tracking per subscription
+	progress: Map<string, SubscriptionProgress>;
+
+	// Actions
+	addProviderBucket: (msg: ProviderBucketMessage) => void;
+	addTargetBucket: (msg: TargetBucketMessage) => void;
+	addCheckBucket: (msg: CheckBucketMessage) => void;
+	addMetricsBucket: (msg: MetricsBucketMessage) => void;
+	addProviderEvent: (msg: ProviderEventMessage) => void;
+	addTargetEvent: (msg: TargetEventMessage) => void;
+	addCheckEvent: (msg: CheckEventMessage) => void;
+	clearSubscription: (subscriptionId: string) => void;
+	gcBuckets: (subscriptionId: string, keepCount: number) => void;
+}
 
 /**
- * SubscriptionDataStore manages raw data received from the backend.
+ * SubscriptionDataStore manages raw data received from the backend using Zustand.
  * This is Layer 1: complete dataset storage, not filtered for display.
  *
  * Data is organized by subscription ID, allowing multiple subscriptions
  * (e.g., different time ranges) to coexist without conflict.
  */
-export class SubscriptionDataStore {
-	// Buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
-	private providerBuckets = new Map<string, Map<string, Map<number, BucketData>>>();
-	private targetBuckets = new Map<string, Map<string, Map<number, BucketData>>>();
-	private checkBuckets = new Map<string, Map<string, Map<number, BucketData>>>();
+export const useDataStore = create<DataStoreState>((set, get) => ({
+	providerBuckets: new Map(),
+	targetBuckets: new Map(),
+	checkBuckets: new Map(),
+	metricsBuckets: new Map(),
+	providerEvents: new Map(),
+	targetEvents: new Map(),
+	checkEvents: new Map(),
+	progress: new Map(),
 
-	// Metrics buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
-	private metricsBuckets = new Map<string, Map<string, Map<number, MetricsBucketData>>>();
-
-	// Events organized by: subscriptionId -> eventId -> data
-	private providerEvents = new Map<string, Map<number, ProviderEvent>>();
-	private targetEvents = new Map<string, Map<number, TargetEvent>>();
-	private checkEvents = new Map<string, Map<number, CheckEvent>>();
-
-	// Progress tracking per subscription
-	private progress = new Map<string, SubscriptionProgress>();
-
-	// Change listeners for reactivity
-	private listeners = new Set<ChangeListener>();
-
-	/**
-	 * Subscribe to data changes
-	 */
-	subscribe(listener: ChangeListener): () => void {
-		this.listeners.add(listener);
-		return () => this.listeners.delete(listener);
-	}
-
-	/**
-	 * Notify all listeners of a change
-	 */
-	private notifyListeners(): void {
-		for (const listener of this.listeners) {
-			listener();
-		}
-	}
-
-	/**
-	 * Add a provider bucket
-	 */
-	addProviderBucket(msg: ProviderBucketMessage): void {
+	addProviderBucket: (msg: ProviderBucketMessage) => {
 		console.log("addProviderBucket", msg);
-		const subBuckets = this.providerBuckets.get(msg.subscriptionId) ?? new Map();
-		const entityBuckets = subBuckets.get(msg.provider) ?? new Map();
+		set((state) => {
+			const providerBuckets = new Map(state.providerBuckets);
+			const subBuckets = new Map(providerBuckets.get(msg.subscriptionId) ?? new Map());
+			const entityBuckets = new Map(subBuckets.get(msg.provider) ?? new Map());
 
-		entityBuckets.set(msg.bucketStart, {
-			bucketStart: msg.bucketStart,
-			bucketEnd: msg.bucketEnd,
-			status: msg.status,
+			entityBuckets.set(msg.bucketStart, {
+				bucketStart: msg.bucketStart,
+				bucketEnd: msg.bucketEnd,
+				status: msg.status,
+			});
+
+			subBuckets.set(msg.provider, entityBuckets);
+			providerBuckets.set(msg.subscriptionId, subBuckets);
+
+			// Update progress
+			const progress = new Map(state.progress);
+			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
+			progress.set(msg.subscriptionId, {
+				index: Math.max(current.index, msg.index),
+				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
+			});
+
+			return { providerBuckets, progress };
 		});
+	},
 
-		subBuckets.set(msg.provider, entityBuckets);
-		this.providerBuckets.set(msg.subscriptionId, subBuckets);
+	addTargetBucket: (msg: TargetBucketMessage) => {
+		set((state) => {
+			const key = `${msg.provider}/${msg.target}`;
+			const targetBuckets = new Map(state.targetBuckets);
+			const subBuckets = new Map(targetBuckets.get(msg.subscriptionId) ?? new Map());
+			const entityBuckets = new Map(subBuckets.get(key) ?? new Map());
 
-		this.updateProgress(msg.subscriptionId, msg.index, msg.indexHwm);
-		this.notifyListeners();
-	}
+			entityBuckets.set(msg.bucketStart, {
+				bucketStart: msg.bucketStart,
+				bucketEnd: msg.bucketEnd,
+				status: msg.status,
+			});
 
-	/**
-	 * Add a target bucket
-	 */
-	addTargetBucket(msg: TargetBucketMessage): void {
-		const key = `${msg.provider}/${msg.target}`;
-		const subBuckets = this.targetBuckets.get(msg.subscriptionId) ?? new Map();
-		const entityBuckets = subBuckets.get(key) ?? new Map();
+			subBuckets.set(key, entityBuckets);
+			targetBuckets.set(msg.subscriptionId, subBuckets);
 
-		entityBuckets.set(msg.bucketStart, {
-			bucketStart: msg.bucketStart,
-			bucketEnd: msg.bucketEnd,
-			status: msg.status,
+			// Update progress
+			const progress = new Map(state.progress);
+			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
+			progress.set(msg.subscriptionId, {
+				index: Math.max(current.index, msg.index),
+				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
+			});
+
+			return { targetBuckets, progress };
 		});
+	},
 
-		subBuckets.set(key, entityBuckets);
-		this.targetBuckets.set(msg.subscriptionId, subBuckets);
+	addCheckBucket: (msg: CheckBucketMessage) => {
+		set((state) => {
+			const key = `${msg.provider}/${msg.target}/${msg.check}`;
+			const checkBuckets = new Map(state.checkBuckets);
+			const subBuckets = new Map(checkBuckets.get(msg.subscriptionId) ?? new Map());
+			const entityBuckets = new Map(subBuckets.get(key) ?? new Map());
 
-		this.updateProgress(msg.subscriptionId, msg.index, msg.indexHwm);
-		this.notifyListeners();
-	}
+			entityBuckets.set(msg.bucketStart, {
+				bucketStart: msg.bucketStart,
+				bucketEnd: msg.bucketEnd,
+				status: msg.status,
+			});
 
-	/**
-	 * Add a check bucket
-	 */
-	addCheckBucket(msg: CheckBucketMessage): void {
-		const key = `${msg.provider}/${msg.target}/${msg.check}`;
-		const subBuckets = this.checkBuckets.get(msg.subscriptionId) ?? new Map();
-		const entityBuckets = subBuckets.get(key) ?? new Map();
+			subBuckets.set(key, entityBuckets);
+			checkBuckets.set(msg.subscriptionId, subBuckets);
 
-		entityBuckets.set(msg.bucketStart, {
-			bucketStart: msg.bucketStart,
-			bucketEnd: msg.bucketEnd,
-			status: msg.status,
+			// Update progress
+			const progress = new Map(state.progress);
+			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
+			progress.set(msg.subscriptionId, {
+				index: Math.max(current.index, msg.index),
+				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
+			});
+
+			return { checkBuckets, progress };
 		});
+	},
 
-		subBuckets.set(key, entityBuckets);
-		this.checkBuckets.set(msg.subscriptionId, subBuckets);
+	addMetricsBucket: (msg: MetricsBucketMessage) => {
+		set((state) => {
+			const key = `${msg.provider}/${msg.target}/${msg.check}`;
+			const metricsBuckets = new Map(state.metricsBuckets);
+			const subBuckets = new Map(metricsBuckets.get(msg.subscriptionId) ?? new Map());
+			const entityBuckets = new Map(subBuckets.get(key) ?? new Map());
 
-		this.updateProgress(msg.subscriptionId, msg.index, msg.indexHwm);
-		this.notifyListeners();
-	}
+			entityBuckets.set(msg.bucketStart, {
+				bucketStart: msg.bucketStart,
+				bucketEnd: msg.bucketEnd,
+				mean: msg.mean,
+			});
 
-	/**
-	 * Add a metrics bucket
-	 */
-	addMetricsBucket(msg: MetricsBucketMessage): void {
-		const key = `${msg.provider}/${msg.target}/${msg.check}`;
-		const subBuckets = this.metricsBuckets.get(msg.subscriptionId) ?? new Map();
-		const entityBuckets = subBuckets.get(key) ?? new Map();
+			subBuckets.set(key, entityBuckets);
+			metricsBuckets.set(msg.subscriptionId, subBuckets);
 
-		entityBuckets.set(msg.bucketStart, {
-			bucketStart: msg.bucketStart,
-			bucketEnd: msg.bucketEnd,
-			mean: msg.mean,
+			// Update progress
+			const progress = new Map(state.progress);
+			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
+			progress.set(msg.subscriptionId, {
+				index: Math.max(current.index, msg.index),
+				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
+			});
+
+			return { metricsBuckets, progress };
 		});
+	},
 
-		subBuckets.set(key, entityBuckets);
-		this.metricsBuckets.set(msg.subscriptionId, subBuckets);
-
-		this.updateProgress(msg.subscriptionId, msg.index, msg.indexHwm);
-		this.notifyListeners();
-	}
-
-	/**
-	 * Add a provider event
-	 */
-	addProviderEvent(msg: ProviderEventMessage): void {
-		const subEvents = this.providerEvents.get(msg.subscriptionId) ?? new Map();
-		subEvents.set(msg.id, {
-			id: msg.id,
-			provider: msg.provider,
-			code: msg.code,
-			startTime: msg.startTime,
-			endTime: msg.endTime,
-			message: msg.message,
+	addProviderEvent: (msg: ProviderEventMessage) => {
+		set((state) => {
+			const providerEvents = new Map(state.providerEvents);
+			const subEvents = new Map(providerEvents.get(msg.subscriptionId) ?? new Map());
+			subEvents.set(msg.id, {
+				id: msg.id,
+				provider: msg.provider,
+				code: msg.code,
+				startTime: msg.startTime,
+				endTime: msg.endTime,
+				message: msg.message,
+			});
+			providerEvents.set(msg.subscriptionId, subEvents);
+			return { providerEvents };
 		});
-		this.providerEvents.set(msg.subscriptionId, subEvents);
-		this.notifyListeners();
-	}
+	},
 
-	/**
-	 * Add a target event
-	 */
-	addTargetEvent(msg: TargetEventMessage): void {
-		const subEvents = this.targetEvents.get(msg.subscriptionId) ?? new Map();
-		subEvents.set(msg.id, {
-			id: msg.id,
-			provider: msg.provider,
-			target: msg.target,
-			code: msg.code,
-			startTime: msg.startTime,
-			endTime: msg.endTime,
-			message: msg.message,
+	addTargetEvent: (msg: TargetEventMessage) => {
+		set((state) => {
+			const targetEvents = new Map(state.targetEvents);
+			const subEvents = new Map(targetEvents.get(msg.subscriptionId) ?? new Map());
+			subEvents.set(msg.id, {
+				id: msg.id,
+				provider: msg.provider,
+				target: msg.target,
+				code: msg.code,
+				startTime: msg.startTime,
+				endTime: msg.endTime,
+				message: msg.message,
+			});
+			targetEvents.set(msg.subscriptionId, subEvents);
+			return { targetEvents };
 		});
-		this.targetEvents.set(msg.subscriptionId, subEvents);
-		this.notifyListeners();
-	}
+	},
 
-	/**
-	 * Add a check event
-	 */
-	addCheckEvent(msg: CheckEventMessage): void {
-		const subEvents = this.checkEvents.get(msg.subscriptionId) ?? new Map();
-		subEvents.set(msg.id, {
-			id: msg.id,
-			provider: msg.provider,
-			target: msg.target,
-			check: msg.check,
-			code: msg.code,
-			startTime: msg.startTime,
-			endTime: msg.endTime,
-			message: msg.message,
+	addCheckEvent: (msg: CheckEventMessage) => {
+		set((state) => {
+			const checkEvents = new Map(state.checkEvents);
+			const subEvents = new Map(checkEvents.get(msg.subscriptionId) ?? new Map());
+			subEvents.set(msg.id, {
+				id: msg.id,
+				provider: msg.provider,
+				target: msg.target,
+				check: msg.check,
+				code: msg.code,
+				startTime: msg.startTime,
+				endTime: msg.endTime,
+				message: msg.message,
+			});
+			checkEvents.set(msg.subscriptionId, subEvents);
+			return { checkEvents };
 		});
-		this.checkEvents.set(msg.subscriptionId, subEvents);
-		this.notifyListeners();
-	}
+	},
 
-	/**
-	 * Update progress tracking
-	 */
-	private updateProgress(subscriptionId: string, index: number, indexHwm: number): void {
-		const current = this.progress.get(subscriptionId) ?? { index: 0, indexHwm: 0 };
-		this.progress.set(subscriptionId, {
-			index: Math.max(current.index, index),
-			indexHwm: Math.max(current.indexHwm, indexHwm),
+	clearSubscription: (subscriptionId: string) => {
+		set((state) => {
+			const providerBuckets = new Map(state.providerBuckets);
+			const targetBuckets = new Map(state.targetBuckets);
+			const checkBuckets = new Map(state.checkBuckets);
+			const metricsBuckets = new Map(state.metricsBuckets);
+			const providerEvents = new Map(state.providerEvents);
+			const targetEvents = new Map(state.targetEvents);
+			const checkEvents = new Map(state.checkEvents);
+			const progress = new Map(state.progress);
+
+			providerBuckets.delete(subscriptionId);
+			targetBuckets.delete(subscriptionId);
+			checkBuckets.delete(subscriptionId);
+			metricsBuckets.delete(subscriptionId);
+			providerEvents.delete(subscriptionId);
+			targetEvents.delete(subscriptionId);
+			checkEvents.delete(subscriptionId);
+			progress.delete(subscriptionId);
+
+			return {
+				providerBuckets,
+				targetBuckets,
+				checkBuckets,
+				metricsBuckets,
+				providerEvents,
+				targetEvents,
+				checkEvents,
+				progress,
+			};
 		});
-	}
+	},
 
-	/**
-	 * Get all provider buckets for a subscription
-	 */
-	getProviderBuckets(subscriptionId: string): Map<string, Map<number, BucketData>> {
-		return this.providerBuckets.get(subscriptionId) ?? new Map();
-	}
+	gcBuckets: (subscriptionId: string, keepCount: number) => {
+		set((state) => {
+			const providerBuckets = new Map(state.providerBuckets);
+			const targetBuckets = new Map(state.targetBuckets);
+			const checkBuckets = new Map(state.checkBuckets);
 
-	/**
-	 * Get all target buckets for a subscription
-	 */
-	getTargetBuckets(subscriptionId: string): Map<string, Map<number, BucketData>> {
-		return this.targetBuckets.get(subscriptionId) ?? new Map();
-	}
-
-	/**
-	 * Get all check buckets for a subscription
-	 */
-	getCheckBuckets(subscriptionId: string): Map<string, Map<number, BucketData>> {
-		return this.checkBuckets.get(subscriptionId) ?? new Map();
-	}
-
-	/**
-	 * Get all metrics buckets for a subscription
-	 */
-	getMetricsBuckets(subscriptionId: string): Map<string, Map<number, MetricsBucketData>> {
-		return this.metricsBuckets.get(subscriptionId) ?? new Map();
-	}
-
-	/**
-	 * Get metrics buckets for a specific check
-	 */
-	getMetricsBucketsForCheck(
-		subscriptionId: string,
-		provider: string,
-		target: string,
-		check: string
-	): Map<number, MetricsBucketData> {
-		const key = `${provider}/${target}/${check}`;
-		const subBuckets = this.metricsBuckets.get(subscriptionId);
-		return subBuckets?.get(key) ?? new Map();
-	}
-
-	/**
-	 * Get all provider events for a subscription
-	 */
-	getProviderEvents(subscriptionId: string): Map<number, ProviderEvent> {
-		return this.providerEvents.get(subscriptionId) ?? new Map();
-	}
-
-	/**
-	 * Get all target events for a subscription
-	 */
-	getTargetEvents(subscriptionId: string): Map<number, TargetEvent> {
-		return this.targetEvents.get(subscriptionId) ?? new Map();
-	}
-
-	/**
-	 * Get all check events for a subscription
-	 */
-	getCheckEvents(subscriptionId: string): Map<number, CheckEvent> {
-		return this.checkEvents.get(subscriptionId) ?? new Map();
-	}
-
-	/**
-	 * Get progress for a subscription
-	 */
-	getProgress(subscriptionId: string): SubscriptionProgress {
-		return this.progress.get(subscriptionId) ?? { index: 0, indexHwm: 0 };
-	}
-
-	/**
-	 * Clear all data for a subscription (e.g., when unsubscribing)
-	 */
-	clearSubscription(subscriptionId: string): void {
-		this.providerBuckets.delete(subscriptionId);
-		this.targetBuckets.delete(subscriptionId);
-		this.checkBuckets.delete(subscriptionId);
-		this.metricsBuckets.delete(subscriptionId);
-		this.providerEvents.delete(subscriptionId);
-		this.targetEvents.delete(subscriptionId);
-		this.checkEvents.delete(subscriptionId);
-		this.progress.delete(subscriptionId);
-		this.notifyListeners();
-	}
-
-	/**
-	 * Garbage collect old buckets for a subscription to keep memory bounded.
-	 * Keeps the most recent N buckets per entity.
-	 */
-	gcBuckets(subscriptionId: string, keepCount: number): void {
-		// GC provider buckets
-		const providerBuckets = this.providerBuckets.get(subscriptionId);
-		if (providerBuckets) {
-			for (const [provider, buckets] of providerBuckets) {
-				if (buckets.size > keepCount * 2) {
-					const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
-					const toKeep = sorted.slice(-keepCount);
-					providerBuckets.set(provider, new Map(toKeep));
+			// GC provider buckets
+			const subProviderBuckets = providerBuckets.get(subscriptionId);
+			if (subProviderBuckets) {
+				const newSubProviderBuckets = new Map(subProviderBuckets);
+				for (const [provider, buckets] of newSubProviderBuckets) {
+					if (buckets.size > keepCount * 2) {
+						const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+						const toKeep = sorted.slice(-keepCount);
+						newSubProviderBuckets.set(provider, new Map(toKeep));
+					}
 				}
+				providerBuckets.set(subscriptionId, newSubProviderBuckets);
 			}
-		}
 
-		// GC target buckets
-		const targetBuckets = this.targetBuckets.get(subscriptionId);
-		if (targetBuckets) {
-			for (const [key, buckets] of targetBuckets) {
-				if (buckets.size > keepCount * 2) {
-					const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
-					const toKeep = sorted.slice(-keepCount);
-					targetBuckets.set(key, new Map(toKeep));
+			// GC target buckets
+			const subTargetBuckets = targetBuckets.get(subscriptionId);
+			if (subTargetBuckets) {
+				const newSubTargetBuckets = new Map(subTargetBuckets);
+				for (const [key, buckets] of newSubTargetBuckets) {
+					if (buckets.size > keepCount * 2) {
+						const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+						const toKeep = sorted.slice(-keepCount);
+						newSubTargetBuckets.set(key, new Map(toKeep));
+					}
 				}
+				targetBuckets.set(subscriptionId, newSubTargetBuckets);
 			}
-		}
 
-		// GC check buckets
-		const checkBuckets = this.checkBuckets.get(subscriptionId);
-		if (checkBuckets) {
-			for (const [key, buckets] of checkBuckets) {
-				if (buckets.size > keepCount * 2) {
-					const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
-					const toKeep = sorted.slice(-keepCount);
-					checkBuckets.set(key, new Map(toKeep));
+			// GC check buckets
+			const subCheckBuckets = checkBuckets.get(subscriptionId);
+			if (subCheckBuckets) {
+				const newSubCheckBuckets = new Map(subCheckBuckets);
+				for (const [key, buckets] of newSubCheckBuckets) {
+					if (buckets.size > keepCount * 2) {
+						const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+						const toKeep = sorted.slice(-keepCount);
+						newSubCheckBuckets.set(key, new Map(toKeep));
+					}
 				}
+				checkBuckets.set(subscriptionId, newSubCheckBuckets);
 			}
-		}
-	}
-}
 
-// Global singleton instance
-export const dataStore = new SubscriptionDataStore();
+			return { providerBuckets, targetBuckets, checkBuckets };
+		});
+	},
+}));
+
+// Export getter functions for backward compatibility if needed
+export const getProviderBuckets = (subscriptionId: string) =>
+	useDataStore.getState().providerBuckets.get(subscriptionId) ?? new Map();
+
+export const getTargetBuckets = (subscriptionId: string) =>
+	useDataStore.getState().targetBuckets.get(subscriptionId) ?? new Map();
+
+export const getCheckBuckets = (subscriptionId: string) =>
+	useDataStore.getState().checkBuckets.get(subscriptionId) ?? new Map();
+
+export const getMetricsBuckets = (subscriptionId: string) =>
+	useDataStore.getState().metricsBuckets.get(subscriptionId) ?? new Map();
+
+export const getMetricsBucketsForCheck = (
+	subscriptionId: string,
+	provider: string,
+	target: string,
+	check: string
+) => {
+	const key = `${provider}/${target}/${check}`;
+	const subBuckets = useDataStore.getState().metricsBuckets.get(subscriptionId);
+	return subBuckets?.get(key) ?? new Map();
+};
+
+export const getProviderEvents = (subscriptionId: string) =>
+	useDataStore.getState().providerEvents.get(subscriptionId) ?? new Map();
+
+export const getTargetEvents = (subscriptionId: string) =>
+	useDataStore.getState().targetEvents.get(subscriptionId) ?? new Map();
+
+export const getCheckEvents = (subscriptionId: string) =>
+	useDataStore.getState().checkEvents.get(subscriptionId) ?? new Map();
+
+export const getProgress = (subscriptionId: string) =>
+	useDataStore.getState().progress.get(subscriptionId) ?? { index: 0, indexHwm: 0 };

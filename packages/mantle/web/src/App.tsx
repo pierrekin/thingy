@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useWebSocket } from "./hooks/useWebSocket";
+import { WebSocketProvider, useWebSocketContext } from "./context/WebSocketContext";
 import { useStateSubscription } from "./hooks/useStateSubscription";
 import { useVisibleHub, useLoadingProgress } from "./hooks/useVisibleHub";
 import { MainPage } from "./pages/MainPage";
@@ -22,9 +22,9 @@ function roundDown(timestamp: number, bucketDurationMs: number): number {
 	return Math.floor(timestamp / bucketDurationMs) * bucketDurationMs;
 }
 
-export default function App() {
+function AppContent() {
 	const [page, setPage] = useState<Page>("main");
-	const { status } = useWebSocket();
+	const { status } = useWebSocketContext();
 
 	// Calculate display window (dashboard is source of truth)
 	const subscriptionParams = useMemo(() => {
@@ -67,5 +67,13 @@ export default function App() {
 				</div>
 			)}
 		</>
+	);
+}
+
+export default function App() {
+	return (
+		<WebSocketProvider>
+			<AppContent />
+		</WebSocketProvider>
 	);
 }

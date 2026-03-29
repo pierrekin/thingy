@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from "react";
-import { dataStore } from "../subscriptions/data-store";
+import { useMemo } from "react";
+import { useDataStore } from "../subscriptions/data-store";
 
 export type MetricsDataPoint = {
 	bucketStart: number;
@@ -9,7 +9,7 @@ export type MetricsDataPoint = {
 
 /**
  * Hook to retrieve metrics data for a subscription.
- * Automatically re-renders when data updates.
+ * Uses Zustand selector to automatically re-render when data updates.
  */
 export function useMetricsData(
 	subscriptionId: string,
@@ -17,19 +17,19 @@ export function useMetricsData(
 	target: string,
 	check: string
 ): MetricsDataPoint[] {
-	const data = useSyncExternalStore(
-		(callback) => dataStore.subscribe(callback),
-		() => {
-			const buckets = dataStore.getMetricsBucketsForCheck(
-				subscriptionId,
-				provider,
-				target,
-				check
-			);
-			// Convert map to sorted array
-			return Array.from(buckets.values()).sort((a, b) => a.bucketStart - b.bucketStart);
-		}
-	);
+	// Subscribe to the specific metrics bucket Map for this check
+	const metricsBuckets = useDataStore((state) => {
+		if (!subscriptionId) return undefined;
+		const key = `${provider}/${target}/${check}`;
+		const subBuckets = state.metricsBuckets.get(subscriptionId);
+		return subBuckets?.get(key);
+	});
+
+	// Convert Map to sorted array - memoized so only recalculates when Map changes
+	const data = useMemo(() => {
+		if (!metricsBuckets) return [];
+		return Array.from(metricsBuckets.values()).sort((a, b) => a.bucketStart - b.bucketStart);
+	}, [metricsBuckets]);
 
 	return data;
 }
@@ -42,14 +42,13 @@ export function useMetricsProgress(subscriptionId: string): {
 	total: number;
 	isComplete: boolean;
 } {
-	const progress = useSyncExternalStore(
-		(callback) => dataStore.subscribe(callback),
-		() => dataStore.getProgress(subscriptionId)
+	const progressData = useDataStore((state) =>
+		state.progress.get(subscriptionId)
 	);
 
 	return {
-		loaded: progress.index,
-		total: progress.indexHwm,
-		isComplete: progress.index >= progress.indexHwm && progress.indexHwm > 0,
+		loaded: progressData?.index ?? 0,
+		total: progressData?.indexHwm ?? 0,
+		isComplete: (progressData?.index ?? 0) >= (progressData?.indexHwm ?? 0) && (progressData?.indexHwm ?? 0) > 0,
 	};
 }

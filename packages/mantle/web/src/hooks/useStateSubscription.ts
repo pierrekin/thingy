@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { subscriptionManager } from "../subscriptions/manager";
 import type { StateSubscriptionParams } from "../subscriptions/types";
-import { useWebSocket } from "./useWebSocket";
+import { useWebSocketContext } from "../context/WebSocketContext";
 
 /**
  * Hook to create and manage a state subscription.
@@ -11,7 +11,7 @@ import { useWebSocket } from "./useWebSocket";
  * If params change, the old subscription is torn down and a new one is created.
  */
 export function useStateSubscription(params: StateSubscriptionParams): string | null {
-	const { send, status } = useWebSocket();
+	const { send, status } = useWebSocketContext();
 	const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
 
 	useEffect(() => {

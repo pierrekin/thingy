@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { Target } from "../types";
 import { EventTable } from "./EventTable";
 import { StatusBar } from "./StatusBar";
+import { CheckRow } from "./CheckRow";
+import { useWebSocketContext } from "../context/WebSocketContext";
 
 type Props = {
 	target: Target;
@@ -9,6 +11,7 @@ type Props = {
 
 export function TargetSection({ target }: Props) {
 	const [isExpanded, setIsExpanded] = useState(false);
+	const { send, status } = useWebSocketContext();
 
 	const hasTargetEvents = target.events.length > 0;
 
@@ -36,24 +39,17 @@ export function TargetSection({ target }: Props) {
 						</div>
 					)}
 
-					{/* Checks */}
-					{target.checks.map((check) => {
-						const hasEvents = check.events.length > 0;
-
-						return (
-							<div key={check.name} className="bg-gray-100">
-								<div className="px-4 py-2">
-									<span className="text-sm text-gray-600">{check.name}</span>
-								</div>
-								<StatusBar slots={check.statusSlots} />
-								{hasEvents && (
-									<div className="px-4 pb-2">
-										<EventTable events={check.events} />
-									</div>
-								)}
-							</div>
-						);
-					})}
+					{/* Checks with metrics */}
+					{target.checks.map((check) => (
+						<CheckRow
+							key={check.name}
+							provider={target.provider}
+							target={target.name}
+							check={check}
+							send={send}
+							connectionStatus={status}
+						/>
+					))}
 				</>
 			)}
 		</div>

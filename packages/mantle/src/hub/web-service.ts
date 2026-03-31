@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { BucketStore, EventStore, MetricsStore } from "../store/types.ts";
+import type { BucketStore, EventStore, MetricsStore, OutcomeStore } from "../store/types.ts";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
@@ -7,14 +7,17 @@ import type {
 	ProviderEventPublisher,
 	TargetEventPublisher,
 	CheckEventPublisher,
+	OutcomePublisher,
 } from "./pubsub.ts";
 import {
 	SubscriptionManager,
 	StateSubscription,
 	MetricsSubscription,
+	EventDetailSubscription,
 	type ClientMessage,
 	type StateSubscriptionRequest,
 	type MetricsSubscriptionRequest,
+	type EventSubscriptionRequest,
 	type UnsubscribeRequest,
 	type ProviderBucketMessage,
 	type TargetBucketMessage,
@@ -23,6 +26,8 @@ import {
 	type ProviderEventMessage,
 	type TargetEventMessage,
 	type CheckEventMessage,
+	type EventInfoMessage,
+	type EventOutcomeMessage,
 } from "./subscriptions/index.ts";
 import { DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
@@ -54,8 +59,10 @@ export class WebService {
 		private bucketStore: BucketStore,
 		private eventStore: EventStore,
 		private metricsStore: MetricsStore,
+		private outcomeStore: OutcomeStore,
 		private bucketPublishers: BucketPublishers,
 		private eventPublishers: EventPublishers,
+		private outcomePublisher: OutcomePublisher,
 	) {}
 
 	/**
@@ -76,6 +83,9 @@ export class WebService {
 				break;
 			case "subscribe_metrics":
 				await this.handleMetricsSubscription(ws, msg);
+				break;
+			case "subscribe_event":
+				await this.handleEventSubscription(ws, msg);
 				break;
 			case "unsubscribe":
 				this.handleUnsubscribe(ws, msg);
@@ -436,6 +446,86 @@ export class WebService {
 			subscription.ws.send(JSON.stringify(msg));
 		});
 		subscription.addUnsubscriber(unsubCheckEvent);
+	}
+
+	/**
+	 * Handle event detail subscription requests
+	 */
+	private async handleEventSubscription(
+		ws: ServerWebSocket<WebSocketData>,
+		req: EventSubscriptionRequest,
+	): Promise<void> {
+		const subscription = new EventDetailSubscription(req.id, ws, req.eventId, req.eventLevel);
+		this.subscriptionManager.add(subscription);
+
+		ws.send(JSON.stringify({ type: "subscription_ack", id: req.id }));
+
+		// Send event info
+		const events = await this.eventStore.getEventsInRange(0, Date.now() + 86400000);
+		const allEvents = [...events.providers, ...events.targets, ...events.checks];
+		const event = allEvents.find((e) => e.id === req.eventId);
+
+		if (event) {
+			const msg: EventInfoMessage = {
+				type: "event_info",
+				subscriptionId: subscription.id,
+				title: event.title,
+				code: event.code,
+				startTime: event.startTime,
+				endTime: event.endTime,
+			};
+			ws.send(JSON.stringify(msg));
+		}
+
+		// Send historical outcomes
+		const outcomes = await this.outcomeStore.getOutcomesForEvent(req.eventId, req.eventLevel);
+		for (const outcome of outcomes) {
+			const msg: EventOutcomeMessage = {
+				type: "event_outcome",
+				subscriptionId: subscription.id,
+				id: outcome.id,
+				time: outcome.time,
+				error: outcome.error,
+				violation: outcome.violation,
+			};
+			ws.send(JSON.stringify(msg));
+		}
+
+		// Subscribe to real-time event updates (for endTime changes)
+		const eventPublisher = req.eventLevel === "provider"
+			? this.eventPublishers.provider
+			: req.eventLevel === "target"
+				? this.eventPublishers.target
+				: this.eventPublishers.check;
+
+		const unsubEvent = eventPublisher.subscribe((event) => {
+			if (event.id !== req.eventId) return;
+			const msg: EventInfoMessage = {
+				type: "event_info",
+				subscriptionId: subscription.id,
+				title: event.title,
+				code: event.code,
+				startTime: event.startTime,
+				endTime: event.endTime,
+			};
+			ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubEvent);
+
+		// Subscribe to new outcomes for this event
+		const unsubOutcome = this.outcomePublisher.subscribe((outcome) => {
+			if (outcome.eventId !== req.eventId) return;
+			const msg: EventOutcomeMessage = {
+				type: "event_outcome",
+				subscriptionId: subscription.id,
+				id: outcome.id,
+				time: outcome.time,
+				error: outcome.error,
+				violation: outcome.violation,
+			};
+			ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubOutcome);
 	}
 
 	/**

@@ -2,7 +2,7 @@
 // CLIENT → SERVER MESSAGES
 // ============================================================================
 
-export type ClientMessage = StateSubscriptionRequest | MetricsSubscriptionRequest | UnsubscribeRequest;
+export type ClientMessage = StateSubscriptionRequest | MetricsSubscriptionRequest | EventSubscriptionRequest | UnsubscribeRequest;
 
 export type StateSubscriptionRequest = {
 	type: "subscribe_state";
@@ -21,6 +21,13 @@ export type MetricsSubscriptionRequest = {
 	start: number; // unix timestamp ms
 	end: number | null; // null = live mode (rolling window)
 	bucketDurationMs: number; // bucket size in milliseconds
+};
+
+export type EventSubscriptionRequest = {
+	type: "subscribe_event";
+	id: string;
+	eventId: number;
+	eventLevel: "provider" | "target" | "check";
 };
 
 export type UnsubscribeRequest = {
@@ -111,6 +118,7 @@ export type ProviderEventMessage = {
 	id: number;
 	provider: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -123,6 +131,7 @@ export type TargetEventMessage = {
 	provider: string;
 	target: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -136,9 +145,27 @@ export type CheckEventMessage = {
 	target: string;
 	check: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
+};
+
+export type EventInfoMessage = {
+	type: "event_info";
+	subscriptionId: string;
+	title: string;
+	code: string;
+	startTime: number;
+	endTime: number | null;
+};
+
+export type EventOutcomeMessage = {
+	type: "event_outcome";
+	subscriptionId: string;
+	id: number;
+	time: number;
+	error: string;
 };
 
 export type BucketMessage = ProviderBucketMessage | TargetBucketMessage | CheckBucketMessage;

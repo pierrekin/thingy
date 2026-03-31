@@ -21,6 +21,14 @@ export type MetricsSubscriptionParams = {
 };
 
 /**
+ * Parameters for subscribing to an event's details and outcomes.
+ */
+export type EventSubscriptionParams = {
+	eventId: number;
+	eventLevel: "provider" | "target" | "check";
+};
+
+/**
  * Metadata about an active subscription
  */
 export type SubscriptionMetadata =
@@ -35,6 +43,13 @@ export type SubscriptionMetadata =
 		id: string;
 		type: "metrics";
 		params: MetricsSubscriptionParams;
+		status: "pending" | "active" | "error";
+		error?: string;
+	}
+	| {
+		id: string;
+		type: "event";
+		params: EventSubscriptionParams;
 		status: "pending" | "active" | "error";
 		error?: string;
 	};

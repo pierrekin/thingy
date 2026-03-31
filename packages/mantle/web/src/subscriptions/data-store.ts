@@ -34,6 +34,7 @@ type ProviderEvent = {
 	id: number;
 	provider: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -44,6 +45,7 @@ type TargetEvent = {
 	provider: string;
 	target: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -55,6 +57,7 @@ type CheckEvent = {
 	target: string;
 	check: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -85,6 +88,10 @@ interface DataStoreState {
 	targetEvents: Map<string, Map<number, TargetEvent>>;
 	checkEvents: Map<string, Map<number, CheckEvent>>;
 
+	// Event subscription data
+	eventInfo: Map<string, { title: string; code: string; startTime: number; endTime: number | null }>;
+	eventOutcomes: Map<string, Array<{ id: number; time: number; error: string | null; violation: string | null }>>;
+
 	// Progress tracking per subscription
 	progress: Map<string, SubscriptionProgress>;
 
@@ -96,6 +103,8 @@ interface DataStoreState {
 	addProviderEvent: (msg: ProviderEventMessage) => void;
 	addTargetEvent: (msg: TargetEventMessage) => void;
 	addCheckEvent: (msg: CheckEventMessage) => void;
+	setEventInfo: (msg: { subscriptionId: string; title: string; code: string; startTime: number; endTime: number | null }) => void;
+	addEventOutcome: (msg: { subscriptionId: string; id: number; time: number; error: string | null; violation: string | null }) => void;
 	clearSubscription: (subscriptionId: string) => void;
 	gcBuckets: (subscriptionId: string, keepCount: number) => void;
 }
@@ -115,6 +124,8 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	providerEvents: new Map(),
 	targetEvents: new Map(),
 	checkEvents: new Map(),
+	eventInfo: new Map(),
+	eventOutcomes: new Map(),
 	progress: new Map(),
 
 	addProviderBucket: (msg: ProviderBucketMessage) => {
@@ -236,6 +247,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				id: msg.id,
 				provider: msg.provider,
 				code: msg.code,
+				title: msg.title,
 				startTime: msg.startTime,
 				endTime: msg.endTime,
 				message: msg.message,
@@ -254,6 +266,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				provider: msg.provider,
 				target: msg.target,
 				code: msg.code,
+				title: msg.title,
 				startTime: msg.startTime,
 				endTime: msg.endTime,
 				message: msg.message,
@@ -273,12 +286,41 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				target: msg.target,
 				check: msg.check,
 				code: msg.code,
+				title: msg.title,
 				startTime: msg.startTime,
 				endTime: msg.endTime,
 				message: msg.message,
 			});
 			checkEvents.set(msg.subscriptionId, subEvents);
 			return { checkEvents };
+		});
+	},
+
+	setEventInfo: (msg) => {
+		set((state) => {
+			const eventInfo = new Map(state.eventInfo);
+			eventInfo.set(msg.subscriptionId, {
+				title: msg.title,
+				code: msg.code,
+				startTime: msg.startTime,
+				endTime: msg.endTime,
+			});
+			return { eventInfo };
+		});
+	},
+
+	addEventOutcome: (msg) => {
+		set((state) => {
+			const eventOutcomes = new Map(state.eventOutcomes);
+			const outcomes = [...(eventOutcomes.get(msg.subscriptionId) ?? [])];
+			outcomes.push({
+				id: msg.id,
+				time: msg.time,
+				error: msg.error,
+				violation: msg.violation,
+			});
+			eventOutcomes.set(msg.subscriptionId, outcomes);
+			return { eventOutcomes };
 		});
 	},
 
@@ -291,6 +333,8 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			const providerEvents = new Map(state.providerEvents);
 			const targetEvents = new Map(state.targetEvents);
 			const checkEvents = new Map(state.checkEvents);
+			const eventInfo = new Map(state.eventInfo);
+			const eventOutcomes = new Map(state.eventOutcomes);
 			const progress = new Map(state.progress);
 
 			providerBuckets.delete(subscriptionId);
@@ -300,6 +344,8 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			providerEvents.delete(subscriptionId);
 			targetEvents.delete(subscriptionId);
 			checkEvents.delete(subscriptionId);
+			eventInfo.delete(subscriptionId);
+			eventOutcomes.delete(subscriptionId);
 			progress.delete(subscriptionId);
 
 			return {
@@ -310,6 +356,8 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				providerEvents,
 				targetEvents,
 				checkEvents,
+				eventInfo,
+				eventOutcomes,
 				progress,
 			};
 		});

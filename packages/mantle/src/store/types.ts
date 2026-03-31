@@ -1,6 +1,7 @@
 export type OutcomeError = {
   level: "provider" | "target" | "check";
   code: string;
+  title: string;
   message: string;
 };
 
@@ -23,18 +24,29 @@ export type CheckOutcome =
   | { success: true; value: number; violation?: Violation }
   | { success: false; error: OutcomeError };
 
+export type StoredOutcome = {
+  id: number;
+  time: number;
+  success: boolean;
+  error: string | null;
+  value: number | null;
+  violation: string | null;
+};
+
 export interface OutcomeStore {
   recordProviderOutcome(
     provider: string,
     time: Date,
-    outcome: ProviderOutcome
+    outcome: ProviderOutcome,
+    eventId?: number,
   ): Promise<void>;
 
   recordTargetOutcome(
     provider: string,
     target: string,
     time: Date,
-    outcome: TargetOutcome
+    outcome: TargetOutcome,
+    eventId?: number,
   ): Promise<void>;
 
   recordCheckOutcome(
@@ -42,8 +54,16 @@ export interface OutcomeStore {
     target: string,
     check: string,
     time: Date,
-    outcome: CheckOutcome
+    outcome: CheckOutcome,
+    eventId?: number,
   ): Promise<void>;
+
+  getOutcomesForEvent(
+    eventId: number,
+    level: "provider" | "target" | "check",
+    limit?: number,
+    offset?: number,
+  ): Promise<StoredOutcome[]>;
 
   close(): Promise<void>;
 }
@@ -52,6 +72,7 @@ export type OpenProviderEvent = {
   id: number;
   provider: string;
   code: string;
+  title: string;
   startTime: number;
   message: string;
 };
@@ -61,6 +82,7 @@ export type OpenTargetEvent = {
   provider: string;
   target: string;
   code: string;
+  title: string;
   startTime: number;
   message: string;
 };
@@ -71,6 +93,7 @@ export type OpenCheckEvent = {
   target: string;
   check: string;
   code: string;
+  title: string;
   startTime: number;
   message: string;
 };
@@ -83,6 +106,7 @@ export interface EventStore {
   openProviderEvent(
     provider: string,
     code: string,
+    title: string,
     time: Date,
     message: string
   ): Promise<number>;
@@ -93,6 +117,7 @@ export interface EventStore {
     provider: string,
     target: string,
     code: string,
+    title: string,
     time: Date,
     message: string
   ): Promise<number>;
@@ -104,6 +129,7 @@ export interface EventStore {
     target: string,
     check: string,
     code: string,
+    title: string,
     kind: "error" | "violation",
     time: Date,
     message: string
@@ -120,6 +146,7 @@ export type ProviderEventRecord = {
   id: number;
   provider: string;
   code: string;
+  title: string;
   startTime: number;
   endTime: number | null;
   message: string;
@@ -130,6 +157,7 @@ export type TargetEventRecord = {
   provider: string;
   target: string;
   code: string;
+  title: string;
   startTime: number;
   endTime: number | null;
   message: string;
@@ -141,6 +169,7 @@ export type CheckEventRecord = {
   target: string;
   check: string;
   code: string;
+  title: string;
   startTime: number;
   endTime: number | null;
   message: string;

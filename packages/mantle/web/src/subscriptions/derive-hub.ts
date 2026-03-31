@@ -48,6 +48,7 @@ function bucketsToSlots(bucketMap: Map<number, { bucketStart: number; bucketEnd:
 function toEvent(e: {
 	id: number;
 	code: string;
+	title: string;
 	message: string;
 	startTime: number;
 	endTime: number | null;
@@ -55,6 +56,7 @@ function toEvent(e: {
 	return {
 		id: e.id,
 		code: e.code,
+		title: e.title,
 		message: e.message,
 		startTime: new Date(e.startTime),
 		endTime: e.endTime ? new Date(e.endTime) : null,

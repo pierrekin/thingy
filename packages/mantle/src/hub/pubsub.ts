@@ -5,6 +5,7 @@ import type {
 	ProviderEventRecord,
 	TargetEventRecord,
 	CheckEventRecord,
+	StoredOutcome,
 } from "../store/types.ts";
 
 // Bucket messages with index tracking for initial load progress
@@ -128,6 +129,24 @@ export class CheckEventPublisher {
 	publish(event: CheckEventRecord): void {
 		for (const fn of this.subscribers) {
 			fn(event);
+		}
+	}
+}
+
+export type OutcomeWithEvent = StoredOutcome & { eventId: number };
+export type OutcomeSubscriber = (outcome: OutcomeWithEvent) => void;
+
+export class OutcomePublisher {
+	private subscribers = new Set<OutcomeSubscriber>();
+
+	subscribe(fn: OutcomeSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(outcome: OutcomeWithEvent): void {
+		for (const fn of this.subscribers) {
+			fn(outcome);
 		}
 	}
 }

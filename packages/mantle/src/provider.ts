@@ -4,6 +4,7 @@ import type { ProviderDefinition } from "./framework/provider.ts";
 
 export interface ProviderInstance {
 	check(target: unknown, checks: string[]): Promise<CheckResult[]>;
+	getErrorTitle(code: string): string;
 }
 
 export interface Provider {

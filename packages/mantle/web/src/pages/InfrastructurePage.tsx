@@ -31,6 +31,7 @@ export function InfrastructurePage({ hub, onNavigateBack }: Props) {
 								name={provider.name}
 								statusSlots={provider.statusSlots}
 								events={provider.events}
+								eventLevel="provider"
 							/>
 						))}
 					</section>
@@ -47,6 +48,7 @@ export function InfrastructurePage({ hub, onNavigateBack }: Props) {
 								name={channel.name}
 								statusSlots={channel.statusSlots}
 								events={channel.events}
+								eventLevel="provider"
 							/>
 						))}
 					</section>

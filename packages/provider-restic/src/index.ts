@@ -67,8 +67,20 @@ export type ResticProviderConfig = {
 
 export type ResticTargetConfig = z.infer<typeof resticTargetConfigSchema>;
 
+const ERROR_TITLES: Record<string, string> = {
+  binary_error: "Restic binary not available",
+  repo_access: "Cannot access repository",
+  repo_unreachable: "Repository unreachable",
+  command_failed: "Restic command failed",
+  parse_error: "Unexpected restic output",
+};
+
 export class ResticProviderInstance {
   constructor(public config: ResticProviderConfig) {}
+
+  getErrorTitle(code: string): string {
+    return ERROR_TITLES[code] ?? code;
+  }
 
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
     const t = target as {
@@ -103,6 +115,7 @@ export class ResticProviderInstance {
             error: {
               level: "provider",
               code: err.code,
+              title: this.getErrorTitle(err.code),
               message: err.message,
             },
           });
@@ -112,15 +125,18 @@ export class ResticProviderInstance {
             error: {
               level: "target",
               code: err.code,
+              title: this.getErrorTitle(err.code),
               message: err.message,
             },
           });
         } else {
+          const code = err instanceof ResticError ? err.code : "unknown";
           results.push({
             check: checkName,
             error: {
               level: "check",
-              code: err instanceof ResticError ? err.code : "unknown",
+              code,
+              title: this.getErrorTitle(code),
               message: err instanceof Error ? err.message : String(err),
             },
           });

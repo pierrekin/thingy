@@ -52,7 +52,7 @@ export function TargetSection({ target }: Props) {
 				<>
 					{hasTargetEvents && (
 						<div className="bg-white px-4 pb-2">
-							<EventTable events={target.events} />
+							<EventTable events={target.events} eventLevel="target" />
 						</div>
 					)}
 

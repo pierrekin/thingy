@@ -6,9 +6,10 @@ type Props = {
 	name: string;
 	statusSlots: StatusSlot[];
 	events: Event[];
+	eventLevel: "provider" | "target" | "check";
 };
 
-export function EntitySection({ name, statusSlots, events }: Props) {
+export function EntitySection({ name, statusSlots, events, eventLevel }: Props) {
 	return (
 		<div className="bg-white">
 			<div className="px-4 py-2">
@@ -17,7 +18,7 @@ export function EntitySection({ name, statusSlots, events }: Props) {
 			<StatusBar slots={statusSlots} />
 			{events.length > 0 && (
 				<div className="px-4 pb-2">
-					<EventTable events={events} />
+					<EventTable events={events} eventLevel={eventLevel} />
 				</div>
 			)}
 		</div>

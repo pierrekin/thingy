@@ -13,7 +13,9 @@ type ServerMessage =
 	| { type: "metrics_bucket"; subscriptionId: string; [key: string]: unknown }
 	| { type: "provider_event"; subscriptionId: string; [key: string]: unknown }
 	| { type: "target_event"; subscriptionId: string; [key: string]: unknown }
-	| { type: "check_event"; subscriptionId: string; [key: string]: unknown };
+	| { type: "check_event"; subscriptionId: string; [key: string]: unknown }
+	| { type: "event_info"; subscriptionId: string; [key: string]: unknown }
+	| { type: "event_outcome"; subscriptionId: string; [key: string]: unknown };
 
 /**
  * WebSocket hook that manages connection and message routing.
@@ -80,6 +82,14 @@ export function useWebSocket() {
 
 						case "check_event":
 							useDataStore.getState().addCheckEvent(msg as any);
+							break;
+
+						case "event_info":
+							useDataStore.getState().setEventInfo(msg as any);
+							break;
+
+						case "event_outcome":
+							useDataStore.getState().addEventOutcome(msg as any);
 							break;
 
 						default:

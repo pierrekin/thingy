@@ -13,6 +13,7 @@ import {
 	ProviderEventPublisher,
 	TargetEventPublisher,
 	CheckEventPublisher,
+	OutcomePublisher,
 } from "./pubsub.ts";
 
 export async function startHub(
@@ -32,8 +33,9 @@ export async function startHub(
 		target: new TargetEventPublisher(),
 		check: new CheckEventPublisher(),
 	};
-	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublishers, eventPublishers);
-	const webService = new WebService(bucketStore, eventStore, metricsStore, bucketPublishers, eventPublishers);
+	const outcomePublisher = new OutcomePublisher();
+	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublishers, eventPublishers, outcomePublisher);
+	const webService = new WebService(bucketStore, eventStore, metricsStore, outcomeStore, bucketPublishers, eventPublishers, outcomePublisher);
 
 	await hubService.init();
 

@@ -1,4 +1,4 @@
-import type { StateSubscriptionParams, MetricsSubscriptionParams, SubscriptionMetadata } from "./types";
+import type { StateSubscriptionParams, MetricsSubscriptionParams, EventSubscriptionParams, SubscriptionMetadata } from "./types";
 
 type SubscriptionChangeListener = (subscriptions: Map<string, SubscriptionMetadata>) => void;
 
@@ -45,6 +45,24 @@ export class ClientSubscriptionManager {
 		const metadata: SubscriptionMetadata = {
 			id,
 			type: "metrics",
+			params,
+			status: "pending",
+		};
+
+		this.subscriptions.set(id, metadata);
+		this.notifyListeners();
+
+		return id;
+	}
+
+	/**
+	 * Create a new event subscription (pending state)
+	 */
+	createEventSubscription(params: EventSubscriptionParams): string {
+		const id = this.generateId();
+		const metadata: SubscriptionMetadata = {
+			id,
+			type: "event",
 			params,
 			status: "pending",
 		};

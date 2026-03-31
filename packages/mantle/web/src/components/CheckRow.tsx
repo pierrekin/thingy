@@ -56,7 +56,7 @@ export function CheckRow({ provider, target, check, send, connectionStatus }: Pr
 			<StatusBar slots={check.statusSlots} />
 			{hasEvents && (
 				<div className="px-4 pb-2">
-					<EventTable events={check.events} />
+					<EventTable events={check.events} eventLevel="check" />
 				</div>
 			)}
 		</div>

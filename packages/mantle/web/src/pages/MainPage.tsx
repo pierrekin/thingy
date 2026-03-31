@@ -35,6 +35,7 @@ export function MainPage({ hub, onNavigateToInfra }: Props) {
 								name={provider.name}
 								statusSlots={provider.statusSlots}
 								events={provider.events}
+								eventLevel="provider"
 							/>
 						))}
 					</section>
@@ -51,6 +52,7 @@ export function MainPage({ hub, onNavigateToInfra }: Props) {
 								name={channel.name}
 								statusSlots={channel.statusSlots}
 								events={channel.events}
+								eventLevel="provider"
 							/>
 						))}
 					</section>

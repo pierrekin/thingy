@@ -121,8 +121,20 @@ export type ProxmoxProviderConfig = {
 export type ProxmoxTargetConfig = z.infer<typeof proxmoxTargetConfigSchema>;
 
 // Provider instance
+const ERROR_TITLES: Record<string, string> = {
+  unreachable: "Cannot connect to Proxmox",
+  auth_failed: "Authentication failed",
+  api_error: "Proxmox API error",
+  vm_not_found: "VM not found",
+  lxc_not_found: "LXC container not found",
+};
+
 export class ProxmoxProviderInstance {
   private client: ProxmoxClient;
+
+  getErrorTitle(code: string): string {
+    return ERROR_TITLES[code] ?? code;
+  }
 
   constructor(public config: ProxmoxProviderConfig) {
     this.client = new ProxmoxClient({
@@ -142,12 +154,12 @@ export class ProxmoxProviderInstance {
         results.push({ check: checkName, value });
       } catch (err) {
         if (err instanceof ProxmoxApiError) {
-          // API errors are provider-level
           results.push({
             check: checkName,
             error: {
               level: "provider",
               code: err.code,
+              title: this.getErrorTitle(err.code),
               message: err.message,
             },
           });
@@ -157,16 +169,17 @@ export class ProxmoxProviderInstance {
             error: {
               level: "target",
               code: err.code,
+              title: this.getErrorTitle(err.code),
               message: err.message,
             },
           });
         } else {
-          // Unknown errors default to check-level
           results.push({
             check: checkName,
             error: {
               level: "check",
               code: "unknown",
+              title: this.getErrorTitle("unknown"),
               message: err instanceof Error ? err.message : String(err),
             },
           });

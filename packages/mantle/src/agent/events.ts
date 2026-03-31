@@ -4,6 +4,7 @@ import type { ProviderEventPublisher, TargetEventPublisher, CheckEventPublisher 
 type OpenEvent = {
   id: number;
   code: string;
+  title: string;
   startTime: number;
   message: string;
 };
@@ -30,6 +31,18 @@ export class EventTracker {
     this.publishers = publishers;
   }
 
+  getOpenProviderEventId(provider: string): number | undefined {
+    return this.providerEvents.get(provider)?.id;
+  }
+
+  getOpenTargetEventId(provider: string, target: string): number | undefined {
+    return this.targetEvents.get(`${provider}:${target}`)?.id;
+  }
+
+  getOpenCheckEventId(provider: string, target: string, check: string): number | undefined {
+    return this.checkEvents.get(`${provider}:${target}:${check}`)?.id;
+  }
+
   async loadOpenEvents(): Promise<void> {
     const [providerEvents, targetEvents, checkEvents] = await Promise.all([
       this.store.getOpenProviderEvents(),
@@ -41,6 +54,7 @@ export class EventTracker {
       this.providerEvents.set(e.provider, {
         id: e.id,
         code: e.code,
+        title: e.title,
         startTime: e.startTime,
         message: e.message,
       });
@@ -50,6 +64,7 @@ export class EventTracker {
       this.targetEvents.set(`${e.provider}:${e.target}`, {
         id: e.id,
         code: e.code,
+        title: e.title,
         startTime: e.startTime,
         message: e.message,
       });
@@ -59,6 +74,7 @@ export class EventTracker {
       this.checkEvents.set(`${e.provider}:${e.target}:${e.check}`, {
         id: e.id,
         code: e.code,
+        title: e.title,
         startTime: e.startTime,
         message: e.message,
       });
@@ -73,57 +89,56 @@ export class EventTracker {
   async handleProviderOutcome(
     provider: string,
     time: Date,
-    outcome: { code: string; message: string } | null
+    outcome: { code: string; title: string; message: string } | null
   ): Promise<void> {
     const key = provider;
     const open = this.providerEvents.get(key);
 
     if (outcome) {
-      // Error occurred
       if (open && open.code === outcome.code) {
-        // Same error continues, do nothing
         return;
       }
       if (open) {
-        // Different error, close old one first
         await this.store.closeProviderEvent(open.id, time);
         const closedEvent: ProviderEventRecord = {
           id: open.id,
           provider,
           code: open.code,
+          title: open.title,
           startTime: open.startTime,
           endTime: time.getTime(),
           message: open.message,
         };
         this.publishers.provider.publish(closedEvent);
       }
-      // Open new event
       const startTime = time.getTime();
       const id = await this.store.openProviderEvent(
         provider,
         outcome.code,
+        outcome.title,
         time,
         outcome.message
       );
-      this.providerEvents.set(key, { id, code: outcome.code, startTime, message: outcome.message });
+      this.providerEvents.set(key, { id, code: outcome.code, title: outcome.title, startTime, message: outcome.message });
       const openedEvent: ProviderEventRecord = {
         id,
         provider,
         code: outcome.code,
+        title: outcome.title,
         startTime,
         endTime: null,
         message: outcome.message,
       };
       this.publishers.provider.publish(openedEvent);
-      console.log(`[${provider}] EVENT OPENED: ${outcome.code} - ${outcome.message}`);
+      console.log(`[${provider}] EVENT OPENED: ${outcome.code} - ${outcome.title}`);
     } else {
-      // Success
       if (open) {
         await this.store.closeProviderEvent(open.id, time);
         const closedEvent: ProviderEventRecord = {
           id: open.id,
           provider,
           code: open.code,
+          title: open.title,
           startTime: open.startTime,
           endTime: time.getTime(),
           message: open.message,
@@ -139,7 +154,7 @@ export class EventTracker {
     provider: string,
     target: string,
     time: Date,
-    outcome: { code: string; message: string } | null
+    outcome: { code: string; title: string; message: string } | null
   ): Promise<void> {
     const key = `${provider}:${target}`;
     const open = this.targetEvents.get(key);
@@ -155,6 +170,7 @@ export class EventTracker {
           provider,
           target,
           code: open.code,
+          title: open.title,
           startTime: open.startTime,
           endTime: time.getTime(),
           message: open.message,
@@ -166,21 +182,23 @@ export class EventTracker {
         provider,
         target,
         outcome.code,
+        outcome.title,
         time,
         outcome.message
       );
-      this.targetEvents.set(key, { id, code: outcome.code, startTime, message: outcome.message });
+      this.targetEvents.set(key, { id, code: outcome.code, title: outcome.title, startTime, message: outcome.message });
       const openedEvent: TargetEventRecord = {
         id,
         provider,
         target,
         code: outcome.code,
+        title: outcome.title,
         startTime,
         endTime: null,
         message: outcome.message,
       };
       this.publishers.target.publish(openedEvent);
-      console.log(`[${target}] EVENT OPENED: ${outcome.code} - ${outcome.message}`);
+      console.log(`[${target}] EVENT OPENED: ${outcome.code} - ${outcome.title}`);
     } else {
       if (open) {
         await this.store.closeTargetEvent(open.id, time);
@@ -189,6 +207,7 @@ export class EventTracker {
           provider,
           target,
           code: open.code,
+          title: open.title,
           startTime: open.startTime,
           endTime: time.getTime(),
           message: open.message,
@@ -205,7 +224,7 @@ export class EventTracker {
     target: string,
     check: string,
     time: Date,
-    outcome: { code: string; kind: "error" | "violation"; message: string } | null
+    outcome: { code: string; title: string; kind: "error" | "violation"; message: string } | null
   ): Promise<void> {
     const key = `${provider}:${target}:${check}`;
     const open = this.checkEvents.get(key);
@@ -222,6 +241,7 @@ export class EventTracker {
           target,
           check,
           code: open.code,
+          title: open.title,
           startTime: open.startTime,
           endTime: time.getTime(),
           message: open.message,
@@ -234,23 +254,25 @@ export class EventTracker {
         target,
         check,
         outcome.code,
+        outcome.title,
         outcome.kind,
         time,
         outcome.message
       );
-      this.checkEvents.set(key, { id, code: outcome.code, startTime, message: outcome.message });
+      this.checkEvents.set(key, { id, code: outcome.code, title: outcome.title, startTime, message: outcome.message });
       const openedEvent: CheckEventRecord = {
         id,
         provider,
         target,
         check,
         code: outcome.code,
+        title: outcome.title,
         startTime,
         endTime: null,
         message: outcome.message,
       };
       this.publishers.check.publish(openedEvent);
-      console.log(`[${target}] ${check} EVENT OPENED: ${outcome.code} - ${outcome.message}`);
+      console.log(`[${target}] ${check} EVENT OPENED: ${outcome.code} - ${outcome.title}`);
     } else {
       if (open) {
         await this.store.closeCheckEvent(open.id, time);
@@ -260,6 +282,7 @@ export class EventTracker {
           target,
           check,
           code: open.code,
+          title: open.title,
           startTime: open.startTime,
           endTime: time.getTime(),
           message: open.message,

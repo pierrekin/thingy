@@ -63,6 +63,7 @@ export type ProviderEventMessage = {
 	id: number;
 	provider: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -75,6 +76,7 @@ export type TargetEventMessage = {
 	provider: string;
 	target: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -88,6 +90,7 @@ export type CheckEventMessage = {
 	target: string;
 	check: string;
 	code: string;
+	title: string;
 	startTime: number;
 	endTime: number | null;
 	message: string;
@@ -100,6 +103,7 @@ export type WebSocketMessage = BucketMessage | EventMessage;
 export type Event = {
 	id: number;
 	code: string;
+	title: string;
 	message: string;
 	startTime: Date;
 	endTime: Date | null;

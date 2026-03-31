@@ -185,29 +185,47 @@ export type StoredEvents = {
 };
 
 export interface BucketStore {
-  upsertProviderBucket(
+  getProviderBucketStatus(
+    provider: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined>;
+
+  getTargetBucketStatus(
+    provider: string,
+    target: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined>;
+
+  getCheckBucketStatus(
+    provider: string,
+    target: string,
+    check: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined>;
+
+  setProviderBucket(
     provider: string,
     bucketStart: number,
     bucketEnd: number,
     status: BucketStatus
-  ): Promise<BucketStatus | undefined>;
+  ): Promise<void>;
 
-  upsertTargetBucket(
+  setTargetBucket(
     provider: string,
     target: string,
     bucketStart: number,
     bucketEnd: number,
     status: BucketStatus
-  ): Promise<BucketStatus | undefined>;
+  ): Promise<void>;
 
-  upsertCheckBucket(
+  setCheckBucket(
     provider: string,
     target: string,
     check: string,
     bucketStart: number,
     bucketEnd: number,
     status: BucketStatus
-  ): Promise<BucketStatus | undefined>;
+  ): Promise<void>;
 
   getBuckets(startTime: number, endTime: number): Promise<StoredBuckets>;
 

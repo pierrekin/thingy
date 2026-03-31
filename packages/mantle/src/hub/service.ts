@@ -162,15 +162,12 @@ export class HubService {
 	): Promise<void> {
 		const { start, end } = getBucketBounds(time, this.bucketConfig);
 
-		// Update check bucket and publish if changed
-		const oldCheckStatus = await this.bucketStore.upsertCheckBucket(
-			provider, target, check, start, end,
-			this.mergeStatus(undefined, statuses.check)
-		);
+		// Check bucket
+		const oldCheckStatus = await this.bucketStore.getCheckBucketStatus(provider, target, check, start);
 		const newCheckStatus = this.mergeStatus(oldCheckStatus, statuses.check);
 
 		if (oldCheckStatus !== newCheckStatus) {
-			await this.bucketStore.upsertCheckBucket(provider, target, check, start, end, newCheckStatus);
+			await this.bucketStore.setCheckBucket(provider, target, check, start, end, newCheckStatus);
 			this.bucketPublishers.check.publish({
 				provider,
 				target,
@@ -181,15 +178,12 @@ export class HubService {
 			});
 		}
 
-		// Update target bucket (aggregated)
-		const oldTargetStatus = await this.bucketStore.upsertTargetBucket(
-			provider, target, start, end,
-			this.mergeStatus(undefined, statuses.target)
-		);
+		// Target bucket
+		const oldTargetStatus = await this.bucketStore.getTargetBucketStatus(provider, target, start);
 		const newTargetStatus = this.mergeStatus(oldTargetStatus, this.aggregateUp(statuses.target, newCheckStatus));
 
 		if (oldTargetStatus !== newTargetStatus) {
-			await this.bucketStore.upsertTargetBucket(provider, target, start, end, newTargetStatus);
+			await this.bucketStore.setTargetBucket(provider, target, start, end, newTargetStatus);
 			this.bucketPublishers.target.publish({
 				provider,
 				target,
@@ -199,15 +193,12 @@ export class HubService {
 			});
 		}
 
-		// Update provider bucket (aggregated)
-		const oldProviderStatus = await this.bucketStore.upsertProviderBucket(
-			provider, start, end,
-			this.mergeStatus(undefined, statuses.provider)
-		);
+		// Provider bucket
+		const oldProviderStatus = await this.bucketStore.getProviderBucketStatus(provider, start);
 		const newProviderStatus = this.mergeStatus(oldProviderStatus, this.aggregateUp(statuses.provider, newTargetStatus));
 
 		if (oldProviderStatus !== newProviderStatus) {
-			await this.bucketStore.upsertProviderBucket(provider, start, end, newProviderStatus);
+			await this.bucketStore.setProviderBucket(provider, start, end, newProviderStatus);
 			this.bucketPublishers.provider.publish({
 				provider,
 				bucketStart: start,

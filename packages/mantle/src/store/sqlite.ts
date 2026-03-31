@@ -370,73 +370,82 @@ export class SqliteEventStore implements EventStore {
 export class SqliteBucketStore implements BucketStore {
   constructor(private db: Database) {}
 
-  async upsertProviderBucket(
+  async getProviderBucketStatus(
+    provider: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined> {
+    const row = this.db.prepare(`
+      SELECT status FROM provider_buckets WHERE provider = ? AND bucket_start = ?
+    `).get(provider, bucketStart) as { status: string | null } | undefined;
+    return row?.status as BucketStatus | undefined;
+  }
+
+  async getTargetBucketStatus(
+    provider: string,
+    target: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined> {
+    const row = this.db.prepare(`
+      SELECT status FROM target_buckets WHERE provider = ? AND target = ? AND bucket_start = ?
+    `).get(provider, target, bucketStart) as { status: string | null } | undefined;
+    return row?.status as BucketStatus | undefined;
+  }
+
+  async getCheckBucketStatus(
+    provider: string,
+    target: string,
+    check: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined> {
+    const row = this.db.prepare(`
+      SELECT status FROM check_buckets WHERE provider = ? AND target = ? AND check_name = ? AND bucket_start = ?
+    `).get(provider, target, check, bucketStart) as { status: string | null } | undefined;
+    return row?.status as BucketStatus | undefined;
+  }
+
+  async setProviderBucket(
     provider: string,
     bucketStart: number,
     bucketEnd: number,
     status: BucketStatus
-  ): Promise<BucketStatus | undefined> {
-    const existing = this.db.prepare(`
-      SELECT status FROM provider_buckets WHERE provider = ? AND bucket_start = ?
-    `).get(provider, bucketStart) as { status: string | null } | undefined;
-
-    const oldStatus = existing?.status as BucketStatus | undefined;
-
+  ): Promise<void> {
     this.db.prepare(`
       INSERT INTO provider_buckets (provider, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?)
       ON CONFLICT (provider, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
     `).run(provider, bucketStart, bucketEnd, status);
-
-    return oldStatus;
   }
 
-  async upsertTargetBucket(
+  async setTargetBucket(
     provider: string,
     target: string,
     bucketStart: number,
     bucketEnd: number,
     status: BucketStatus
-  ): Promise<BucketStatus | undefined> {
-    const existing = this.db.prepare(`
-      SELECT status FROM target_buckets WHERE provider = ? AND target = ? AND bucket_start = ?
-    `).get(provider, target, bucketStart) as { status: string | null } | undefined;
-
-    const oldStatus = existing?.status as BucketStatus | undefined;
-
+  ): Promise<void> {
     this.db.prepare(`
       INSERT INTO target_buckets (provider, target, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT (provider, target, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
     `).run(provider, target, bucketStart, bucketEnd, status);
-
-    return oldStatus;
   }
 
-  async upsertCheckBucket(
+  async setCheckBucket(
     provider: string,
     target: string,
     check: string,
     bucketStart: number,
     bucketEnd: number,
     status: BucketStatus
-  ): Promise<BucketStatus | undefined> {
-    const existing = this.db.prepare(`
-      SELECT status FROM check_buckets WHERE provider = ? AND target = ? AND check_name = ? AND bucket_start = ?
-    `).get(provider, target, check, bucketStart) as { status: string | null } | undefined;
-
-    const oldStatus = existing?.status as BucketStatus | undefined;
-
+  ): Promise<void> {
     this.db.prepare(`
       INSERT INTO check_buckets (provider, target, check_name, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT (provider, target, check_name, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
     `).run(provider, target, check, bucketStart, bucketEnd, status);
-
-    return oldStatus;
   }
 
   async getBuckets(startTime: number, endTime: number): Promise<StoredBuckets> {

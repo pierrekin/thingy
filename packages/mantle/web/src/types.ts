@@ -115,6 +115,8 @@ export type Target = {
 	name: string;
 	provider: string;
 	statusSlots: StatusSlot[];
+	latestStatus: SlotStatus;
+	hasRedInWindow: boolean;
 	events: Event[];
 	checks: Check[];
 };

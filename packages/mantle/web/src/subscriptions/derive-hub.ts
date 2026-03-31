@@ -167,10 +167,17 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 		const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
 		const visibleSlots = filterSlotsInWindow(slots, window);
 
+		const latestStatus = visibleSlots.length > 0
+			? visibleSlots[visibleSlots.length - 1]!.status
+			: null;
+		const hasRedInWindow = visibleSlots.some((s) => s.status === "red");
+
 		const targetObj: Target = {
 			name: target,
 			provider,
 			statusSlots: visibleSlots,
+			latestStatus,
+			hasRedInWindow,
 			events: targetEvents,
 			checks: checksForTarget,
 		};

@@ -26,20 +26,20 @@ export function CheckRow({ provider, target, check, send, connectionStatus }: Pr
 	const hasEvents = check.events.length > 0;
 
 	// Calculate metrics subscription params
-	const metricsParams = useMemo(() => {
-		const now = Date.now();
-		const bucketDurationMs = 1 * 60 * 1000; // 1 minute buckets for metrics
-		const lookbackMs = 60 * 60 * 1000; // 60 minutes lookback
+	const now = useMemo(() => Date.now(), []);
+	const lookbackMs = 60 * 60 * 1000; // 60 minutes lookback
+	const bucketDurationMs = 1 * 60 * 1000; // 1 minute buckets for metrics
+	const domainStart = roundDown(now - lookbackMs, bucketDurationMs);
+	const domainEnd = now;
 
-		return {
-			provider,
-			target,
-			check: check.name,
-			start: roundDown(now - lookbackMs, bucketDurationMs),
-			end: null, // live mode
-			bucketDurationMs,
-		};
-	}, [provider, target, check.name]);
+	const metricsParams = useMemo(() => ({
+		provider,
+		target,
+		check: check.name,
+		start: domainStart,
+		end: null, // live mode
+		bucketDurationMs,
+	}), [provider, target, check.name, domainStart, bucketDurationMs]);
 
 	// Subscribe to metrics
 	const subscriptionId = useMetricsSubscription(metricsParams, send, connectionStatus);
@@ -47,13 +47,11 @@ export function CheckRow({ provider, target, check, send, connectionStatus }: Pr
 
 	return (
 		<div className="bg-gray-100">
-			<div className="px-4 py-2 flex items-center justify-between">
+			<div className="px-4 py-2">
 				<span className="text-sm text-gray-600">{check.name}</span>
-				{metricsData.length > 0 && (
-					<div className="ml-4">
-						<SparkChart data={metricsData} width={120} height={30} />
-					</div>
-				)}
+			</div>
+			<div className="px-4">
+				<SparkChart data={metricsData} domainStart={domainStart} domainEnd={domainEnd} />
 			</div>
 			<StatusBar slots={check.statusSlots} />
 			{hasEvents && (

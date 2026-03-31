@@ -77,17 +77,6 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 	const targetEventsMap = state.targetEvents.get(subscriptionId) ?? new Map();
 	const checkEventsMap = state.checkEvents.get(subscriptionId) ?? new Map();
 
-	console.log("deriveHub called", {
-		subscriptionId,
-		window,
-		providerCount: providerBucketsMap.size,
-		targetCount: targetBucketsMap.size,
-		checkCount: checkBucketsMap.size,
-		providers: Array.from(providerBucketsMap.keys()),
-		targets: Array.from(targetBucketsMap.keys()),
-		checks: Array.from(checkBucketsMap.keys()),
-	});
-
 	// Collect all unique provider names
 	const providerNames = new Set<string>();
 	for (const provider of providerBucketsMap.keys()) {

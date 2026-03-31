@@ -118,7 +118,6 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	progress: new Map(),
 
 	addProviderBucket: (msg: ProviderBucketMessage) => {
-		console.log("addProviderBucket", msg);
 		set((state) => {
 			const providerBuckets = new Map(state.providerBuckets);
 			const subBuckets = new Map(providerBuckets.get(msg.subscriptionId) ?? new Map());

@@ -15,7 +15,7 @@ function EventRow({ event }: { event: Event }) {
 			<span className={isOngoing ? "text-red-500" : "text-gray-400"}>
 				{isOngoing ? "○" : "●"}
 			</span>
-			<span className="text-gray-500 text-sm font-mono w-28 shrink-0">{timeRange}</span>
+			<span className="text-gray-500 text-sm font-mono whitespace-nowrap shrink-0">{timeRange}</span>
 			<span className="text-gray-700 text-sm truncate">{event.message}</span>
 		</div>
 	);

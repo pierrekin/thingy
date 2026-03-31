@@ -1,92 +1,86 @@
+import { useRef, useState, useEffect } from "react";
 import type { MetricsDataPoint } from "../hooks/useMetricsData";
 
 type SparkChartProps = {
 	data: MetricsDataPoint[];
-	width?: number;
+	domainStart: number;
+	domainEnd: number;
 	height?: number;
 	color?: string;
 };
 
 /**
  * SparkChart renders a small line chart for time-series metrics.
- * Displays a simple line connecting data points, with null values creating gaps.
+ * Uses a time-based x axis aligned to the given domain.
  */
 export function SparkChart({
 	data,
-	width = 200,
-	height = 40,
+	domainStart,
+	domainEnd,
+	height = 30,
 	color = "#3b82f6",
 }: SparkChartProps) {
-	if (data.length === 0) {
-		return (
-			<svg width={width} height={height}>
-				<text x={width / 2} y={height / 2} textAnchor="middle" fill="#999" fontSize="12">
-					No data
-				</text>
-			</svg>
-		);
-	}
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [width, setWidth] = useState(0);
+
+	useEffect(() => {
+		if (!containerRef.current) return;
+		const observer = new ResizeObserver(([entry]) => {
+			setWidth(entry.contentRect.width);
+		});
+		observer.observe(containerRef.current);
+		return () => observer.disconnect();
+	}, []);
+
+	const domainRange = domainEnd - domainStart;
 
 	// Filter out null values and compute min/max for scaling
 	const validPoints = data.filter((d) => d.mean !== null);
-	if (validPoints.length === 0) {
-		return (
-			<svg width={width} height={height}>
-				<text x={width / 2} y={height / 2} textAnchor="middle" fill="#999" fontSize="12">
-					No data
-				</text>
-			</svg>
-		);
-	}
-
 	const values = validPoints.map((d) => d.mean as number);
-	const minValue = Math.min(...values);
-	const maxValue = Math.max(...values);
-	const range = maxValue - minValue || 1; // Avoid division by zero
+	const minValue = values.length > 0 ? Math.min(...values) : 0;
+	const maxValue = values.length > 0 ? Math.max(...values) : 1;
+	const range = maxValue - minValue || 1;
 
-	// Padding around the chart
 	const padding = 4;
 	const chartWidth = width - 2 * padding;
 	const chartHeight = height - 2 * padding;
 
-	// Map data points to coordinates
-	const points = data.map((d, i) => {
-		const x = padding + (i / (data.length - 1)) * chartWidth;
-		if (d.mean === null) {
-			return null;
-		}
-		const normalizedValue = (d.mean - minValue) / range;
-		const y = padding + chartHeight - normalizedValue * chartHeight;
-		return { x, y };
-	});
-
-	// Build path string, breaking on null values
 	let pathData = "";
-	let inPath = false;
-
-	for (const point of points) {
-		if (point === null) {
-			inPath = false;
-		} else {
-			if (!inPath) {
-				pathData += `M ${point.x} ${point.y} `;
-				inPath = true;
+	if (width > 0 && domainRange > 0 && validPoints.length > 0) {
+		let inPath = false;
+		for (const d of data) {
+			const t = (d.bucketStart + d.bucketEnd) / 2;
+			const x = padding + ((t - domainStart) / domainRange) * chartWidth;
+			if (d.mean === null) {
+				inPath = false;
 			} else {
-				pathData += `L ${point.x} ${point.y} `;
+				const y = padding + chartHeight - ((d.mean - minValue) / range) * chartHeight;
+				pathData += inPath ? `L ${x} ${y} ` : `M ${x} ${y} `;
+				inPath = true;
 			}
 		}
 	}
 
 	return (
-		<svg width={width} height={height}>
-			<path
-				d={pathData}
-				fill="none"
-				stroke={color}
-				strokeWidth="2"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</svg>
+		<div ref={containerRef} className="w-full">
+			{width > 0 && (
+				<svg width={width} height={height} className="block">
+					{pathData ? (
+						<path
+							d={pathData}
+							fill="none"
+							stroke={color}
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
+					) : (
+						<text x={width / 2} y={height / 2} textAnchor="middle" fill="#999" fontSize="12">
+							No data
+						</text>
+					)}
+				</svg>
+			)}
+		</div>
 	);
 }

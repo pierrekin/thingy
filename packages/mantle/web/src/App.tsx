@@ -41,12 +41,9 @@ function AppContent() {
 
 	// Create state subscription
 	const subscriptionId = useStateSubscription(subscriptionParams);
-	console.log("App render", { subscriptionId, status });
-
 	// Query visible data
 	const hub = useVisibleHub(subscriptionId);
 	const { progress, isLoading: loading } = useLoadingProgress(subscriptionId);
-	console.log("App hub", { hub, targetCount: hub.targets.length });
 
 	if (page === "infrastructure") {
 		return (
@@ -73,7 +70,9 @@ function AppContent() {
 export default function App() {
 	return (
 		<WebSocketProvider>
-			<AppContent />
+			<div className="mx-auto max-w-md min-h-screen">
+				<AppContent />
+			</div>
 		</WebSocketProvider>
 	);
 }

@@ -100,7 +100,7 @@ export class HubService {
 		const checkStatus: BucketStatus = violation ? "red" : "green";
 		await this.updateBuckets(provider, target, check, time, {
 			provider: "green",
-			target: "green",
+			target: checkStatus,
 			check: checkStatus,
 		});
 	}
@@ -147,7 +147,7 @@ export class HubService {
 
 			await this.updateBuckets(provider, target, check, time, {
 				provider: "green",
-				target: "green",
+				target: "red",
 				check: "red",
 			});
 		}
@@ -180,7 +180,7 @@ export class HubService {
 
 		// Target bucket
 		const oldTargetStatus = await this.bucketStore.getTargetBucketStatus(provider, target, start);
-		const newTargetStatus = this.mergeStatus(oldTargetStatus, this.aggregateUp(statuses.target, newCheckStatus));
+		const newTargetStatus = this.mergeStatus(oldTargetStatus, statuses.target);
 
 		if (oldTargetStatus !== newTargetStatus) {
 			await this.bucketStore.setTargetBucket(provider, target, start, end, newTargetStatus);
@@ -195,7 +195,7 @@ export class HubService {
 
 		// Provider bucket
 		const oldProviderStatus = await this.bucketStore.getProviderBucketStatus(provider, start);
-		const newProviderStatus = this.mergeStatus(oldProviderStatus, this.aggregateUp(statuses.provider, newTargetStatus));
+		const newProviderStatus = this.mergeStatus(oldProviderStatus, statuses.provider);
 
 		if (oldProviderStatus !== newProviderStatus) {
 			await this.bucketStore.setProviderBucket(provider, start, end, newProviderStatus);
@@ -215,10 +215,4 @@ export class HubService {
 		return null;
 	}
 
-	private aggregateUp(parentDirect: BucketStatus, childStatus: BucketStatus): BucketStatus {
-		if (parentDirect === "red" || childStatus === "red") return "red";
-		if (parentDirect === "green" || childStatus === "green") return "green";
-		if (parentDirect === "grey" || childStatus === "grey") return "grey";
-		return null;
-	}
 }

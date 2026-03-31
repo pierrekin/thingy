@@ -1,4 +1,4 @@
-import type { CheckConfig, Operator } from "./check.ts";
+import type { CheckConfig, EnumValues, Operator } from "./check.ts";
 import type { Violation } from "../store/types.ts";
 
 type EvaluationResult = {
@@ -17,6 +17,7 @@ export function evaluate(
   value: number,
   config: CheckConfig,
   operators: readonly Operator[],
+  enumValues?: EnumValues,
 ): EvaluationResult {
   const violations: Violation[] = [];
 
@@ -26,13 +27,37 @@ export function evaluate(
     const threshold = config[op as keyof CheckConfig];
     if (threshold === undefined) continue;
 
-    const violation = evaluateOperator(checkName, op, value, threshold);
+    // Warn and skip ordinal operators on enum checks
+    if (enumValues && (op === "max" || op === "min")) {
+      console.warn(
+        `[${checkName}] Ignoring '${op}' operator on enum check — enum values are not orderable. Use 'equals' or 'not' instead.`,
+      );
+      continue;
+    }
+
+    const resolved = enumValues ? resolveEnumThreshold(threshold, enumValues) : threshold;
+
+    const violation = evaluateOperator(checkName, op, value, resolved);
     if (violation) {
+      // Display the original threshold (tag name) in violation output, not the resolved index
+      if (enumValues && resolved !== threshold) {
+        violation.threshold = threshold;
+      }
       violations.push(violation);
     }
   }
 
   return { violations };
+}
+
+/**
+ * If the threshold is a string enum tag, resolve it to its numeric index.
+ */
+function resolveEnumThreshold(threshold: unknown, enumValues: EnumValues): unknown {
+  if (typeof threshold === "string" && threshold in enumValues) {
+    return enumValues[threshold];
+  }
+  return threshold;
 }
 
 function evaluateOperator(

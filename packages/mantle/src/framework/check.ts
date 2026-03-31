@@ -5,6 +5,8 @@ export const DISABLED = "__disabled__" as const;
 
 export type Operator = "max" | "min" | "equals" | "not";
 
+export type EnumValues = Record<string, number>;
+
 export type CheckDefinition<
   TName extends string = string,
   TMeasurement extends z.ZodTypeAny = z.ZodTypeAny,
@@ -14,6 +16,7 @@ export type CheckDefinition<
   measurement: TMeasurement;
   operators: TOperators;
   defaults: CheckConfig<TOperators[number]>;
+  enumValues?: EnumValues;
 };
 
 export type CheckConfig<TOp extends Operator = Operator> = {
@@ -31,6 +34,7 @@ export function defineCheck<
   measurement: TMeasurement;
   operators: TOperators;
   defaults: CheckConfig<TOperators[number]>;
+  enumValues?: EnumValues;
 }): CheckDefinition<TName, TMeasurement, TOperators> {
   return definition;
 }

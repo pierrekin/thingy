@@ -195,7 +195,7 @@ export function startAgent(
 						// Evaluate measurement against rules
 						const checkConfig = checkConfigMap.get(result.check);
 						const { violations } = checkConfig
-							? evaluate(result.check, result.value, checkConfig.config, checkConfig.operators)
+							? evaluate(result.check, result.value, checkConfig.config, checkConfig.operators, checkConfig.enumValues)
 							: { violations: [] };
 
 						const violation = violations[0];

@@ -6,6 +6,7 @@ export {
   type CheckDefinition,
   type CheckConfig,
   type Operator,
+  type EnumValues,
 } from "./check.ts";
 
 export {

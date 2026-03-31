@@ -27,6 +27,7 @@ const stateCheck = defineCheck({
   measurement: z.object({ state: z.string() }),
   operators: ["equals", "not"] as const,
   defaults: { equals: "running", over: "5m" },
+  enumValues: { running: 1, stopped: 0 },
 });
 
 const onlineCheck = defineCheck({

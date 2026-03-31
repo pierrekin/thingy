@@ -20,33 +20,37 @@ export function InfrastructurePage({ hub, onNavigateBack }: Props) {
 			</header>
 
 			<main>
-				<section>
-					<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
-						Providers
-					</h2>
-					{hub.providers.map((provider) => (
-						<EntitySection
-							key={provider.name}
-							name={provider.name}
-							statusSlots={provider.statusSlots}
-							events={provider.events}
-						/>
-					))}
-				</section>
+				{hub.providers.length > 0 && (
+					<section>
+						<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
+							Providers
+						</h2>
+						{hub.providers.map((provider) => (
+							<EntitySection
+								key={provider.name}
+								name={provider.name}
+								statusSlots={provider.statusSlots}
+								events={provider.events}
+							/>
+						))}
+					</section>
+				)}
 
-				<section>
-					<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
-						Channels
-					</h2>
-					{hub.channels.map((channel) => (
-						<EntitySection
-							key={channel.name}
-							name={channel.name}
-							statusSlots={channel.statusSlots}
-							events={channel.events}
-						/>
-					))}
-				</section>
+				{hub.channels.length > 0 && (
+					<section>
+						<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
+							Channels
+						</h2>
+						{hub.channels.map((channel) => (
+							<EntitySection
+								key={channel.name}
+								name={channel.name}
+								statusSlots={channel.statusSlots}
+								events={channel.events}
+							/>
+						))}
+					</section>
+				)}
 			</main>
 		</div>
 	);

@@ -55,9 +55,9 @@ function validateProviderConfig(
 		return;
 	}
 
-	if (instanceConfig === undefined) {
+	if (instanceConfig === null || instanceConfig === undefined) {
 		throw new OperationalError(
-			`Provider '${displayName}' requires configuration in 'providers.${instanceName}'`,
+			`Provider '${displayName}' has an empty configuration — either provide values or remove it`,
 		);
 	}
 
@@ -82,12 +82,30 @@ function validateAgentConfig(
 	// Validate target configs and collect used providers
 	for (const target of agentConfig.targets) {
 		const instanceName = target.provider;
-		const instanceConfig = providerConfigs[instanceName];
+		let instanceConfig = providerConfigs[instanceName];
 
+		// Provider not declared — try to use it implicitly with empty config
 		if (instanceConfig === undefined) {
-			throw new OperationalError(
-				`Provider '${instanceName}' not found for target '${target.name}'`,
-			);
+			const provider = getProvider(instanceName);
+			if (!provider) {
+				throw new OperationalError(
+					`Unknown provider '${instanceName}' for target '${target.name}'`,
+				);
+			}
+
+			// Check if the provider can work without config
+			if (provider.providerConfigSchema !== null) {
+				const result = provider.providerConfigSchema.safeParse({});
+				if (!result.success) {
+					throw new OperationalError(
+						`Provider '${instanceName}' requires configuration`,
+					);
+				}
+			}
+
+			// Register the implicit provider so it gets instantiated later
+			providerConfigs[instanceName] = {};
+			instanceConfig = {};
 		}
 
 		const providerType = getProviderType(instanceName, instanceConfig);

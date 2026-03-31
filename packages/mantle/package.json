@@ -6,6 +6,7 @@
   "dependencies": {
     "citty": "^0.2.1",
     "provider-proxmox": "workspace:*",
+    "provider-restic": "workspace:*",
     "yaml": "^2.7.0",
     "zod": "^4.3.6"
   }

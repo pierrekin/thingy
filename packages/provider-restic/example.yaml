@@ -1,0 +1,50 @@
+# Restic backup monitoring
+#
+# The agent host must have the `restic` binary installed.
+# Each target points at a restic repository. Provider-level `env`
+# is merged into every target (target values win on conflict).
+
+providers:
+  restic-local:
+    type: restic
+
+  restic-s3:
+    type: restic
+    env:
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+agent:
+  name: backup-monitor
+  targets:
+    # Alert if no backup in the last 24 hours
+    - name: server1
+      provider: restic-local
+      type: repo
+      repository: sftp:user@nas:/backups/server1
+      passwordFile: /run/secrets/restic-password
+      checks:
+        freshness:
+          max: 86400
+
+    # Scope to a specific host within a shared repo
+    - name: db-server
+      provider: restic-local
+      type: repo
+      repository: sftp:user@nas:/backups/shared
+      passwordFile: /run/secrets/restic-password
+      host: db-server
+      checks:
+        freshness:
+          max: 3600
+
+    # S3 repo — credentials inherited from provider env
+    - name: offsite
+      provider: restic-s3
+      type: repo
+      repository: s3:s3.amazonaws.com/my-backup-bucket
+      passwordFile: /run/secrets/restic-password
+      tags: [critical]
+      checks:
+        freshness:
+          max: 43200

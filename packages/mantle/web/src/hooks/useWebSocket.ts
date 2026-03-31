@@ -15,7 +15,8 @@ type ServerMessage =
 	| { type: "target_event"; subscriptionId: string; [key: string]: unknown }
 	| { type: "check_event"; subscriptionId: string; [key: string]: unknown }
 	| { type: "event_info"; subscriptionId: string; [key: string]: unknown }
-	| { type: "event_outcome"; subscriptionId: string; [key: string]: unknown };
+	| { type: "event_outcome"; subscriptionId: string; [key: string]: unknown }
+	| { type: "target_status"; subscriptionId: string; [key: string]: unknown };
 
 /**
  * WebSocket hook that manages connection and message routing.
@@ -90,6 +91,10 @@ export function useWebSocket() {
 
 						case "event_outcome":
 							useDataStore.getState().addEventOutcome(msg as any);
+							break;
+
+						case "target_status":
+							useDataStore.getState().setTargetStatus(msg as any);
 							break;
 
 						default:

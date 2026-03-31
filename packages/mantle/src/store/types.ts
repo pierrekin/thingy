@@ -65,6 +65,12 @@ export interface OutcomeStore {
     offset?: number,
   ): Promise<StoredOutcome[]>;
 
+  getLatestTargetOutcomes(): Promise<Array<{
+    provider: string;
+    target: string;
+    success: boolean;
+  }>>;
+
   close(): Promise<void>;
 }
 

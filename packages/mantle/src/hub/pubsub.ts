@@ -133,6 +133,28 @@ export class CheckEventPublisher {
 	}
 }
 
+export type TargetStatusUpdate = {
+	provider: string;
+	target: string;
+	status: "green" | "red" | "grey" | null;
+};
+export type TargetStatusSubscriber = (update: TargetStatusUpdate) => void;
+
+export class TargetStatusPublisher {
+	private subscribers = new Set<TargetStatusSubscriber>();
+
+	subscribe(fn: TargetStatusSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(update: TargetStatusUpdate): void {
+		for (const fn of this.subscribers) {
+			fn(update);
+		}
+	}
+}
+
 export type OutcomeWithEvent = StoredOutcome & { eventId: number };
 export type OutcomeSubscriber = (outcome: OutcomeWithEvent) => void;
 

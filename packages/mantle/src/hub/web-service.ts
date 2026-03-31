@@ -8,6 +8,7 @@ import type {
 	TargetEventPublisher,
 	CheckEventPublisher,
 	OutcomePublisher,
+	TargetStatusPublisher,
 } from "./pubsub.ts";
 import {
 	SubscriptionManager,
@@ -28,6 +29,7 @@ import {
 	type CheckEventMessage,
 	type EventInfoMessage,
 	type EventOutcomeMessage,
+	type TargetStatusMessage,
 } from "./subscriptions/index.ts";
 import { DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
@@ -63,6 +65,7 @@ export class WebService {
 		private bucketPublishers: BucketPublishers,
 		private eventPublishers: EventPublishers,
 		private outcomePublisher: OutcomePublisher,
+		private targetStatusPublisher: TargetStatusPublisher,
 	) {}
 
 	/**
@@ -351,6 +354,19 @@ export class WebService {
 			};
 			subscription.ws.send(JSON.stringify(msg));
 		}
+
+		// Send latest target statuses
+		const latestOutcomes = await this.outcomeStore.getLatestTargetOutcomes();
+		for (const outcome of latestOutcomes) {
+			const msg: TargetStatusMessage = {
+				type: "target_status",
+				subscriptionId: subscription.id,
+				provider: outcome.provider,
+				target: outcome.target,
+				status: outcome.success ? "green" : "red",
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		}
 	}
 
 	/**
@@ -446,6 +462,17 @@ export class WebService {
 			subscription.ws.send(JSON.stringify(msg));
 		});
 		subscription.addUnsubscriber(unsubCheckEvent);
+
+		// Subscribe to target status updates
+		const unsubTargetStatus = this.targetStatusPublisher.subscribe((update) => {
+			const msg: TargetStatusMessage = {
+				type: "target_status",
+				subscriptionId: subscription.id,
+				...update,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubTargetStatus);
 	}
 
 	/**

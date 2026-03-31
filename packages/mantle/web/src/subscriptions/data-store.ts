@@ -88,6 +88,9 @@ interface DataStoreState {
 	targetEvents: Map<string, Map<number, TargetEvent>>;
 	checkEvents: Map<string, Map<number, CheckEvent>>;
 
+	// Target status: "provider/target" -> latest status
+	targetStatuses: Map<string, "green" | "red" | "grey" | null>;
+
 	// Event subscription data
 	eventInfo: Map<string, { title: string; code: string; startTime: number; endTime: number | null }>;
 	eventOutcomes: Map<string, Array<{ id: number; time: number; error: string | null; violation: string | null }>>;
@@ -103,6 +106,7 @@ interface DataStoreState {
 	addProviderEvent: (msg: ProviderEventMessage) => void;
 	addTargetEvent: (msg: TargetEventMessage) => void;
 	addCheckEvent: (msg: CheckEventMessage) => void;
+	setTargetStatus: (msg: { provider: string; target: string; status: "green" | "red" | "grey" | null }) => void;
 	setEventInfo: (msg: { subscriptionId: string; title: string; code: string; startTime: number; endTime: number | null }) => void;
 	addEventOutcome: (msg: { subscriptionId: string; id: number; time: number; error: string | null; violation: string | null }) => void;
 	clearSubscription: (subscriptionId: string) => void;
@@ -124,6 +128,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	providerEvents: new Map(),
 	targetEvents: new Map(),
 	checkEvents: new Map(),
+	targetStatuses: new Map(),
 	eventInfo: new Map(),
 	eventOutcomes: new Map(),
 	progress: new Map(),
@@ -293,6 +298,14 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			});
 			checkEvents.set(msg.subscriptionId, subEvents);
 			return { checkEvents };
+		});
+	},
+
+	setTargetStatus: (msg) => {
+		set((state) => {
+			const targetStatuses = new Map(state.targetStatuses);
+			targetStatuses.set(`${msg.provider}/${msg.target}`, msg.status);
+			return { targetStatuses };
 		});
 	},
 

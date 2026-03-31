@@ -168,5 +168,13 @@ export type EventOutcomeMessage = {
 	error: string;
 };
 
+export type TargetStatusMessage = {
+	type: "target_status";
+	subscriptionId: string;
+	provider: string;
+	target: string;
+	status: "green" | "red" | "grey" | null;
+};
+
 export type BucketMessage = ProviderBucketMessage | TargetBucketMessage | CheckBucketMessage;
 export type EventMessage = ProviderEventMessage | TargetEventMessage | CheckEventMessage;

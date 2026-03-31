@@ -232,6 +232,26 @@ export class SqliteOutcomeStore implements OutcomeStore {
     }));
   }
 
+  async getLatestTargetOutcomes(): Promise<Array<{
+    provider: string;
+    target: string;
+    success: boolean;
+  }>> {
+    const rows = this.db.prepare(`
+      SELECT provider, target, success
+      FROM target_outcomes
+      WHERE id IN (
+        SELECT MAX(id) FROM target_outcomes GROUP BY provider, target
+      )
+    `).all() as Array<{ provider: string; target: string; success: number }>;
+
+    return rows.map((r) => ({
+      provider: r.provider,
+      target: r.target,
+      success: r.success === 1,
+    }));
+  }
+
   async close(): Promise<void> {
     this.db.close();
   }

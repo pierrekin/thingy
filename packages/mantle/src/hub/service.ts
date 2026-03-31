@@ -9,6 +9,7 @@ import type {
 	TargetEventPublisher,
 	CheckEventPublisher,
 	OutcomePublisher,
+	TargetStatusPublisher,
 } from "./pubsub.ts";
 import { getBucketBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
@@ -29,6 +30,7 @@ export class HubService {
 	private bucketConfig: BucketConfig;
 	private bucketPublishers: BucketPublishers;
 	private outcomePublisher: OutcomePublisher;
+	private targetStatusPublisher: TargetStatusPublisher;
 
 	constructor(
 		private outcomeStore: OutcomeStore,
@@ -37,10 +39,12 @@ export class HubService {
 		bucketPublishers: BucketPublishers,
 		eventPublishers: EventPublishers,
 		outcomePublisher: OutcomePublisher,
+		targetStatusPublisher: TargetStatusPublisher,
 		bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
 	) {
 		this.bucketPublishers = bucketPublishers;
 		this.outcomePublisher = outcomePublisher;
+		this.targetStatusPublisher = targetStatusPublisher;
 		this.events = new EventTracker(eventStore, eventPublishers);
 		this.bucketConfig = bucketConfig;
 	}
@@ -121,6 +125,8 @@ export class HubService {
 			target: checkStatus,
 			check: checkStatus,
 		});
+
+		this.targetStatusPublisher.publish({ provider, target, status: checkStatus });
 	}
 
 	private async recordError(
@@ -146,6 +152,7 @@ export class HubService {
 				target: "grey",
 				check: "grey",
 			});
+			this.targetStatusPublisher.publish({ provider, target, status: "grey" });
 		} else if (level === "target") {
 			await this.events.handleProviderOutcome(provider, time, null);
 			await this.events.handleTargetOutcome(provider, target, time, { code, title, message });
@@ -161,6 +168,7 @@ export class HubService {
 				target: "red",
 				check: "grey",
 			});
+			this.targetStatusPublisher.publish({ provider, target, status: "red" });
 		} else {
 			await this.events.handleProviderOutcome(provider, time, null);
 			await this.events.handleTargetOutcome(provider, target, time, null);
@@ -177,6 +185,7 @@ export class HubService {
 				target: "red",
 				check: "red",
 			});
+			this.targetStatusPublisher.publish({ provider, target, status: "red" });
 		}
 	}
 

@@ -28,10 +28,10 @@ export function TargetSection({ target }: Props) {
 
 	const hasTargetEvents = target.events.length > 0;
 
-	// Collapsed: all green in window, user hasn't expanded
-	// Partial: has red in window, user hasn't expanded — show status bar
+	// Collapsed: all green, user hasn't expanded — just dot + label
+	// Partial: not all green, user hasn't expanded — show status bar
 	// Full: user has expanded — show checks
-	const showStatusBar = isExpanded || target.hasRedInWindow;
+	const showStatusBar = isExpanded || !target.allGreen;
 	const showChecks = isExpanded;
 
 	return (

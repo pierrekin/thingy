@@ -170,14 +170,14 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 		const latestStatus = visibleSlots.length > 0
 			? visibleSlots[visibleSlots.length - 1]!.status
 			: null;
-		const hasRedInWindow = visibleSlots.some((s) => s.status === "red");
+		const allGreen = visibleSlots.length > 0 && visibleSlots.every((s) => s.status === "green");
 
 		const targetObj: Target = {
 			name: target,
 			provider,
 			statusSlots: visibleSlots,
 			latestStatus,
-			hasRedInWindow,
+			allGreen,
 			events: targetEvents,
 			checks: checksForTarget,
 		};

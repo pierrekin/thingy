@@ -155,7 +155,7 @@ export class TargetStatusPublisher {
 	}
 }
 
-export type OutcomeWithEvent = StoredOutcome & { eventId: number };
+export type OutcomeWithEvent = StoredOutcome & { eventId: number | undefined; provider: string; target: string; check: string };
 export type OutcomeSubscriber = (outcome: OutcomeWithEvent) => void;
 
 export class OutcomePublisher {

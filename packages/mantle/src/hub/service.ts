@@ -80,7 +80,7 @@ export class HubService {
 		target: string,
 		check: string,
 		time: Date,
-		measurement: Record<string, unknown>,
+		measurement: number,
 		violation?: { code: string; rule: string; threshold: unknown; actual: unknown },
 	): Promise<void> {
 		// Handle events first so we have event IDs for outcomes
@@ -108,15 +108,13 @@ export class HubService {
 			violation,
 		}, checkEventId);
 
-		if (violation && checkEventId) {
-			this.publishOutcome(checkEventId, {
-				time: time.getTime(),
-				success: true,
-				error: null,
-				value: null,
-				violation: JSON.stringify(violation),
-			});
-		}
+		this.publishOutcome(provider, target, check, checkEventId, {
+			time: time.getTime(),
+			success: true,
+			error: null,
+			value: measurement,
+			violation: violation ? JSON.stringify(violation) : null,
+		});
 
 		// Update bucket statuses
 		const checkStatus: BucketStatus = violation ? "red" : "green";
@@ -145,7 +143,7 @@ export class HubService {
 
 			const eventId = this.events.getOpenProviderEventId(provider);
 			await this.outcomeStore.recordProviderOutcome(provider, time, { success: false, error }, eventId);
-			this.publishOutcome(eventId, { time: time.getTime(), success: false, error: JSON.stringify(error), value: null, violation: null });
+			this.publishOutcome(provider, target, check, eventId, { time: time.getTime(), success: false, error: JSON.stringify(error), value: null, violation: null });
 
 			await this.updateBuckets(provider, target, check, time, {
 				provider: "red",
@@ -161,7 +159,7 @@ export class HubService {
 			const eventId = this.events.getOpenTargetEventId(provider, target);
 			await this.outcomeStore.recordProviderOutcome(provider, time, { success: true });
 			await this.outcomeStore.recordTargetOutcome(provider, target, time, { success: false, error }, eventId);
-			this.publishOutcome(eventId, { time: time.getTime(), success: false, error: JSON.stringify(error), value: null, violation: null });
+			this.publishOutcome(provider, target, check, eventId, { time: time.getTime(), success: false, error: JSON.stringify(error), value: null, violation: null });
 
 			await this.updateBuckets(provider, target, check, time, {
 				provider: "green",
@@ -178,7 +176,7 @@ export class HubService {
 			await this.outcomeStore.recordProviderOutcome(provider, time, { success: true });
 			await this.outcomeStore.recordTargetOutcome(provider, target, time, { success: true });
 			await this.outcomeStore.recordCheckOutcome(provider, target, check, time, { success: false, error }, eventId);
-			this.publishOutcome(eventId, { time: time.getTime(), success: false, error: JSON.stringify(error), value: null, violation: null });
+			this.publishOutcome(provider, target, check, eventId, { time: time.getTime(), success: false, error: JSON.stringify(error), value: null, violation: null });
 
 			await this.updateBuckets(provider, target, check, time, {
 				provider: "green",
@@ -244,9 +242,8 @@ export class HubService {
 		}
 	}
 
-	private publishOutcome(eventId: number | undefined, outcome: { time: number; success: boolean; error: string | null; value: number | null; violation: string | null }): void {
-		if (eventId === undefined) return;
-		this.outcomePublisher.publish({ ...outcome, id: 0, eventId });
+	private publishOutcome(provider: string, target: string, check: string, eventId: number | undefined, outcome: { time: number; success: boolean; error: string | null; value: number | null; violation: string | null }): void {
+		this.outcomePublisher.publish({ ...outcome, id: 0, eventId, provider, target, check });
 	}
 
 	private mergeStatus(existing: BucketStatus | undefined, incoming: BucketStatus): BucketStatus {

@@ -123,11 +123,11 @@ export class WebService {
 		// Send acknowledgement
 		ws.send(JSON.stringify({ type: "subscription_ack", id: req.id }));
 
-		// Fetch and send historical data
-		await this.sendInitialData(subscription, req);
-
-		// Subscribe to real-time updates
+		// Subscribe to real-time updates before backfill to avoid race window
 		this.subscribeToRealTimeUpdates(subscription);
+
+		// Backfill historical data
+		await this.sendInitialData(subscription, req);
 	}
 
 	/**
@@ -164,7 +164,42 @@ export class WebService {
 		// Send acknowledgement
 		ws.send(JSON.stringify({ type: "subscription_ack", id: req.id }));
 
-		// Fetch and send metrics data
+		// Subscribe to real-time updates before backfill to avoid race window
+		const unsub = this.outcomePublisher.subscribe(async (outcome) => {
+			if (!subscription.matches(outcome.provider, outcome.target, outcome.check)) return;
+			if (!outcome.success) return;
+
+			const bucketStart = Math.floor(outcome.time / subscription.bucketDurationMs) * subscription.bucketDurationMs;
+			if (!subscription.isInRange(bucketStart)) return;
+
+			const bucketEnd = bucketStart + subscription.bucketDurationMs;
+			const buckets = await this.metricsStore.getAggregatedMetrics(
+				subscription.provider,
+				subscription.target,
+				subscription.check,
+				bucketStart,
+				bucketEnd,
+				subscription.bucketDurationMs,
+			);
+
+			const mean = buckets.length > 0 ? buckets[0].mean : null;
+			const msg: MetricsBucketMessage = {
+				type: "metrics_bucket",
+				subscriptionId: subscription.id,
+				provider: subscription.provider,
+				target: subscription.target,
+				check: subscription.check,
+				bucketStart,
+				bucketEnd,
+				mean,
+				index: 0,
+				indexHwm: 0,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsub);
+
+		// Backfill historical metrics data
 		await this.sendMetricsData(subscription);
 	}
 

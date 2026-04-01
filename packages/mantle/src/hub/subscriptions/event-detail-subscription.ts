@@ -1,12 +1,12 @@
 import { Subscription } from "./base.ts";
-import type { ServerWebSocket } from "bun";
+import type { MantleSocket } from "../mantle-socket.ts";
 
 export type EventLevel = "provider" | "target" | "check";
 
 export class EventDetailSubscription extends Subscription {
 	constructor(
 		id: string,
-		ws: ServerWebSocket<{ audience: "web" | "agent" }>,
+		ws: MantleSocket<{ audience: "web" | "agent" }>,
 		public readonly eventId: number,
 		public readonly eventLevel: EventLevel,
 	) {

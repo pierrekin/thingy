@@ -1,10 +1,10 @@
-import type { ServerWebSocket } from "bun";
+import type { MantleSocket } from "../mantle-socket.ts";
 import { Subscription } from "./base.ts";
 
 export class MetricsSubscription extends Subscription {
   constructor(
     id: string,
-    ws: ServerWebSocket,
+    ws: MantleSocket<{ audience: "web" | "agent" }>,
     public readonly provider: string,
     public readonly target: string,
     public readonly check: string,

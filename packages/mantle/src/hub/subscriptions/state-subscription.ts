@@ -1,5 +1,5 @@
 import { Subscription } from "./base.ts";
-import type { ServerWebSocket } from "bun";
+import type { MantleSocket } from "../mantle-socket.ts";
 
 /**
  * StateSubscription manages a client's subscription to entity state data
@@ -12,7 +12,7 @@ import type { ServerWebSocket } from "bun";
 export class StateSubscription extends Subscription {
 	constructor(
 		id: string,
-		ws: ServerWebSocket<{ audience: "web" | "agent" }>,
+		ws: MantleSocket<{ audience: "web" | "agent" }>,
 		public readonly start: number,
 		public readonly end: number | null,
 		public readonly bucketDurationMs: number,

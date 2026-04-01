@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDataStore } from "../subscriptions/data-store";
 import { subscriptionManager } from "../subscriptions/manager";
+import { MantleSocket } from "../lib/mantle-socket";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -24,91 +25,94 @@ type ServerMessage =
  */
 export function useWebSocket() {
 	const [status, setStatus] = useState<ConnectionStatus>("connecting");
-	const wsRef = useRef<WebSocket | null>(null);
+	const msRef = useRef<MantleSocket | null>(null);
 	const reconnectTimeoutRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		let cleaned = false;
+
+		function handleMessage(msg: ServerMessage) {
+			switch (msg.type) {
+				case "subscription_ack":
+					subscriptionManager.markActive(msg.id);
+					break;
+
+				case "subscription_error":
+					subscriptionManager.markError(msg.id, msg.error);
+					break;
+
+				case "provider_bucket":
+					useDataStore.getState().addProviderBucket(msg as any);
+					break;
+
+				case "target_bucket":
+					useDataStore.getState().addTargetBucket(msg as any);
+					break;
+
+				case "check_bucket":
+					useDataStore.getState().addCheckBucket(msg as any);
+					break;
+
+				case "metrics_bucket":
+					useDataStore.getState().addMetricsBucket(msg as any);
+					break;
+
+				case "provider_event":
+					useDataStore.getState().addProviderEvent(msg as any);
+					break;
+
+				case "target_event":
+					useDataStore.getState().addTargetEvent(msg as any);
+					break;
+
+				case "check_event":
+					useDataStore.getState().addCheckEvent(msg as any);
+					break;
+
+				case "event_info":
+					useDataStore.getState().setEventInfo(msg as any);
+					break;
+
+				case "event_outcome":
+					useDataStore.getState().addEventOutcome(msg as any);
+					break;
+
+				case "target_status":
+					useDataStore.getState().setTargetStatus(msg as any);
+					break;
+
+				default:
+					console.warn("Unknown message type:", (msg as any).type);
+			}
+		}
 
 		function connect() {
 			const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 			const wsUrl = `${protocol}//${window.location.host}/api/ws`;
 
 			setStatus("connecting");
-			const ws = new WebSocket(wsUrl);
-			wsRef.current = ws;
+			const ms = new MantleSocket(wsUrl);
+			msRef.current = ms;
 
-			ws.onopen = () => {
+			ms.onopen = () => {
 				if (cleaned) return;
 				setStatus("connected");
 			};
 
-			ws.onmessage = (event) => {
+			ms.onmessage = (data) => {
 				if (cleaned) return;
 				try {
-					const msg = JSON.parse(event.data) as ServerMessage;
-
-					switch (msg.type) {
-						case "subscription_ack":
-							subscriptionManager.markActive(msg.id);
-							break;
-
-						case "subscription_error":
-							subscriptionManager.markError(msg.id, msg.error);
-							break;
-
-						case "provider_bucket":
-							useDataStore.getState().addProviderBucket(msg as any);
-							break;
-
-						case "target_bucket":
-							useDataStore.getState().addTargetBucket(msg as any);
-							break;
-
-						case "check_bucket":
-							useDataStore.getState().addCheckBucket(msg as any);
-							break;
-
-						case "metrics_bucket":
-							useDataStore.getState().addMetricsBucket(msg as any);
-							break;
-
-						case "provider_event":
-							useDataStore.getState().addProviderEvent(msg as any);
-							break;
-
-						case "target_event":
-							useDataStore.getState().addTargetEvent(msg as any);
-							break;
-
-						case "check_event":
-							useDataStore.getState().addCheckEvent(msg as any);
-							break;
-
-						case "event_info":
-							useDataStore.getState().setEventInfo(msg as any);
-							break;
-
-						case "event_outcome":
-							useDataStore.getState().addEventOutcome(msg as any);
-							break;
-
-						case "target_status":
-							useDataStore.getState().setTargetStatus(msg as any);
-							break;
-
-						default:
-							console.warn("Unknown message type:", (msg as any).type);
-					}
+					const msg = JSON.parse(data) as ServerMessage;
+					handleMessage(msg);
 				} catch (error) {
 					console.error("Error processing WebSocket message:", error);
 				}
 			};
 
-			ws.onclose = () => {
+			ms.onclose = () => {
 				if (cleaned) return;
 				setStatus("disconnected");
-				wsRef.current = null;
+				msRef.current = null;
 
 				// Reconnect after delay
 				reconnectTimeoutRef.current = window.setTimeout(() => {
@@ -116,22 +120,22 @@ export function useWebSocket() {
 				}, 2000);
 			};
 
-			ws.onerror = () => {
-				ws.close();
+			ms.onerror = () => {
+				ms.close();
 			};
 
-			return ws;
+			return ms;
 		}
 
-		const ws = connect();
+		const ms = connect();
 
 		return () => {
 			cleaned = true;
 			if (reconnectTimeoutRef.current) {
 				clearTimeout(reconnectTimeoutRef.current);
 			}
-			ws.close();
-			wsRef.current = null;
+			ms.close();
+			msRef.current = null;
 		};
 	}, []);
 
@@ -139,12 +143,12 @@ export function useWebSocket() {
 	 * Send a message to the server
 	 */
 	const send = useCallback((message: string) => {
-		if (wsRef.current?.readyState === WebSocket.OPEN) {
-			wsRef.current.send(message);
+		if (msRef.current?.readyState === WebSocket.OPEN) {
+			msRef.current.send(message);
 		} else {
 			console.warn("WebSocket not connected, cannot send message");
 		}
 	}, []);
 
-	return { status, send, ws: wsRef.current };
+	return { status, send, ws: msRef.current };
 }

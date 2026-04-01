@@ -1,4 +1,4 @@
-import type { ServerWebSocket } from "bun";
+import type { MantleSocket } from "../mantle-socket.ts";
 
 /**
  * Base class for all subscription types.
@@ -9,7 +9,7 @@ export abstract class Subscription {
 
 	constructor(
 		public readonly id: string,
-		public readonly ws: ServerWebSocket<{ audience: "web" | "agent" }>,
+		public readonly ws: MantleSocket<{ audience: "web" | "agent" }>,
 	) {}
 
 	/**

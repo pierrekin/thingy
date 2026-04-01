@@ -1,4 +1,4 @@
-import type { ServerWebSocket } from "bun";
+import type { MantleSocket } from "./mantle-socket.ts";
 import type { BucketStore, EventStore, MetricsStore, OutcomeStore } from "../store/types.ts";
 import type {
 	ProviderBucketPublisher,
@@ -71,7 +71,7 @@ export class WebService {
 	/**
 	 * Handle incoming messages from web clients
 	 */
-	async handleMessage(ws: ServerWebSocket<WebSocketData>, message: string): Promise<void> {
+	async handleMessage(ws: MantleSocket<WebSocketData>, message: string): Promise<void> {
 		let msg: ClientMessage;
 		try {
 			msg = JSON.parse(message) as ClientMessage;
@@ -102,7 +102,7 @@ export class WebService {
 	 * Handle state subscription requests
 	 */
 	private async handleStateSubscription(
-		ws: ServerWebSocket<WebSocketData>,
+		ws: MantleSocket<WebSocketData>,
 		req: StateSubscriptionRequest,
 	): Promise<void> {
 		// Validate request
@@ -134,7 +134,7 @@ export class WebService {
 	 * Handle metrics subscription requests
 	 */
 	private async handleMetricsSubscription(
-		ws: ServerWebSocket<WebSocketData>,
+		ws: MantleSocket<WebSocketData>,
 		req: MetricsSubscriptionRequest,
 	): Promise<void> {
 		// Validate request
@@ -479,7 +479,7 @@ export class WebService {
 	 * Handle event detail subscription requests
 	 */
 	private async handleEventSubscription(
-		ws: ServerWebSocket<WebSocketData>,
+		ws: MantleSocket<WebSocketData>,
 		req: EventSubscriptionRequest,
 	): Promise<void> {
 		const subscription = new EventDetailSubscription(req.id, ws, req.eventId, req.eventLevel);
@@ -558,21 +558,21 @@ export class WebService {
 	/**
 	 * Handle unsubscribe requests
 	 */
-	private handleUnsubscribe(ws: ServerWebSocket<WebSocketData>, req: UnsubscribeRequest): void {
+	private handleUnsubscribe(ws: MantleSocket<WebSocketData>, req: UnsubscribeRequest): void {
 		this.subscriptionManager.remove(req.id);
 	}
 
 	/**
 	 * Handle WebSocket disconnection
 	 */
-	handleDisconnect(ws: ServerWebSocket<WebSocketData>): void {
+	handleDisconnect(ws: MantleSocket<WebSocketData>): void {
 		this.subscriptionManager.removeAllForWebSocket(ws);
 	}
 
 	/**
 	 * Send error message to client
 	 */
-	private sendError(ws: ServerWebSocket<WebSocketData>, subscriptionId: string | undefined, error: string): void {
+	private sendError(ws: MantleSocket<WebSocketData>, subscriptionId: string | undefined, error: string): void {
 		if (subscriptionId) {
 			ws.send(JSON.stringify({ type: "subscription_error", id: subscriptionId, error }));
 		} else {

@@ -1,4 +1,4 @@
-import type { ServerWebSocket } from "bun";
+import type { MantleSocket } from "../mantle-socket.ts";
 import type { Subscription } from "./base.ts";
 
 /**
@@ -7,7 +7,7 @@ import type { Subscription } from "./base.ts";
  */
 export class SubscriptionManager {
 	private subscriptions = new Map<string, Subscription>();
-	private subscriptionsByWs = new Map<ServerWebSocket<{ audience: "web" | "agent" }>, Set<string>>();
+	private subscriptionsByWs = new Map<MantleSocket<{ audience: "web" | "agent" }>, Set<string>>();
 
 	/**
 	 * Register a new subscription
@@ -54,7 +54,7 @@ export class SubscriptionManager {
 	/**
 	 * Remove all subscriptions for a WebSocket (e.g., when client disconnects)
 	 */
-	removeAllForWebSocket(ws: ServerWebSocket<{ audience: "web" | "agent" }>): void {
+	removeAllForWebSocket(ws: MantleSocket<{ audience: "web" | "agent" }>): void {
 		const wsSubscriptions = this.subscriptionsByWs.get(ws);
 		if (!wsSubscriptions) {
 			return;
@@ -75,7 +75,7 @@ export class SubscriptionManager {
 	/**
 	 * Get all subscription IDs for a WebSocket
 	 */
-	getSubscriptionIdsForWebSocket(ws: ServerWebSocket<{ audience: "web" | "agent" }>): string[] {
+	getSubscriptionIdsForWebSocket(ws: MantleSocket<{ audience: "web" | "agent" }>): string[] {
 		const wsSubscriptions = this.subscriptionsByWs.get(ws);
 		return wsSubscriptions ? Array.from(wsSubscriptions) : [];
 	}

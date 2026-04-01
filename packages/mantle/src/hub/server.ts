@@ -1,8 +1,9 @@
 import type { Hono } from "hono";
-import type { Server, ServerWebSocket } from "bun";
+import type { Server } from "bun";
 import type { AgentMessage } from "../protocol.ts";
 import type { HubService } from "./service.ts";
 import type { WebService } from "./web-service.ts";
+import { createMantleSocketHandler, type MantleSocket } from "./mantle-socket.ts";
 
 type WebSocketData = {
 	audience: "web" | "agent";
@@ -29,28 +30,26 @@ export function createFetchHandler(app: Hono) {
 }
 
 export function createWebSocketHandler(hubService: HubService, webService: WebService) {
-	return {
-		async open(ws: ServerWebSocket<WebSocketData>) {
-			if (ws.data.audience === "agent") {
-				ws.send(JSON.stringify({ type: "hub_hello" }));
+	return createMantleSocketHandler<WebSocketData>({
+		open(ms: MantleSocket<WebSocketData>) {
+			if (ms.data.audience === "agent") {
+				ms.send(JSON.stringify({ type: "hub_hello" }));
 			}
 			// Web clients now subscribe explicitly via messages
 		},
-		async message(ws: ServerWebSocket<WebSocketData>, message: string | Buffer) {
-			const msgStr = message.toString();
-
-			if (ws.data.audience === "agent") {
-				const msg = JSON.parse(msgStr) as AgentMessage;
+		async message(ms: MantleSocket<WebSocketData>, message: string) {
+			if (ms.data.audience === "agent") {
+				const msg = JSON.parse(message) as AgentMessage;
 				await hubService.handleAgentMessage(msg);
-			} else if (ws.data.audience === "web") {
+			} else if (ms.data.audience === "web") {
 				// Handle web client subscription messages
-				await webService.handleMessage(ws, msgStr);
+				await webService.handleMessage(ms, message);
 			}
 		},
-		close(ws: ServerWebSocket<WebSocketData>) {
-			if (ws.data.audience === "web") {
-				webService.handleDisconnect(ws);
+		close(ms: MantleSocket<WebSocketData>) {
+			if (ms.data.audience === "web") {
+				webService.handleDisconnect(ms);
 			}
 		},
-	};
+	});
 }

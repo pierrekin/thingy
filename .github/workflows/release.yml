@@ -22,6 +22,14 @@ jobs:
           - os: ubuntu-latest
             target: bun-linux-arm64
             artifact: linux-aarch64
+          - os: ubuntu-latest
+            container: oven/bun:1-alpine
+            target: bun-linux-x64
+            artifact: linux-x86_64-musl
+          - os: ubuntu-latest
+            container: oven/bun:1-alpine
+            target: bun-linux-arm64
+            artifact: linux-aarch64-musl
           - os: macos-latest
             target: bun-darwin-x64
             artifact: darwin-x86_64
@@ -29,10 +37,12 @@ jobs:
             target: bun-darwin-arm64
             artifact: darwin-aarch64
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container || '' }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
+        if: ${{ !matrix.container }}
         with:
           bun-version: latest
 
@@ -103,16 +113,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Linux artifacts
+      - name: Download musl artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: mantle-linux-*
+          pattern: mantle-linux-*-musl
           merge-multiple: true
 
       - name: Rename artifacts for Docker
         run: |
-          mv mantle-linux-x86_64 mantle-linux-amd64
-          mv mantle-linux-aarch64 mantle-linux-arm64
+          mv mantle-linux-x86_64-musl mantle-linux-amd64
+          mv mantle-linux-aarch64-musl mantle-linux-arm64
 
       - uses: oven-sh/setup-bun@v2
         with:

@@ -56,8 +56,17 @@ export function useStateSubscription(params: StateSubscriptionParams): string | 
 					case "agent_event":
 						store.addAgentEvent(msg);
 						break;
+					case "provider_status":
+						store.setProviderStatus(msg);
+						break;
 					case "target_status":
 						store.setTargetStatus(msg);
+						break;
+					case "channel_status":
+						store.setChannelStatus(msg);
+						break;
+					case "agent_status":
+						store.setAgentStatus(msg);
 						break;
 				}
 			},

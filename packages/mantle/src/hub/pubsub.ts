@@ -111,6 +111,27 @@ export class CheckEventPublisher {
 	}
 }
 
+export type ProviderStatusUpdate = {
+	provider: string;
+	status: "green" | "red" | "grey" | null;
+};
+export type ProviderStatusSubscriber = (update: ProviderStatusUpdate) => void;
+
+export class ProviderStatusPublisher {
+	private subscribers = new Set<ProviderStatusSubscriber>();
+
+	subscribe(fn: ProviderStatusSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(update: ProviderStatusUpdate): void {
+		for (const fn of this.subscribers) {
+			fn(update);
+		}
+	}
+}
+
 export type TargetStatusUpdate = {
 	provider: string;
 	target: string;
@@ -127,6 +148,48 @@ export class TargetStatusPublisher {
 	}
 
 	publish(update: TargetStatusUpdate): void {
+		for (const fn of this.subscribers) {
+			fn(update);
+		}
+	}
+}
+
+export type ChannelStatusUpdate = {
+	channel: string;
+	status: "green" | "red" | "grey" | null;
+};
+export type ChannelStatusSubscriber = (update: ChannelStatusUpdate) => void;
+
+export class ChannelStatusPublisher {
+	private subscribers = new Set<ChannelStatusSubscriber>();
+
+	subscribe(fn: ChannelStatusSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(update: ChannelStatusUpdate): void {
+		for (const fn of this.subscribers) {
+			fn(update);
+		}
+	}
+}
+
+export type AgentStatusUpdate = {
+	agent: string;
+	status: "green" | "red" | "grey" | null;
+};
+export type AgentStatusSubscriber = (update: AgentStatusUpdate) => void;
+
+export class AgentStatusPublisher {
+	private subscribers = new Set<AgentStatusSubscriber>();
+
+	subscribe(fn: AgentStatusSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(update: AgentStatusUpdate): void {
 		for (const fn of this.subscribers) {
 			fn(update);
 		}

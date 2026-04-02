@@ -58,7 +58,10 @@ export type ServerMessage =
 	| AgentEventMessage
 	| EventInfoMessage
 	| EventOutcomeMessage
-	| TargetStatusMessage;
+	| ProviderStatusMessage
+	| TargetStatusMessage
+	| ChannelStatusMessage
+	| AgentStatusMessage;
 
 export type SnapshotCompleteMessage = {
 	type: "snapshot_complete";
@@ -176,11 +179,32 @@ export type EventOutcomeMessage = {
 	violation: string | null;
 };
 
+export type ProviderStatusMessage = {
+	type: "provider_status";
+	subscriptionId: string;
+	provider: string;
+	status: "green" | "red" | "grey" | null;
+};
+
 export type TargetStatusMessage = {
 	type: "target_status";
 	subscriptionId: string;
 	provider: string;
 	target: string;
+	status: "green" | "red" | "grey" | null;
+};
+
+export type ChannelStatusMessage = {
+	type: "channel_status";
+	subscriptionId: string;
+	channel: string;
+	status: "green" | "red" | "grey" | null;
+};
+
+export type AgentStatusMessage = {
+	type: "agent_status";
+	subscriptionId: string;
+	agent: string;
 	status: "green" | "red" | "grey" | null;
 };
 

@@ -34,18 +34,21 @@ export type Target = {
 export type Provider = {
 	name: string;
 	statusSlots: StatusSlot[];
+	latestStatus: SlotStatus;
 	events: Event[];
 };
 
 export type Channel = {
 	name: string;
 	statusSlots: StatusSlot[];
+	latestStatus: SlotStatus;
 	events: Event[];
 };
 
 export type Agent = {
 	name: string;
 	statusSlots: StatusSlot[];
+	latestStatus: SlotStatus;
 	events: Event[];
 };
 

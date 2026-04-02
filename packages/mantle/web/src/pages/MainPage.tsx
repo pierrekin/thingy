@@ -35,6 +35,7 @@ export function MainPage({ hub, onNavigateToInfra }: Props) {
 								key={provider.name}
 								name={provider.name}
 								statusSlots={provider.statusSlots}
+								latestStatus={provider.latestStatus}
 								events={provider.events}
 								eventLevel="provider"
 							/>
@@ -52,6 +53,7 @@ export function MainPage({ hub, onNavigateToInfra }: Props) {
 								key={channel.name}
 								name={channel.name}
 								statusSlots={channel.statusSlots}
+								latestStatus={channel.latestStatus}
 								events={channel.events}
 								eventLevel="provider"
 							/>
@@ -69,6 +71,7 @@ export function MainPage({ hub, onNavigateToInfra }: Props) {
 								key={agent.name}
 								name={agent.name}
 								statusSlots={agent.statusSlots}
+								latestStatus={agent.latestStatus}
 								events={agent.events}
 								eventLevel="provider"
 							/>

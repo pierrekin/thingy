@@ -10,7 +10,9 @@ import type {
 	CheckEventPublisher,
 	AgentBucketPublisher,
 	OutcomePublisher,
+	ProviderStatusPublisher,
 	TargetStatusPublisher,
+	AgentStatusPublisher,
 } from "./pubsub.ts";
 import { getBucketBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
@@ -40,9 +42,11 @@ export class HubService {
 	private bucketConfig: BucketConfig;
 	private bucketPublishers: BucketPublishers;
 	private outcomePublisher: OutcomePublisher;
+	private providerStatusPublisher: ProviderStatusPublisher;
 	private targetStatusPublisher: TargetStatusPublisher;
 	private agentStores: AgentStores;
 	private agentPublishers: AgentPublishers;
+	private agentStatusPublisher: AgentStatusPublisher | null;
 
 	constructor(
 		private outcomeStore: OutcomeStore,
@@ -51,16 +55,20 @@ export class HubService {
 		bucketPublishers: BucketPublishers,
 		eventPublishers: EventPublishers,
 		outcomePublisher: OutcomePublisher,
+		providerStatusPublisher: ProviderStatusPublisher,
 		targetStatusPublisher: TargetStatusPublisher,
 		agentStores: AgentStores = null,
 		agentPublishers: AgentPublishers = null,
+		agentStatusPublisher: AgentStatusPublisher | null = null,
 		bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
 	) {
 		this.bucketPublishers = bucketPublishers;
 		this.outcomePublisher = outcomePublisher;
+		this.providerStatusPublisher = providerStatusPublisher;
 		this.targetStatusPublisher = targetStatusPublisher;
 		this.agentStores = agentStores;
 		this.agentPublishers = agentPublishers;
+		this.agentStatusPublisher = agentStatusPublisher;
 		this.events = new EventTracker(eventStore, eventPublishers);
 		this.bucketConfig = bucketConfig;
 	}
@@ -144,6 +152,7 @@ export class HubService {
 			check: checkStatus,
 		});
 
+		await this.publishProviderStatus(provider);
 		await this.publishTargetStatus(provider, target);
 	}
 
@@ -170,6 +179,7 @@ export class HubService {
 				target: "grey",
 				check: "grey",
 			});
+			await this.publishProviderStatus(provider);
 			await this.publishTargetStatus(provider, target);
 		} else if (level === "target") {
 			await this.events.handleProviderOutcome(provider, time, null);
@@ -186,6 +196,7 @@ export class HubService {
 				target: "red",
 				check: "grey",
 			});
+			await this.publishProviderStatus(provider);
 			await this.publishTargetStatus(provider, target);
 		} else {
 			await this.events.handleProviderOutcome(provider, time, null);
@@ -203,8 +214,14 @@ export class HubService {
 				target: "red",
 				check: "red",
 			});
+			await this.publishProviderStatus(provider);
 			await this.publishTargetStatus(provider, target);
 		}
+	}
+
+	private async publishProviderStatus(provider: string): Promise<void> {
+		const status = await this.outcomeStore.getLatestProviderStatus(provider);
+		this.providerStatusPublisher.publish({ provider, status });
 	}
 
 	private async publishTargetStatus(provider: string, target: string): Promise<void> {
@@ -295,6 +312,11 @@ export class HubService {
 				bucketEnd: end,
 				status: newStatus,
 			});
+		}
+
+		if (this.agentStatusPublisher) {
+			const status = await this.agentStores.outcomeStore.getLatestAgentStatus(agentId);
+			this.agentStatusPublisher.publish({ agent: agentId, status });
 		}
 	}
 

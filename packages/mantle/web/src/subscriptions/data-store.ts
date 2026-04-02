@@ -108,8 +108,11 @@ interface DataStoreState {
 	channelEvents: Map<string, Map<number, ChannelEvent>>;
 	agentEvents: Map<string, Map<number, AgentEvent>>;
 
-	// Target status: "provider/target" -> latest status
+	// Latest statuses
+	providerStatuses: Map<string, "green" | "red" | "grey" | null>;
 	targetStatuses: Map<string, "green" | "red" | "grey" | null>;
+	channelStatuses: Map<string, "green" | "red" | "grey" | null>;
+	agentStatuses: Map<string, "green" | "red" | "grey" | null>;
 
 	// Event subscription data
 	eventInfo: Map<string, { title: string; code: string; startTime: number; endTime: number | null }>;
@@ -127,7 +130,10 @@ interface DataStoreState {
 	addCheckEvent: (msg: CheckEventMessage) => void;
 	addChannelEvent: (msg: ChannelEventMessage) => void;
 	addAgentEvent: (msg: AgentEventMessage) => void;
+	setProviderStatus: (msg: { provider: string; status: "green" | "red" | "grey" | null }) => void;
 	setTargetStatus: (msg: { provider: string; target: string; status: "green" | "red" | "grey" | null }) => void;
+	setChannelStatus: (msg: { channel: string; status: "green" | "red" | "grey" | null }) => void;
+	setAgentStatus: (msg: { agent: string; status: "green" | "red" | "grey" | null }) => void;
 	setEventInfo: (msg: { subscriptionId: string; title: string; code: string; startTime: number; endTime: number | null }) => void;
 	addEventOutcome: (msg: { subscriptionId: string; id: number; time: number; error: string | null; violation: string | null }) => void;
 	clearSubscription: (subscriptionId: string) => void;
@@ -153,7 +159,10 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	checkEvents: new Map(),
 	channelEvents: new Map(),
 	agentEvents: new Map(),
+	providerStatuses: new Map(),
 	targetStatuses: new Map(),
+	channelStatuses: new Map(),
+	agentStatuses: new Map(),
 	eventInfo: new Map(),
 	eventOutcomes: new Map(),
 
@@ -367,11 +376,35 @@ export const useDataStore = create<DataStoreState>((set) => ({
 		});
 	},
 
+	setProviderStatus: (msg) => {
+		set((state) => {
+			const providerStatuses = new Map(state.providerStatuses);
+			providerStatuses.set(msg.provider, msg.status);
+			return { providerStatuses };
+		});
+	},
+
 	setTargetStatus: (msg) => {
 		set((state) => {
 			const targetStatuses = new Map(state.targetStatuses);
 			targetStatuses.set(`${msg.provider}/${msg.target}`, msg.status);
 			return { targetStatuses };
+		});
+	},
+
+	setChannelStatus: (msg) => {
+		set((state) => {
+			const channelStatuses = new Map(state.channelStatuses);
+			channelStatuses.set(msg.channel, msg.status);
+			return { channelStatuses };
+		});
+	},
+
+	setAgentStatus: (msg) => {
+		set((state) => {
+			const agentStatuses = new Map(state.agentStatuses);
+			agentStatuses.set(msg.agent, msg.status);
+			return { agentStatuses };
 		});
 	},
 

@@ -65,6 +65,13 @@ export interface OutcomeStore {
     offset?: number,
   ): Promise<StoredOutcome[]>;
 
+  getLatestProviderStatuses(): Promise<Array<{
+    provider: string;
+    status: BucketStatus;
+  }>>;
+
+  getLatestProviderStatus(provider: string): Promise<BucketStatus>;
+
   getLatestTargetStatuses(): Promise<Array<{
     provider: string;
     target: string;
@@ -322,6 +329,13 @@ export interface ChannelOutcomeStore {
     eventId?: number,
   ): Promise<void>;
 
+  getLatestChannelStatuses(): Promise<Array<{
+    channel: string;
+    status: BucketStatus;
+  }>>;
+
+  getLatestChannelStatus(channel: string): Promise<BucketStatus>;
+
   close(): Promise<void>;
 }
 
@@ -400,6 +414,13 @@ export interface AgentOutcomeStore {
     outcome: AgentOutcome,
     eventId?: number,
   ): Promise<void>;
+
+  getLatestAgentStatuses(): Promise<Array<{
+    agent: string;
+    status: BucketStatus;
+  }>>;
+
+  getLatestAgentStatus(agent: string): Promise<BucketStatus>;
 
   close(): Promise<void>;
 }

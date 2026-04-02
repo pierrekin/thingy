@@ -314,6 +314,37 @@ export class SqliteOutcomeStore implements OutcomeStore {
     }));
   }
 
+  async getLatestProviderStatuses(): Promise<Array<{
+    provider: string;
+    status: BucketStatus;
+  }>> {
+    const rows = this.db.prepare(`
+      SELECT provider, success
+      FROM provider_outcomes
+      WHERE id IN (
+        SELECT MAX(id) FROM provider_outcomes GROUP BY provider
+      )
+    `).all() as Array<{ provider: string; success: number }>;
+
+    return rows.map((r) => ({
+      provider: r.provider,
+      status: r.success === 1 ? "green" as const : "red" as const,
+    }));
+  }
+
+  async getLatestProviderStatus(provider: string): Promise<BucketStatus> {
+    const row = this.db.prepare(`
+      SELECT success
+      FROM provider_outcomes
+      WHERE provider = ?
+      ORDER BY id DESC
+      LIMIT 1
+    `).get(provider) as { success: number } | undefined;
+
+    if (!row) return null;
+    return row.success === 1 ? "green" : "red";
+  }
+
   async getLatestTargetStatuses(): Promise<Array<{
     provider: string;
     target: string;
@@ -746,6 +777,37 @@ export class SqliteChannelOutcomeStore implements ChannelOutcomeStore {
     );
   }
 
+  async getLatestChannelStatuses(): Promise<Array<{
+    channel: string;
+    status: BucketStatus;
+  }>> {
+    const rows = this.db.prepare(`
+      SELECT channel, success
+      FROM channel_outcomes
+      WHERE id IN (
+        SELECT MAX(id) FROM channel_outcomes GROUP BY channel
+      )
+    `).all() as Array<{ channel: string; success: number }>;
+
+    return rows.map((r) => ({
+      channel: r.channel,
+      status: r.success === 1 ? "green" as const : "red" as const,
+    }));
+  }
+
+  async getLatestChannelStatus(channel: string): Promise<BucketStatus> {
+    const row = this.db.prepare(`
+      SELECT success
+      FROM channel_outcomes
+      WHERE channel = ?
+      ORDER BY id DESC
+      LIMIT 1
+    `).get(channel) as { success: number } | undefined;
+
+    if (!row) return null;
+    return row.success === 1 ? "green" : "red";
+  }
+
   async close(): Promise<void> {
     this.db.close();
   }
@@ -878,6 +940,37 @@ export class SqliteAgentOutcomeStore implements AgentOutcomeStore {
       outcome.success ? 1 : 0,
       outcome.success ? null : outcome.error,
     );
+  }
+
+  async getLatestAgentStatuses(): Promise<Array<{
+    agent: string;
+    status: BucketStatus;
+  }>> {
+    const rows = this.db.prepare(`
+      SELECT agent, success
+      FROM agent_outcomes
+      WHERE id IN (
+        SELECT MAX(id) FROM agent_outcomes GROUP BY agent
+      )
+    `).all() as Array<{ agent: string; success: number }>;
+
+    return rows.map((r) => ({
+      agent: r.agent,
+      status: r.success === 1 ? "green" as const : "red" as const,
+    }));
+  }
+
+  async getLatestAgentStatus(agent: string): Promise<BucketStatus> {
+    const row = this.db.prepare(`
+      SELECT success
+      FROM agent_outcomes
+      WHERE agent = ?
+      ORDER BY id DESC
+      LIMIT 1
+    `).get(agent) as { success: number } | undefined;
+
+    if (!row) return null;
+    return row.success === 1 ? "green" : "red";
   }
 
   async close(): Promise<void> {

@@ -11,6 +11,7 @@ import type {
 	CheckEventPublisher,
 	ChannelBucketPublisher,
 	ChannelEventPublisher,
+	ChannelStatusPublisher,
 } from "./pubsub.ts";
 import { getBucketBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
@@ -48,6 +49,7 @@ export class ChannelDispatcher {
 		private eventStore: ChannelEventStore,
 		private bucketStore: ChannelBucketStore,
 		private channelPublishers: ChannelPublishers,
+		private channelStatusPublisher: ChannelStatusPublisher,
 		private bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
 	) {}
 
@@ -133,6 +135,7 @@ export class ChannelDispatcher {
 		}
 
 		await this.updateBucket(channel, time, "green");
+		await this.publishChannelStatus(channel);
 	}
 
 	private async recordError(channel: string, time: Date, message: string): Promise<void> {
@@ -159,6 +162,12 @@ export class ChannelDispatcher {
 		}
 
 		await this.updateBucket(channel, time, "red");
+		await this.publishChannelStatus(channel);
+	}
+
+	private async publishChannelStatus(channel: string): Promise<void> {
+		const status = await this.outcomeStore.getLatestChannelStatus(channel);
+		this.channelStatusPublisher.publish({ channel, status });
 	}
 
 	private async updateBucket(channel: string, time: Date, status: BucketStatus): Promise<void> {

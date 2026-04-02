@@ -124,10 +124,12 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 			const bucketMap = providerBucketsMap.get(name);
 			const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
 			const visibleSlots = filterSlotsInWindow(slots, window);
+			const latestStatus = state.providerStatuses.get(name) ?? null;
 
 			return {
 				name,
 				statusSlots: visibleSlots,
+				latestStatus,
 				events,
 			};
 		});
@@ -212,10 +214,12 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 			const bucketMap = channelBucketsMap.get(name);
 			const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
 			const visibleSlots = filterSlotsInWindow(slots, window);
+			const latestStatus = state.channelStatuses.get(name) ?? null;
 
 			return {
 				name,
 				statusSlots: visibleSlots,
+				latestStatus,
 				events,
 			};
 		});
@@ -235,10 +239,12 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 			const bucketMap = agentBucketsMap.get(name);
 			const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
 			const visibleSlots = filterSlotsInWindow(slots, window);
+			const latestStatus = state.agentStatuses.get(name) ?? null;
 
 			return {
 				name,
 				statusSlots: visibleSlots,
+				latestStatus,
 				events,
 			};
 		});

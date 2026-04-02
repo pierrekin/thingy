@@ -1,5 +1,5 @@
 import type { MantleSocket } from "./mantle-socket.ts";
-import type { BucketStore, EventStore, MetricsStore, OutcomeStore, ChannelBucketStore, ChannelEventStore, AgentBucketStore, AgentEventStore } from "../store/types.ts";
+import type { BucketStore, EventStore, MetricsStore, OutcomeStore, ChannelBucketStore, ChannelEventStore, ChannelOutcomeStore, AgentBucketStore, AgentEventStore, AgentOutcomeStore } from "../store/types.ts";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
@@ -12,7 +12,10 @@ import type {
 	AgentBucketPublisher,
 	AgentEventPublisher,
 	OutcomePublisher,
+	ProviderStatusPublisher,
 	TargetStatusPublisher,
+	ChannelStatusPublisher,
+	AgentStatusPublisher,
 } from "./pubsub.ts";
 import {
 	SubscriptionManager,
@@ -37,7 +40,10 @@ import {
 	type CheckEventMessage,
 	type EventInfoMessage,
 	type EventOutcomeMessage,
+	type ProviderStatusMessage,
 	type TargetStatusMessage,
+	type ChannelStatusMessage,
+	type AgentStatusMessage,
 } from "./subscriptions/index.ts";
 import { DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
@@ -65,6 +71,7 @@ type ChannelPublishers = {
 type ChannelStores = {
 	bucketStore: ChannelBucketStore;
 	eventStore: ChannelEventStore;
+	outcomeStore: ChannelOutcomeStore;
 } | null;
 
 type AgentPublishers = {
@@ -75,6 +82,7 @@ type AgentPublishers = {
 type AgentStoresForWeb = {
 	bucketStore: AgentBucketStore;
 	eventStore: AgentEventStore;
+	outcomeStore: AgentOutcomeStore;
 } | null;
 
 /**
@@ -93,11 +101,14 @@ export class WebService {
 		private bucketPublishers: BucketPublishers,
 		private eventPublishers: EventPublishers,
 		private outcomePublisher: OutcomePublisher,
+		private providerStatusPublisher: ProviderStatusPublisher,
 		private targetStatusPublisher: TargetStatusPublisher,
 		private channelPublishers: ChannelPublishers = null,
 		private channelStores: ChannelStores = null,
+		private channelStatusPublisher: ChannelStatusPublisher | null = null,
 		private agentPublishers: AgentPublishers = null,
 		private agentStores: AgentStoresForWeb = null,
+		private agentStatusPublisher: AgentStatusPublisher | null = null,
 	) {}
 
 	/**
@@ -412,6 +423,18 @@ export class WebService {
 			subscription.ws.send(JSON.stringify(msg));
 		}
 
+		// Send latest provider statuses
+		const latestProviderStatuses = await this.outcomeStore.getLatestProviderStatuses();
+		for (const entry of latestProviderStatuses) {
+			const msg: ProviderStatusMessage = {
+				type: "provider_status",
+				subscriptionId: subscription.id,
+				provider: entry.provider,
+				status: entry.status,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		}
+
 		// Send latest target statuses
 		const latestStatuses = await this.outcomeStore.getLatestTargetStatuses();
 		for (const entry of latestStatuses) {
@@ -447,6 +470,17 @@ export class WebService {
 				};
 				subscription.ws.send(JSON.stringify(msg));
 			}
+
+			const latestChannelStatuses = await this.channelStores.outcomeStore.getLatestChannelStatuses();
+			for (const entry of latestChannelStatuses) {
+				const msg: ChannelStatusMessage = {
+					type: "channel_status",
+					subscriptionId: subscription.id,
+					channel: entry.channel,
+					status: entry.status,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			}
 		}
 
 		// Send agent data if available
@@ -468,6 +502,17 @@ export class WebService {
 					type: "agent_event",
 					subscriptionId: subscription.id,
 					...event,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			}
+
+			const latestAgentStatuses = await this.agentStores.outcomeStore.getLatestAgentStatuses();
+			for (const entry of latestAgentStatuses) {
+				const msg: AgentStatusMessage = {
+					type: "agent_status",
+					subscriptionId: subscription.id,
+					agent: entry.agent,
+					status: entry.status,
 				};
 				subscription.ws.send(JSON.stringify(msg));
 			}
@@ -568,6 +613,17 @@ export class WebService {
 		});
 		subscription.addUnsubscriber(unsubCheckEvent);
 
+		// Subscribe to provider status updates
+		const unsubProviderStatus = this.providerStatusPublisher.subscribe((update) => {
+			const msg: ProviderStatusMessage = {
+				type: "provider_status",
+				subscriptionId: subscription.id,
+				...update,
+			};
+			subscription.ws.send(JSON.stringify(msg));
+		});
+		subscription.addUnsubscriber(unsubProviderStatus);
+
 		// Subscribe to target status updates
 		const unsubTargetStatus = this.targetStatusPublisher.subscribe((update) => {
 			const msg: TargetStatusMessage = {
@@ -604,6 +660,18 @@ export class WebService {
 			subscription.addUnsubscriber(unsubChannelEvent);
 		}
 
+		if (this.channelStatusPublisher) {
+			const unsubChannelStatus = this.channelStatusPublisher.subscribe((update) => {
+				const msg: ChannelStatusMessage = {
+					type: "channel_status",
+					subscriptionId: subscription.id,
+					...update,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsubChannelStatus);
+		}
+
 		// Subscribe to agent updates if available
 		if (this.agentPublishers) {
 			const unsubAgentBucket = this.agentPublishers.bucket.subscribe((bucketMsg) => {
@@ -627,6 +695,18 @@ export class WebService {
 				subscription.ws.send(JSON.stringify(msg));
 			});
 			subscription.addUnsubscriber(unsubAgentEvent);
+		}
+
+		if (this.agentStatusPublisher) {
+			const unsubAgentStatus = this.agentStatusPublisher.subscribe((update) => {
+				const msg: AgentStatusMessage = {
+					type: "agent_status",
+					subscriptionId: subscription.id,
+					...update,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsubAgentStatus);
 		}
 	}
 

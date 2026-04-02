@@ -11,6 +11,7 @@ import { startAgent } from "./agent/index.ts";
 import { createSqliteStores } from "./store/index.ts";
 import { createHubReporters } from "./agent/hub-client.ts";
 import { runStatus } from "./commands/status.ts";
+import { createChannelInstances } from "./create-channels.ts";
 
 function getHubConfig(config: Config): HubConfig {
 	if (!config.hub) {
@@ -75,7 +76,8 @@ const hub = defineCommand({
 		const config = await loadConfig(args.config);
 		const hubConfig = getHubConfig(config);
 		const { outcomeStore, eventStore, bucketStore, metricsStore } = createSqliteStores("mantle.db");
-		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore);
+		const channels = createChannelInstances(config.channels ?? {});
+		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore, channels);
 	}),
 });
 
@@ -105,7 +107,8 @@ const standalone = defineCommand({
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
 
 		const { outcomeStore, eventStore, bucketStore, metricsStore } = createSqliteStores("mantle.db");
-		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore);
+		const channels = createChannelInstances(config.channels ?? {});
+		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore, channels);
 
 		const { checkReporter } = await createHubReporters(id, getHubUrl(hubConfig));
 		startAgent(id, agentConfig, config.providers ?? {}, checkReporter);

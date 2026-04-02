@@ -12,10 +12,18 @@
         "@types/bun": "^1.3.11",
       },
     },
+    "packages/channel-log": {
+      "name": "channel-log",
+      "version": "0.0.1",
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
+    },
     "packages/mantle": {
       "name": "mantle",
       "version": "0.0.8",
       "dependencies": {
+        "channel-log": "workspace:*",
         "citty": "^0.2.1",
         "provider-proxmox": "workspace:*",
         "provider-restic": "workspace:*",
@@ -52,6 +60,8 @@
     "@types/node": ["@types/node@25.5.0", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw=="],
 
     "bun-types": ["bun-types@1.3.11", "", { "dependencies": { "@types/node": "*" } }, "sha512-1KGPpoxQWl9f6wcZh57LvrPIInQMn2TQ7jsgxqpRzg+l0QPOFvJVH7HmvHo/AiPgwXy+/Thf6Ov3EdVn1vOabg=="],
+
+    "channel-log": ["channel-log@workspace:packages/channel-log"],
 
     "citty": ["citty@0.2.1", "", {}, "sha512-kEV95lFBhQgtogAPlQfJJ0WGVSokvLr/UEoFPiKKOXF7pl98HfUVUD0ejsuTCld/9xH9vogSywZ5KqHzXrZpqg=="],
 

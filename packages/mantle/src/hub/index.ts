@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import type { HubConfig } from "../config.ts";
 import type { OutcomeStore, EventStore, BucketStore, MetricsStore } from "../store/types.ts";
+import type { ChannelInstance } from "../channel.ts";
 import { createWebApp } from "./web.ts";
 import { createAgentApp } from "./agent.ts";
 import { createFetchHandler, createWebSocketHandler } from "./server.ts";
 import { HubService } from "./service.ts";
 import { WebService } from "./web-service.ts";
+import { ChannelDispatcher } from "./channel-dispatcher.ts";
 import {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
@@ -23,6 +25,7 @@ export async function startHub(
 	eventStore: EventStore,
 	bucketStore: BucketStore,
 	metricsStore: MetricsStore,
+	channels: ChannelInstance[] = [],
 ) {
 	const bucketPublishers = {
 		provider: new ProviderBucketPublisher(),
@@ -38,6 +41,12 @@ export async function startHub(
 	const targetStatusPublisher = new TargetStatusPublisher();
 	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher);
 	const webService = new WebService(bucketStore, eventStore, metricsStore, outcomeStore, bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher);
+
+	const channelDispatcher = new ChannelDispatcher();
+	for (const channel of channels) {
+		channelDispatcher.addChannel(channel);
+	}
+	channelDispatcher.subscribe(eventPublishers);
 
 	await hubService.init();
 

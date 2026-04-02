@@ -7,8 +7,8 @@ const DEFAULT_MAX_SIZE = 150 * 1024;
 const DEFAULT_LINGER_MS = 15;
 
 /**
- * Drop-in browser WebSocket replacement with outbound coalescing and inbound NDJSON unpacking.
- * Consumers interact with this exactly like a regular WebSocket.
+ * WebSocket wrapper with outbound coalescing and inbound NDJSON unpacking.
+ * Works in both browser and Bun environments via globalThis.WebSocket.
  */
 export class MantleSocket {
 	private ws: WebSocket;

@@ -8,18 +8,12 @@ import type {
 	StoredOutcome,
 } from "../store/types.ts";
 
-// Bucket messages with index tracking for initial load progress
-export type ProviderBucketMessage = ProviderBucket & { index: number; indexHwm: number };
-export type TargetBucketMessage = TargetBucket & { index: number; indexHwm: number };
-export type CheckBucketMessage = CheckBucket & { index: number; indexHwm: number };
-
-export type ProviderBucketSubscriber = (msg: ProviderBucketMessage) => void;
-export type TargetBucketSubscriber = (msg: TargetBucketMessage) => void;
-export type CheckBucketSubscriber = (msg: CheckBucketMessage) => void;
+export type ProviderBucketSubscriber = (bucket: ProviderBucket) => void;
+export type TargetBucketSubscriber = (bucket: TargetBucket) => void;
+export type CheckBucketSubscriber = (bucket: CheckBucket) => void;
 
 export class ProviderBucketPublisher {
 	private subscribers = new Set<ProviderBucketSubscriber>();
-	private index = 0;
 
 	subscribe(fn: ProviderBucketSubscriber): () => void {
 		this.subscribers.add(fn);
@@ -27,21 +21,14 @@ export class ProviderBucketPublisher {
 	}
 
 	publish(bucket: ProviderBucket): void {
-		this.index++;
-		const msg: ProviderBucketMessage = { ...bucket, index: this.index, indexHwm: this.index };
 		for (const fn of this.subscribers) {
-			fn(msg);
+			fn(bucket);
 		}
-	}
-
-	getIndex(): number {
-		return this.index;
 	}
 }
 
 export class TargetBucketPublisher {
 	private subscribers = new Set<TargetBucketSubscriber>();
-	private index = 0;
 
 	subscribe(fn: TargetBucketSubscriber): () => void {
 		this.subscribers.add(fn);
@@ -49,21 +36,14 @@ export class TargetBucketPublisher {
 	}
 
 	publish(bucket: TargetBucket): void {
-		this.index++;
-		const msg: TargetBucketMessage = { ...bucket, index: this.index, indexHwm: this.index };
 		for (const fn of this.subscribers) {
-			fn(msg);
+			fn(bucket);
 		}
-	}
-
-	getIndex(): number {
-		return this.index;
 	}
 }
 
 export class CheckBucketPublisher {
 	private subscribers = new Set<CheckBucketSubscriber>();
-	private index = 0;
 
 	subscribe(fn: CheckBucketSubscriber): () => void {
 		this.subscribers.add(fn);
@@ -71,15 +51,9 @@ export class CheckBucketPublisher {
 	}
 
 	publish(bucket: CheckBucket): void {
-		this.index++;
-		const msg: CheckBucketMessage = { ...bucket, index: this.index, indexHwm: this.index };
 		for (const fn of this.subscribers) {
-			fn(msg);
+			fn(bucket);
 		}
-	}
-
-	getIndex(): number {
-		return this.index;
 	}
 }
 

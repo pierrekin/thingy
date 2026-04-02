@@ -123,11 +123,18 @@ export class WebService {
 		// Send acknowledgement
 		ws.send(JSON.stringify({ type: "subscription_ack", id: req.id }));
 
-		// Subscribe to real-time updates before backfill to avoid race window
-		this.subscribeToRealTimeUpdates(subscription);
+		if (!req.snapshot) {
+			// Subscribe to real-time updates before backfill to avoid race window
+			this.subscribeToRealTimeUpdates(subscription);
+		}
 
 		// Backfill historical data
 		await this.sendInitialData(subscription, req);
+
+		if (req.snapshot) {
+			ws.send(JSON.stringify({ type: "snapshot_complete", subscriptionId: req.id }));
+			this.subscriptionManager.remove(req.id);
+		}
 	}
 
 	/**
@@ -164,43 +171,48 @@ export class WebService {
 		// Send acknowledgement
 		ws.send(JSON.stringify({ type: "subscription_ack", id: req.id }));
 
-		// Subscribe to real-time updates before backfill to avoid race window
-		const unsub = this.outcomePublisher.subscribe(async (outcome) => {
-			if (!subscription.matches(outcome.provider, outcome.target, outcome.check)) return;
-			if (!outcome.success) return;
+		if (!req.snapshot) {
+			// Subscribe to real-time updates before backfill to avoid race window
+			const unsub = this.outcomePublisher.subscribe(async (outcome) => {
+				if (!subscription.matches(outcome.provider, outcome.target, outcome.check)) return;
+				if (!outcome.success) return;
 
-			const bucketStart = Math.floor(outcome.time / subscription.bucketDurationMs) * subscription.bucketDurationMs;
-			if (!subscription.isInRange(bucketStart)) return;
+				const bucketStart = Math.floor(outcome.time / subscription.bucketDurationMs) * subscription.bucketDurationMs;
+				if (!subscription.isInRange(bucketStart)) return;
 
-			const bucketEnd = bucketStart + subscription.bucketDurationMs;
-			const buckets = await this.metricsStore.getAggregatedMetrics(
-				subscription.provider,
-				subscription.target,
-				subscription.check,
-				bucketStart,
-				bucketEnd,
-				subscription.bucketDurationMs,
-			);
+				const bucketEnd = bucketStart + subscription.bucketDurationMs;
+				const buckets = await this.metricsStore.getAggregatedMetrics(
+					subscription.provider,
+					subscription.target,
+					subscription.check,
+					bucketStart,
+					bucketEnd,
+					subscription.bucketDurationMs,
+				);
 
-			const mean = buckets.length > 0 ? buckets[0].mean : null;
-			const msg: MetricsBucketMessage = {
-				type: "metrics_bucket",
-				subscriptionId: subscription.id,
-				provider: subscription.provider,
-				target: subscription.target,
-				check: subscription.check,
-				bucketStart,
-				bucketEnd,
-				mean,
-				index: 0,
-				indexHwm: 0,
-			};
-			subscription.ws.send(JSON.stringify(msg));
-		});
-		subscription.addUnsubscriber(unsub);
+				const mean = buckets.length > 0 ? buckets[0].mean : null;
+				const msg: MetricsBucketMessage = {
+					type: "metrics_bucket",
+					subscriptionId: subscription.id,
+					provider: subscription.provider,
+					target: subscription.target,
+					check: subscription.check,
+					bucketStart,
+					bucketEnd,
+					mean,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsub);
+		}
 
 		// Backfill historical metrics data
 		await this.sendMetricsData(subscription);
+
+		if (req.snapshot) {
+			ws.send(JSON.stringify({ type: "snapshot_complete", subscriptionId: req.id }));
+			this.subscriptionManager.remove(req.id);
+		}
 	}
 
 	/**
@@ -235,9 +247,7 @@ export class WebService {
 		);
 
 		// Send all buckets
-		const indexHwm = filledBuckets.length;
-		for (let i = 0; i < filledBuckets.length; i++) {
-			const bucket = filledBuckets[i];
+		for (const bucket of filledBuckets) {
 			const msg: MetricsBucketMessage = {
 				type: "metrics_bucket",
 				subscriptionId: subscription.id,
@@ -247,8 +257,6 @@ export class WebService {
 				bucketStart: bucket.bucketStart,
 				bucketEnd: bucket.bucketEnd,
 				mean: bucket.mean,
-				index: i + 1,
-				indexHwm,
 			};
 			subscription.ws.send(JSON.stringify(msg));
 		}
@@ -314,50 +322,32 @@ export class WebService {
 		const targetBuckets = this.fillTargetBuckets(storedBuckets.targets, start, config);
 		const checkBuckets = this.fillCheckBuckets(storedBuckets.checks, start, config);
 
-		// Calculate progress indices
-		const totalBuckets = providerBuckets.length + targetBuckets.length + checkBuckets.length;
-		const baseIndex =
-			this.bucketPublishers.provider.getIndex() +
-			this.bucketPublishers.target.getIndex() +
-			this.bucketPublishers.check.getIndex();
-		const indexHwm = baseIndex + totalBuckets;
-		let currentIndex = baseIndex;
-
 		// Send provider buckets
 		for (const bucket of providerBuckets) {
-			currentIndex++;
 			const msg: ProviderBucketMessage = {
 				type: "provider_bucket",
 				subscriptionId: subscription.id,
 				...bucket,
-				index: currentIndex,
-				indexHwm,
 			};
 			subscription.ws.send(JSON.stringify(msg));
 		}
 
 		// Send target buckets
 		for (const bucket of targetBuckets) {
-			currentIndex++;
 			const msg: TargetBucketMessage = {
 				type: "target_bucket",
 				subscriptionId: subscription.id,
 				...bucket,
-				index: currentIndex,
-				indexHwm,
 			};
 			subscription.ws.send(JSON.stringify(msg));
 		}
 
 		// Send check buckets
 		for (const bucket of checkBuckets) {
-			currentIndex++;
 			const msg: CheckBucketMessage = {
 				type: "check_bucket",
 				subscriptionId: subscription.id,
 				...bucket,
-				index: currentIndex,
-				indexHwm,
 			};
 			subscription.ws.send(JSON.stringify(msg));
 		}

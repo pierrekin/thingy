@@ -24,7 +24,7 @@ function StatusDot({ status }: { status: SlotStatus }) {
 
 export function TargetSection({ target }: Props) {
 	const [isExpanded, setIsExpanded] = useState(false);
-	const { send, status } = useWebSocketContext();
+	const { client, status } = useWebSocketContext();
 
 	const hasTargetEvents = target.events.length > 0;
 
@@ -62,7 +62,7 @@ export function TargetSection({ target }: Props) {
 							provider={target.provider}
 							target={target.name}
 							check={check}
-							send={send}
+							client={client}
 							connectionStatus={status}
 						/>
 					))}

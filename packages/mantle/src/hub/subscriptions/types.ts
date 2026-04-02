@@ -10,6 +10,7 @@ export type StateSubscriptionRequest = {
 	start: number; // unix timestamp ms
 	end: number | null; // null = live mode (rolling window)
 	bucketDurationMs: number; // bucket size in milliseconds
+	snapshot?: boolean; // if true, server sends snapshot_complete after backfill and closes subscription
 };
 
 export type MetricsSubscriptionRequest = {
@@ -21,6 +22,7 @@ export type MetricsSubscriptionRequest = {
 	start: number; // unix timestamp ms
 	end: number | null; // null = live mode (rolling window)
 	bucketDurationMs: number; // bucket size in milliseconds
+	snapshot?: boolean; // if true, server sends snapshot_complete after backfill and closes subscription
 };
 
 export type EventSubscriptionRequest = {
@@ -42,13 +44,22 @@ export type UnsubscribeRequest = {
 export type ServerMessage =
 	| SubscriptionAckMessage
 	| SubscriptionErrorMessage
+	| SnapshotCompleteMessage
 	| ProviderBucketMessage
 	| TargetBucketMessage
 	| CheckBucketMessage
 	| MetricsBucketMessage
 	| ProviderEventMessage
 	| TargetEventMessage
-	| CheckEventMessage;
+	| CheckEventMessage
+	| EventInfoMessage
+	| EventOutcomeMessage
+	| TargetStatusMessage;
+
+export type SnapshotCompleteMessage = {
+	type: "snapshot_complete";
+	subscriptionId: string;
+};
 
 export type SubscriptionAckMessage = {
 	type: "subscription_ack";
@@ -69,8 +80,6 @@ export type ProviderBucketMessage = {
 	bucketStart: number;
 	bucketEnd: number;
 	status: "green" | "red" | "grey" | null;
-	index: number;
-	indexHwm: number;
 };
 
 export type TargetBucketMessage = {
@@ -81,8 +90,6 @@ export type TargetBucketMessage = {
 	bucketStart: number;
 	bucketEnd: number;
 	status: "green" | "red" | "grey" | null;
-	index: number;
-	indexHwm: number;
 };
 
 export type CheckBucketMessage = {
@@ -94,8 +101,6 @@ export type CheckBucketMessage = {
 	bucketStart: number;
 	bucketEnd: number;
 	status: "green" | "red" | "grey" | null;
-	index: number;
-	indexHwm: number;
 };
 
 export type MetricsBucketMessage = {
@@ -107,8 +112,6 @@ export type MetricsBucketMessage = {
 	bucketStart: number;
 	bucketEnd: number;
 	mean: number | null;
-	index: number;
-	indexHwm: number;
 };
 
 // Event messages (now include subscriptionId)
@@ -165,7 +168,8 @@ export type EventOutcomeMessage = {
 	subscriptionId: string;
 	id: number;
 	time: number;
-	error: string;
+	error: string | null;
+	violation: string | null;
 };
 
 export type TargetStatusMessage = {

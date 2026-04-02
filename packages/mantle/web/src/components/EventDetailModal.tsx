@@ -1,13 +1,14 @@
 import { useState, useMemo, useCallback } from "react";
 import type { Event } from "../types";
 import type { ConnectionStatus } from "../hooks/useWebSocket";
+import type { MantleClient } from "../../../src/client/index.ts";
 import { useEventSubscription } from "../hooks/useEventSubscription";
 import { useDataStore } from "../subscriptions/data-store";
 
 type Props = {
 	event: Event;
 	eventLevel: "provider" | "target" | "check";
-	send: (message: string) => void;
+	client: MantleClient | null;
 	connectionStatus: ConnectionStatus;
 	onClose: () => void;
 };
@@ -18,13 +19,13 @@ function formatTime(date: Date): string {
 	return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
-export function EventDetailModal({ event, eventLevel, send, connectionStatus, onClose }: Props) {
+export function EventDetailModal({ event, eventLevel, client, connectionStatus, onClose }: Props) {
 	const params = useMemo(() => ({
 		eventId: event.id,
 		eventLevel,
 	}), [event.id, eventLevel]);
 
-	const subscriptionId = useEventSubscription(params, send, connectionStatus);
+	const subscriptionId = useEventSubscription(params, client, connectionStatus);
 
 	const selectInfo = useCallback((state: { eventInfo: Map<string, any> }) => state.eventInfo.get(subscriptionId), [subscriptionId]);
 	const selectOutcomes = useCallback((state: { eventOutcomes: Map<string, any> }) => state.eventOutcomes.get(subscriptionId), [subscriptionId]);

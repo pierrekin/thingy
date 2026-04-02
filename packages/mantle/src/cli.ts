@@ -10,6 +10,7 @@ import { startHub } from "./hub/index.ts";
 import { startAgent } from "./agent/index.ts";
 import { createSqliteStores } from "./store/index.ts";
 import { createHubReporters } from "./agent/hub-client.ts";
+import { runStatus } from "./commands/status.ts";
 
 function getHubConfig(config: Config): HubConfig {
 	if (!config.hub) {
@@ -111,6 +112,23 @@ const standalone = defineCommand({
 	}),
 });
 
+const status = defineCommand({
+	meta: { name: "status", description: "Show target statuses" },
+	args: {
+		config: configArg,
+		hub: { type: "string", description: "Hub URL" },
+	},
+	run: handleOperationalErrors(async ({ args }) => {
+		let hubUrl = args.hub;
+		if (!hubUrl) {
+			const config = await loadConfig(args.config);
+			const hubConfig = getHubConfig(config);
+			hubUrl = getHubUrl(hubConfig);
+		}
+		await runStatus(hubUrl);
+	}),
+});
+
 export const main = defineCommand({
 	meta: {
 		name: "mantle",
@@ -121,5 +139,6 @@ export const main = defineCommand({
 		hub,
 		agent,
 		standalone,
+		status,
 	},
 });

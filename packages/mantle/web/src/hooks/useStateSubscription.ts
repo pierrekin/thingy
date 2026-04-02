@@ -1,54 +1,63 @@
 import { useEffect, useState } from "react";
-import { subscriptionManager } from "../subscriptions/manager";
-import type { StateSubscriptionParams } from "../subscriptions/types";
 import { useWebSocketContext } from "../context/WebSocketContext";
+import { useDataStore } from "../subscriptions/data-store";
+import type { StateSubscriptionParams } from "../subscriptions/types";
+import type { ServerMessage } from "../../../src/client/index.ts";
 
 /**
  * Hook to create and manage a state subscription.
  * Returns the subscription ID that can be used to query display data.
- *
- * The subscription is automatically created on mount and cleaned up on unmount.
- * If params change, the old subscription is torn down and a new one is created.
  */
 export function useStateSubscription(params: StateSubscriptionParams): string | null {
-	const { send, status } = useWebSocketContext();
+	const { client, status } = useWebSocketContext();
 	const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
 
 	useEffect(() => {
-		// Only create subscription when connected
-		if (status !== "connected") {
+		if (status !== "connected" || !client) {
 			setSubscriptionId(null);
 			return;
 		}
 
-		// Create new subscription
-		const id = subscriptionManager.createStateSubscription(params);
-		setSubscriptionId(id);
+		const handle = client.subscribe("state", {
+			start: params.start,
+			end: params.end,
+			bucketDurationMs: params.bucketDurationMs,
+		}, {
+			onMessage: (msg: ServerMessage) => {
+				const store = useDataStore.getState();
+				switch (msg.type) {
+					case "provider_bucket":
+						store.addProviderBucket(msg);
+						break;
+					case "target_bucket":
+						store.addTargetBucket(msg);
+						break;
+					case "check_bucket":
+						store.addCheckBucket(msg);
+						break;
+					case "provider_event":
+						store.addProviderEvent(msg);
+						break;
+					case "target_event":
+						store.addTargetEvent(msg);
+						break;
+					case "check_event":
+						store.addCheckEvent(msg);
+						break;
+					case "target_status":
+						store.setTargetStatus(msg);
+						break;
+				}
+			},
+		});
 
-		// Send subscription request
-		send(
-			JSON.stringify({
-				type: "subscribe_state",
-				id,
-				start: params.start,
-				end: params.end,
-				bucketDurationMs: params.bucketDurationMs,
-			}),
-		);
+		setSubscriptionId(handle.id);
 
-		// Cleanup: unsubscribe when unmounting or params change
 		return () => {
-			if (id) {
-				send(
-					JSON.stringify({
-						type: "unsubscribe",
-						id,
-					}),
-				);
-				subscriptionManager.remove(id);
-			}
+			handle.unsubscribe();
+			useDataStore.getState().clearSubscription(handle.id);
 		};
-	}, [status, params.start, params.end, params.bucketDurationMs, send]);
+	}, [status, client, params.start, params.end, params.bucketDurationMs]);
 
 	return subscriptionId;
 }

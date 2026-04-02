@@ -34,21 +34,3 @@ export function useMetricsData(
 	return data;
 }
 
-/**
- * Hook to track metrics loading progress.
- */
-export function useMetricsProgress(subscriptionId: string): {
-	loaded: number;
-	total: number;
-	isComplete: boolean;
-} {
-	const progressData = useDataStore((state) =>
-		state.progress.get(subscriptionId)
-	);
-
-	return {
-		loaded: progressData?.index ?? 0,
-		total: progressData?.indexHwm ?? 0,
-		isComplete: (progressData?.index ?? 0) >= (progressData?.indexHwm ?? 0) && (progressData?.indexHwm ?? 0) > 0,
-	};
-}

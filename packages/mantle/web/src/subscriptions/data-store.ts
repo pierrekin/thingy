@@ -7,7 +7,7 @@ import type {
 	ProviderEventMessage,
 	TargetEventMessage,
 	CheckEventMessage,
-} from "../types";
+} from "../../../src/hub/subscriptions/types.ts";
 
 /**
  * Raw bucket data without the subscription metadata
@@ -64,14 +64,6 @@ type CheckEvent = {
 };
 
 /**
- * Progress tracking for a subscription
- */
-type SubscriptionProgress = {
-	index: number;
-	indexHwm: number;
-};
-
-/**
  * The Zustand store state
  */
 interface DataStoreState {
@@ -94,9 +86,6 @@ interface DataStoreState {
 	// Event subscription data
 	eventInfo: Map<string, { title: string; code: string; startTime: number; endTime: number | null }>;
 	eventOutcomes: Map<string, Array<{ id: number; time: number; error: string | null; violation: string | null }>>;
-
-	// Progress tracking per subscription
-	progress: Map<string, SubscriptionProgress>;
 
 	// Actions
 	addProviderBucket: (msg: ProviderBucketMessage) => void;
@@ -131,7 +120,6 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	targetStatuses: new Map(),
 	eventInfo: new Map(),
 	eventOutcomes: new Map(),
-	progress: new Map(),
 
 	addProviderBucket: (msg: ProviderBucketMessage) => {
 		set((state) => {
@@ -148,15 +136,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			subBuckets.set(msg.provider, entityBuckets);
 			providerBuckets.set(msg.subscriptionId, subBuckets);
 
-			// Update progress
-			const progress = new Map(state.progress);
-			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
-			progress.set(msg.subscriptionId, {
-				index: Math.max(current.index, msg.index),
-				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
-			});
-
-			return { providerBuckets, progress };
+			return { providerBuckets };
 		});
 	},
 
@@ -176,15 +156,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			subBuckets.set(key, entityBuckets);
 			targetBuckets.set(msg.subscriptionId, subBuckets);
 
-			// Update progress
-			const progress = new Map(state.progress);
-			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
-			progress.set(msg.subscriptionId, {
-				index: Math.max(current.index, msg.index),
-				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
-			});
-
-			return { targetBuckets, progress };
+			return { targetBuckets };
 		});
 	},
 
@@ -204,15 +176,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			subBuckets.set(key, entityBuckets);
 			checkBuckets.set(msg.subscriptionId, subBuckets);
 
-			// Update progress
-			const progress = new Map(state.progress);
-			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
-			progress.set(msg.subscriptionId, {
-				index: Math.max(current.index, msg.index),
-				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
-			});
-
-			return { checkBuckets, progress };
+			return { checkBuckets };
 		});
 	},
 
@@ -232,15 +196,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			subBuckets.set(key, entityBuckets);
 			metricsBuckets.set(msg.subscriptionId, subBuckets);
 
-			// Update progress
-			const progress = new Map(state.progress);
-			const current = progress.get(msg.subscriptionId) ?? { index: 0, indexHwm: 0 };
-			progress.set(msg.subscriptionId, {
-				index: Math.max(current.index, msg.index),
-				indexHwm: Math.max(current.indexHwm, msg.indexHwm),
-			});
-
-			return { metricsBuckets, progress };
+			return { metricsBuckets };
 		});
 	},
 
@@ -348,7 +304,6 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			const checkEvents = new Map(state.checkEvents);
 			const eventInfo = new Map(state.eventInfo);
 			const eventOutcomes = new Map(state.eventOutcomes);
-			const progress = new Map(state.progress);
 
 			providerBuckets.delete(subscriptionId);
 			targetBuckets.delete(subscriptionId);
@@ -359,7 +314,6 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			checkEvents.delete(subscriptionId);
 			eventInfo.delete(subscriptionId);
 			eventOutcomes.delete(subscriptionId);
-			progress.delete(subscriptionId);
 
 			return {
 				providerBuckets,
@@ -371,7 +325,6 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				checkEvents,
 				eventInfo,
 				eventOutcomes,
-				progress,
 			};
 		});
 	},
@@ -462,5 +415,3 @@ export const getTargetEvents = (subscriptionId: string) =>
 export const getCheckEvents = (subscriptionId: string) =>
 	useDataStore.getState().checkEvents.get(subscriptionId) ?? new Map();
 
-export const getProgress = (subscriptionId: string) =>
-	useDataStore.getState().progress.get(subscriptionId) ?? { index: 0, indexHwm: 0 };

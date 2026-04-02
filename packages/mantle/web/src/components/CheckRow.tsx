@@ -6,12 +6,13 @@ import type { ConnectionStatus } from "../hooks/useWebSocket";
 import { useMetricsSubscription } from "../hooks/useMetricsSubscription";
 import { useMetricsData } from "../hooks/useMetricsData";
 import { SparkChart } from "./SparkChart";
+import type { MantleClient } from "../../../src/client/index.ts";
 
 type Props = {
 	provider: string;
 	target: string;
 	check: Check;
-	send: (message: string) => void;
+	client: MantleClient | null;
 	connectionStatus: ConnectionStatus;
 };
 
@@ -22,7 +23,7 @@ function roundDown(timestamp: number, bucketDurationMs: number): number {
 	return Math.floor(timestamp / bucketDurationMs) * bucketDurationMs;
 }
 
-export function CheckRow({ provider, target, check, send, connectionStatus }: Props) {
+export function CheckRow({ provider, target, check, client, connectionStatus }: Props) {
 	const hasEvents = check.events.length > 0;
 
 	// Calculate metrics subscription params
@@ -42,8 +43,8 @@ export function CheckRow({ provider, target, check, send, connectionStatus }: Pr
 	}), [provider, target, check.name, domainStart, bucketDurationMs]);
 
 	// Subscribe to metrics
-	const subscriptionId = useMetricsSubscription(metricsParams, send, connectionStatus);
-	const metricsData = useMetricsData(subscriptionId, provider, target, check.name);
+	const subscriptionId = useMetricsSubscription(metricsParams, client, connectionStatus);
+	const metricsData = useMetricsData(subscriptionId ?? "", provider, target, check.name);
 
 	return (
 		<div className="bg-gray-100">

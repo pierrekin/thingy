@@ -34,7 +34,7 @@ type Props = {
 
 export function EventTable({ events, eventLevel }: Props) {
 	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-	const { send, status } = useWebSocketContext();
+	const { client, status } = useWebSocketContext();
 
 	if (events.length === 0) {
 		return null;
@@ -55,7 +55,7 @@ export function EventTable({ events, eventLevel }: Props) {
 				<EventDetailModal
 					event={selectedEvent}
 					eventLevel={eventLevel}
-					send={send}
+					client={client}
 					connectionStatus={status}
 					onClose={() => setSelectedEvent(null)}
 				/>

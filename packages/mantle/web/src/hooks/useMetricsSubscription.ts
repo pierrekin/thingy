@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from "react";
-import { subscriptionManager } from "../subscriptions/manager";
+import { useEffect, useState } from "react";
+import { useDataStore } from "../subscriptions/data-store";
 import type { ConnectionStatus } from "./useWebSocket";
 import type { MetricsSubscriptionParams } from "../subscriptions/types";
+import type { MantleClient } from "../../../src/client/index.ts";
+import type { ServerMessage } from "../../../src/client/index.ts";
 
 export { type MetricsSubscriptionParams };
 
@@ -11,39 +13,38 @@ export { type MetricsSubscriptionParams };
  */
 export function useMetricsSubscription(
 	params: MetricsSubscriptionParams,
-	send: (message: string) => void,
+	client: MantleClient | null,
 	connectionStatus: ConnectionStatus
-): string {
-	const subscriptionId = useMemo(() => {
-		return subscriptionManager.createMetricsSubscription(params);
-	}, [params]);
+): string | null {
+	const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
 
-	// Subscribe when connected
 	useEffect(() => {
-		if (connectionStatus !== "connected") return;
+		if (connectionStatus !== "connected" || !client) {
+			setSubscriptionId(null);
+			return;
+		}
 
-		const msg = {
-			type: "subscribe_metrics",
-			id: subscriptionId,
+		const handle = client.subscribe("metrics", {
 			provider: params.provider,
 			target: params.target,
 			check: params.check,
 			start: params.start,
 			end: params.end,
 			bucketDurationMs: params.bucketDurationMs,
-		};
-		send(JSON.stringify(msg));
-	}, [connectionStatus, subscriptionId, params, send]);
+		}, {
+			onMessage: (msg: ServerMessage) => {
+				if (msg.type === "metrics_bucket") {
+					useDataStore.getState().addMetricsBucket(msg);
+				}
+			},
+		});
 
-	// Cleanup on unmount
-	useEffect(() => {
+		setSubscriptionId(handle.id);
+
 		return () => {
-			if (connectionStatus === "connected") {
-				send(JSON.stringify({ type: "unsubscribe", id: subscriptionId }));
-			}
-			subscriptionManager.remove(subscriptionId);
+			handle.unsubscribe();
 		};
-	}, [subscriptionId, send, connectionStatus]);
+	}, [connectionStatus, client, params.provider, params.target, params.check, params.start, params.end, params.bucketDurationMs]);
 
 	return subscriptionId;
 }

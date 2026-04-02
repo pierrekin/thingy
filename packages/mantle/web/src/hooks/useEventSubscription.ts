@@ -1,36 +1,43 @@
-import { useEffect, useMemo } from "react";
-import { subscriptionManager } from "../subscriptions/manager";
+import { useEffect, useState } from "react";
+import { useDataStore } from "../subscriptions/data-store";
 import type { ConnectionStatus } from "./useWebSocket";
 import type { EventSubscriptionParams } from "../subscriptions/types";
+import type { MantleClient } from "../../../src/client/index.ts";
+import type { ServerMessage } from "../../../src/client/index.ts";
 
 export function useEventSubscription(
 	params: EventSubscriptionParams,
-	send: (message: string) => void,
+	client: MantleClient | null,
 	connectionStatus: ConnectionStatus
 ): string {
-	const subscriptionId = useMemo(() => {
-		return subscriptionManager.createEventSubscription(params);
-	}, [params]);
+	const [subscriptionId, setSubscriptionId] = useState<string>("");
 
 	useEffect(() => {
-		if (connectionStatus !== "connected") return;
+		if (connectionStatus !== "connected" || !client) return;
 
-		send(JSON.stringify({
-			type: "subscribe_event",
-			id: subscriptionId,
+		const handle = client.subscribe("event", {
 			eventId: params.eventId,
 			eventLevel: params.eventLevel,
-		}));
-	}, [connectionStatus, subscriptionId, params, send]);
+		}, {
+			onMessage: (msg: ServerMessage) => {
+				const store = useDataStore.getState();
+				switch (msg.type) {
+					case "event_info":
+						store.setEventInfo(msg);
+						break;
+					case "event_outcome":
+						store.addEventOutcome(msg);
+						break;
+				}
+			},
+		});
 
-	useEffect(() => {
+		setSubscriptionId(handle.id);
+
 		return () => {
-			if (connectionStatus === "connected") {
-				send(JSON.stringify({ type: "unsubscribe", id: subscriptionId }));
-			}
-			subscriptionManager.remove(subscriptionId);
+			handle.unsubscribe();
 		};
-	}, [subscriptionId, send, connectionStatus]);
+	}, [connectionStatus, client, params.eventId, params.eventLevel]);
 
 	return subscriptionId;
 }

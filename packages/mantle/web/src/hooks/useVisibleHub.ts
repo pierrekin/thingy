@@ -9,12 +9,12 @@ import { useRef, useEffect, useState } from "react";
  * Uses a single Zustand subscription with debouncing to avoid cascade re-renders.
  */
 export function useVisibleHub(subscriptionId: string | null, params?: StateSubscriptionParams): Hub {
-	const [hub, setHub] = useState<Hub>({ name: "Hub", providers: [], channels: [], targets: [] });
+	const [hub, setHub] = useState<Hub>({ name: "Hub", providers: [], channels: [], agents: [], targets: [] });
 	const rafRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		if (!subscriptionId || !params) {
-			setHub({ name: "Hub", providers: [], channels: [], targets: [] });
+			setHub({ name: "Hub", providers: [], channels: [], agents: [], targets: [] });
 			return;
 		}
 

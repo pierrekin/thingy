@@ -43,9 +43,16 @@ export type Channel = {
 	events: Event[];
 };
 
+export type Agent = {
+	name: string;
+	statusSlots: StatusSlot[];
+	events: Event[];
+};
+
 export type Hub = {
 	name: string;
 	providers: Provider[];
 	channels: Channel[];
+	agents: Agent[];
 	targets: Target[];
 };

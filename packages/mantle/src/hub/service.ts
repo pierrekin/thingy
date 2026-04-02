@@ -1,4 +1,4 @@
-import type { OutcomeStore, EventStore, BucketStore, BucketStatus } from "../store/types.ts";
+import type { OutcomeStore, EventStore, BucketStore, BucketStatus, AgentOutcomeStore, AgentBucketStore } from "../store/types.ts";
 import type { AgentMessage } from "../protocol.ts";
 import { EventTracker } from "../agent/events.ts";
 import type {
@@ -8,6 +8,7 @@ import type {
 	ProviderEventPublisher,
 	TargetEventPublisher,
 	CheckEventPublisher,
+	AgentBucketPublisher,
 	OutcomePublisher,
 	TargetStatusPublisher,
 } from "./pubsub.ts";
@@ -25,12 +26,23 @@ type EventPublishers = {
 	check: CheckEventPublisher;
 };
 
+type AgentStores = {
+	outcomeStore: AgentOutcomeStore;
+	bucketStore: AgentBucketStore;
+} | null;
+
+type AgentPublishers = {
+	bucket: AgentBucketPublisher;
+} | null;
+
 export class HubService {
 	private events: EventTracker;
 	private bucketConfig: BucketConfig;
 	private bucketPublishers: BucketPublishers;
 	private outcomePublisher: OutcomePublisher;
 	private targetStatusPublisher: TargetStatusPublisher;
+	private agentStores: AgentStores;
+	private agentPublishers: AgentPublishers;
 
 	constructor(
 		private outcomeStore: OutcomeStore,
@@ -40,11 +52,15 @@ export class HubService {
 		eventPublishers: EventPublishers,
 		outcomePublisher: OutcomePublisher,
 		targetStatusPublisher: TargetStatusPublisher,
+		agentStores: AgentStores = null,
+		agentPublishers: AgentPublishers = null,
 		bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
 	) {
 		this.bucketPublishers = bucketPublishers;
 		this.outcomePublisher = outcomePublisher;
 		this.targetStatusPublisher = targetStatusPublisher;
+		this.agentStores = agentStores;
+		this.agentPublishers = agentPublishers;
 		this.events = new EventTracker(eventStore, eventPublishers);
 		this.bucketConfig = bucketConfig;
 	}
@@ -53,18 +69,18 @@ export class HubService {
 		await this.events.loadOpenEvents();
 	}
 
-	async handleAgentMessage(msg: AgentMessage): Promise<void> {
+	async handleAgentMessage(msg: AgentMessage, agentId?: string): Promise<void> {
 		switch (msg.type) {
 			case "agent_hello":
 				console.log(`Agent connected: ${msg.agentId}`);
 				break;
 			case "check_result":
-				await this.handleCheckResult(msg);
+				await this.handleCheckResult(msg, agentId);
 				break;
 		}
 	}
 
-	private async handleCheckResult(msg: Extract<AgentMessage, { type: "check_result" }>): Promise<void> {
+	private async handleCheckResult(msg: Extract<AgentMessage, { type: "check_result" }>, agentId?: string): Promise<void> {
 		const time = new Date(msg.time);
 		const { provider, target, check, result } = msg;
 
@@ -72,6 +88,10 @@ export class HubService {
 			await this.recordSuccess(provider, target, check, time, result.measurement, result.violation);
 		} else {
 			await this.recordError(provider, target, check, time, result.error);
+		}
+
+		if (agentId) {
+			await this.recordAgentOutcome(agentId, time);
 		}
 	}
 
@@ -251,6 +271,26 @@ export class HubService {
 		if (existing === "green" || incoming === "green") return "green";
 		if (existing === "grey" || incoming === "grey") return "grey";
 		return null;
+	}
+
+	private async recordAgentOutcome(agentId: string, time: Date): Promise<void> {
+		if (!this.agentStores) return;
+
+		await this.agentStores.outcomeStore.recordAgentOutcome(agentId, time, { success: true });
+
+		const { start, end } = getBucketBounds(time, this.bucketConfig);
+		const oldStatus = await this.agentStores.bucketStore.getAgentBucketStatus(agentId, start);
+		const newStatus = this.mergeStatus(oldStatus, "green");
+
+		if (oldStatus !== newStatus) {
+			await this.agentStores.bucketStore.setAgentBucket(agentId, start, end, newStatus);
+			this.agentPublishers?.bucket.publish({
+				agent: agentId,
+				bucketStart: start,
+				bucketEnd: end,
+				status: newStatus,
+			});
+		}
 	}
 
 }

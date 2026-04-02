@@ -53,6 +53,23 @@ export function InfrastructurePage({ hub, onNavigateBack }: Props) {
 						))}
 					</section>
 				)}
+
+				{hub.agents.length > 0 && (
+					<section>
+						<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
+							Agents
+						</h2>
+						{hub.agents.map((agent) => (
+							<EntitySection
+								key={agent.name}
+								name={agent.name}
+								statusSlots={agent.statusSlots}
+								events={agent.events}
+								eventLevel="provider"
+							/>
+						))}
+					</section>
+				)}
 			</main>
 		</div>
 	);

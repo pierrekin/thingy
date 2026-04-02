@@ -3,10 +3,12 @@ import type {
 	TargetBucket,
 	CheckBucket,
 	ChannelBucket,
+	AgentBucket,
 	ProviderEventRecord,
 	TargetEventRecord,
 	CheckEventRecord,
 	ChannelEventRecord,
+	AgentEventRecord,
 	StoredOutcome,
 } from "../store/types.ts";
 
@@ -159,6 +161,40 @@ export class ChannelEventPublisher {
 	}
 
 	publish(event: ChannelEventRecord): void {
+		for (const fn of this.subscribers) {
+			fn(event);
+		}
+	}
+}
+
+export type AgentBucketSubscriber = (bucket: AgentBucket) => void;
+
+export class AgentBucketPublisher {
+	private subscribers = new Set<AgentBucketSubscriber>();
+
+	subscribe(fn: AgentBucketSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(bucket: AgentBucket): void {
+		for (const fn of this.subscribers) {
+			fn(bucket);
+		}
+	}
+}
+
+export type AgentEventSubscriber = (event: AgentEventRecord) => void;
+
+export class AgentEventPublisher {
+	private subscribers = new Set<AgentEventSubscriber>();
+
+	subscribe(fn: AgentEventSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(event: AgentEventRecord): void {
 		for (const fn of this.subscribers) {
 			fn(event);
 		}

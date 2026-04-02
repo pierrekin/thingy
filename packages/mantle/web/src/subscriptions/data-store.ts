@@ -4,11 +4,13 @@ import type {
 	TargetBucketMessage,
 	CheckBucketMessage,
 	ChannelBucketMessage,
+	AgentBucketMessage,
 	MetricsBucketMessage,
 	ProviderEventMessage,
 	TargetEventMessage,
 	CheckEventMessage,
 	ChannelEventMessage,
+	AgentEventMessage,
 } from "../../../src/hub/subscriptions/types.ts";
 
 /**
@@ -75,6 +77,16 @@ type ChannelEvent = {
 	message: string;
 };
 
+type AgentEvent = {
+	id: number;
+	agent: string;
+	code: string;
+	title: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
 /**
  * The Zustand store state
  */
@@ -84,6 +96,7 @@ interface DataStoreState {
 	targetBuckets: Map<string, Map<string, Map<number, BucketData>>>;
 	checkBuckets: Map<string, Map<string, Map<number, BucketData>>>;
 	channelBuckets: Map<string, Map<string, Map<number, BucketData>>>;
+	agentBuckets: Map<string, Map<string, Map<number, BucketData>>>;
 
 	// Metrics buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
 	metricsBuckets: Map<string, Map<string, Map<number, MetricsBucketData>>>;
@@ -93,6 +106,7 @@ interface DataStoreState {
 	targetEvents: Map<string, Map<number, TargetEvent>>;
 	checkEvents: Map<string, Map<number, CheckEvent>>;
 	channelEvents: Map<string, Map<number, ChannelEvent>>;
+	agentEvents: Map<string, Map<number, AgentEvent>>;
 
 	// Target status: "provider/target" -> latest status
 	targetStatuses: Map<string, "green" | "red" | "grey" | null>;
@@ -106,11 +120,13 @@ interface DataStoreState {
 	addTargetBucket: (msg: TargetBucketMessage) => void;
 	addCheckBucket: (msg: CheckBucketMessage) => void;
 	addChannelBucket: (msg: ChannelBucketMessage) => void;
+	addAgentBucket: (msg: AgentBucketMessage) => void;
 	addMetricsBucket: (msg: MetricsBucketMessage) => void;
 	addProviderEvent: (msg: ProviderEventMessage) => void;
 	addTargetEvent: (msg: TargetEventMessage) => void;
 	addCheckEvent: (msg: CheckEventMessage) => void;
 	addChannelEvent: (msg: ChannelEventMessage) => void;
+	addAgentEvent: (msg: AgentEventMessage) => void;
 	setTargetStatus: (msg: { provider: string; target: string; status: "green" | "red" | "grey" | null }) => void;
 	setEventInfo: (msg: { subscriptionId: string; title: string; code: string; startTime: number; endTime: number | null }) => void;
 	addEventOutcome: (msg: { subscriptionId: string; id: number; time: number; error: string | null; violation: string | null }) => void;
@@ -130,11 +146,13 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	targetBuckets: new Map(),
 	checkBuckets: new Map(),
 	channelBuckets: new Map(),
+	agentBuckets: new Map(),
 	metricsBuckets: new Map(),
 	providerEvents: new Map(),
 	targetEvents: new Map(),
 	checkEvents: new Map(),
 	channelEvents: new Map(),
+	agentEvents: new Map(),
 	targetStatuses: new Map(),
 	eventInfo: new Map(),
 	eventOutcomes: new Map(),
@@ -214,6 +232,25 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			channelBuckets.set(msg.subscriptionId, subBuckets);
 
 			return { channelBuckets };
+		});
+	},
+
+	addAgentBucket: (msg: AgentBucketMessage) => {
+		set((state) => {
+			const agentBuckets = new Map(state.agentBuckets);
+			const subBuckets = new Map(agentBuckets.get(msg.subscriptionId) ?? new Map());
+			const entityBuckets = new Map(subBuckets.get(msg.agent) ?? new Map());
+
+			entityBuckets.set(msg.bucketStart, {
+				bucketStart: msg.bucketStart,
+				bucketEnd: msg.bucketEnd,
+				status: msg.status,
+			});
+
+			subBuckets.set(msg.agent, entityBuckets);
+			agentBuckets.set(msg.subscriptionId, subBuckets);
+
+			return { agentBuckets };
 		});
 	},
 
@@ -312,6 +349,24 @@ export const useDataStore = create<DataStoreState>((set) => ({
 		});
 	},
 
+	addAgentEvent: (msg: AgentEventMessage) => {
+		set((state) => {
+			const agentEvents = new Map(state.agentEvents);
+			const subEvents = new Map(agentEvents.get(msg.subscriptionId) ?? new Map());
+			subEvents.set(msg.id, {
+				id: msg.id,
+				agent: msg.agent,
+				code: msg.code,
+				title: msg.title,
+				startTime: msg.startTime,
+				endTime: msg.endTime,
+				message: msg.message,
+			});
+			agentEvents.set(msg.subscriptionId, subEvents);
+			return { agentEvents };
+		});
+	},
+
 	setTargetStatus: (msg) => {
 		set((state) => {
 			const targetStatuses = new Map(state.targetStatuses);
@@ -359,6 +414,8 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			const targetEvents = new Map(state.targetEvents);
 			const checkEvents = new Map(state.checkEvents);
 			const channelEvents = new Map(state.channelEvents);
+			const agentBuckets = new Map(state.agentBuckets);
+			const agentEvents = new Map(state.agentEvents);
 			const eventInfo = new Map(state.eventInfo);
 			const eventOutcomes = new Map(state.eventOutcomes);
 
@@ -371,6 +428,8 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			targetEvents.delete(subscriptionId);
 			checkEvents.delete(subscriptionId);
 			channelEvents.delete(subscriptionId);
+			agentBuckets.delete(subscriptionId);
+			agentEvents.delete(subscriptionId);
 			eventInfo.delete(subscriptionId);
 			eventOutcomes.delete(subscriptionId);
 
@@ -384,6 +443,8 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				targetEvents,
 				checkEvents,
 				channelEvents,
+				agentBuckets,
+				agentEvents,
 				eventInfo,
 				eventOutcomes,
 			};
@@ -396,6 +457,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			const targetBuckets = new Map(state.targetBuckets);
 			const checkBuckets = new Map(state.checkBuckets);
 			const channelBuckets = new Map(state.channelBuckets);
+			const agentBuckets = new Map(state.agentBuckets);
 
 			// GC provider buckets
 			const subProviderBuckets = providerBuckets.get(subscriptionId);
@@ -453,7 +515,21 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				channelBuckets.set(subscriptionId, newSubChannelBuckets);
 			}
 
-			return { providerBuckets, targetBuckets, checkBuckets, channelBuckets };
+			// GC agent buckets
+			const subAgentBuckets = agentBuckets.get(subscriptionId);
+			if (subAgentBuckets) {
+				const newSubAgentBuckets = new Map(subAgentBuckets);
+				for (const [key, buckets] of newSubAgentBuckets) {
+					if (buckets.size > keepCount * 2) {
+						const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+						const toKeep = sorted.slice(-keepCount);
+						newSubAgentBuckets.set(key, new Map(toKeep));
+					}
+				}
+				agentBuckets.set(subscriptionId, newSubAgentBuckets);
+			}
+
+			return { providerBuckets, targetBuckets, checkBuckets, channelBuckets, agentBuckets };
 		});
 	},
 }));
@@ -496,4 +572,10 @@ export const getChannelBuckets = (subscriptionId: string) =>
 
 export const getChannelEvents = (subscriptionId: string) =>
 	useDataStore.getState().channelEvents.get(subscriptionId) ?? new Map();
+
+export const getAgentBuckets = (subscriptionId: string) =>
+	useDataStore.getState().agentBuckets.get(subscriptionId) ?? new Map();
+
+export const getAgentEvents = (subscriptionId: string) =>
+	useDataStore.getState().agentEvents.get(subscriptionId) ?? new Map();
 

@@ -7,6 +7,7 @@ import { createMantleSocketHandler, type MantleSocket } from "./mantle-socket.ts
 
 type WebSocketData = {
 	audience: "web" | "agent";
+	agentId?: string;
 };
 
 export function createFetchHandler(app: Hono) {
@@ -40,7 +41,10 @@ export function createWebSocketHandler(hubService: HubService, webService: WebSe
 		async message(ms: MantleSocket<WebSocketData>, message: string) {
 			if (ms.data.audience === "agent") {
 				const msg = JSON.parse(message) as AgentMessage;
-				await hubService.handleAgentMessage(msg);
+				if (msg.type === "agent_hello") {
+					ms.data.agentId = msg.agentId;
+				}
+				await hubService.handleAgentMessage(msg, ms.data.agentId);
 			} else if (ms.data.audience === "web") {
 				// Handle web client subscription messages
 				await webService.handleMessage(ms, message);

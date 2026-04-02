@@ -7,12 +7,18 @@ import type {
   ChannelOutcomeStore,
   ChannelEventStore,
   ChannelBucketStore,
+  AgentOutcomeStore,
+  AgentEventStore,
+  AgentBucketStore,
   ProviderOutcome,
   TargetOutcome,
   CheckOutcome,
   ChannelOutcome,
+  AgentOutcome,
   ChannelBucket,
+  AgentBucket,
   ChannelEventRecord,
+  AgentEventRecord,
   BucketStatus,
   ProviderBucket,
   TargetBucket,
@@ -26,6 +32,7 @@ import type {
   OpenTargetEvent,
   OpenCheckEvent,
   OpenChannelEvent,
+  OpenAgentEvent,
   MetricBucket,
 } from "./types.ts";
 
@@ -174,6 +181,40 @@ CREATE TABLE IF NOT EXISTS channel_buckets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_channel_buckets_time ON channel_buckets(bucket_start, bucket_end);
+
+CREATE TABLE IF NOT EXISTS agent_outcomes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent TEXT NOT NULL,
+  event_id INTEGER,
+  time INTEGER NOT NULL,
+  success INTEGER NOT NULL,
+  error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_outcomes_time ON agent_outcomes(agent, time);
+CREATE INDEX IF NOT EXISTS idx_agent_outcomes_event ON agent_outcomes(event_id);
+
+CREATE TABLE IF NOT EXISTS agent_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent TEXT NOT NULL,
+  code TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  start_time INTEGER NOT NULL,
+  end_time INTEGER,
+  message TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_events_open ON agent_events(agent, code) WHERE end_time IS NULL;
+
+CREATE TABLE IF NOT EXISTS agent_buckets (
+  agent TEXT NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  bucket_end INTEGER NOT NULL,
+  status TEXT,
+  PRIMARY KEY (agent, bucket_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_buckets_time ON agent_buckets(bucket_start, bucket_end);
 `;
 
 export class SqliteOutcomeStore implements OutcomeStore {
@@ -793,6 +834,140 @@ export class SqliteChannelBucketStore implements ChannelBucketStore {
   }
 }
 
+export class SqliteAgentOutcomeStore implements AgentOutcomeStore {
+  constructor(private db: Database) {}
+
+  async recordAgentOutcome(
+    agent: string,
+    time: Date,
+    outcome: AgentOutcome,
+    eventId?: number,
+  ): Promise<void> {
+    this.db.prepare(`
+      INSERT INTO agent_outcomes (agent, event_id, time, success, error)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      agent,
+      eventId ?? null,
+      time.getTime(),
+      outcome.success ? 1 : 0,
+      outcome.success ? null : outcome.error,
+    );
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
+export class SqliteAgentEventStore implements AgentEventStore {
+  constructor(private db: Database) {}
+
+  async getOpenAgentEvents(): Promise<OpenAgentEvent[]> {
+    return this.db.prepare(`
+      SELECT id, agent, code, title, start_time as startTime, message
+      FROM agent_events WHERE end_time IS NULL
+    `).all() as OpenAgentEvent[];
+  }
+
+  async openAgentEvent(
+    agent: string,
+    code: string,
+    title: string,
+    time: Date,
+    message: string,
+  ): Promise<number> {
+    const result = this.db.prepare(`
+      INSERT INTO agent_events (agent, code, title, start_time, message)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(agent, code, title, time.getTime(), message);
+    return Number(result.lastInsertRowid);
+  }
+
+  async closeAgentEvent(id: number, time: Date): Promise<void> {
+    this.db.prepare(`
+      UPDATE agent_events SET end_time = ? WHERE id = ?
+    `).run(time.getTime(), id);
+  }
+
+  async getAgentEventsInRange(startTime: number, endTime: number): Promise<AgentEventRecord[]> {
+    const rows = this.db.prepare(`
+      SELECT id, agent, code, title, start_time, end_time, message
+      FROM agent_events
+      WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
+    `).all(endTime, startTime) as {
+      id: number;
+      agent: string;
+      code: string;
+      title: string;
+      start_time: number;
+      end_time: number | null;
+      message: string;
+    }[];
+
+    return rows.map((e) => ({
+      id: e.id,
+      agent: e.agent,
+      code: e.code,
+      title: e.title,
+      startTime: e.start_time,
+      endTime: e.end_time,
+      message: e.message,
+    }));
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
+export class SqliteAgentBucketStore implements AgentBucketStore {
+  constructor(private db: Database) {}
+
+  async getAgentBucketStatus(
+    agent: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined> {
+    const row = this.db.prepare(`
+      SELECT status FROM agent_buckets WHERE agent = ? AND bucket_start = ?
+    `).get(agent, bucketStart) as { status: string | null } | undefined;
+    return row?.status as BucketStatus | undefined;
+  }
+
+  async setAgentBucket(
+    agent: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus,
+  ): Promise<void> {
+    this.db.prepare(`
+      INSERT INTO agent_buckets (agent, bucket_start, bucket_end, status)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT (agent, bucket_start)
+      DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
+    `).run(agent, bucketStart, bucketEnd, status);
+  }
+
+  async getAgentBuckets(startTime: number, endTime: number): Promise<AgentBucket[]> {
+    const rows = this.db.prepare(`
+      SELECT agent, bucket_start, bucket_end, status
+      FROM agent_buckets
+      WHERE bucket_start >= ? AND bucket_start < ?
+    `).all(startTime, endTime) as { agent: string; bucket_start: number; bucket_end: number; status: string | null }[];
+
+    return rows.map((b) => ({
+      agent: b.agent,
+      bucketStart: b.bucket_start,
+      bucketEnd: b.bucket_end,
+      status: b.status as BucketStatus,
+    }));
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
 export function createSqliteStores(path: string): {
   outcomeStore: SqliteOutcomeStore;
   eventStore: SqliteEventStore;
@@ -801,6 +976,9 @@ export function createSqliteStores(path: string): {
   channelOutcomeStore: SqliteChannelOutcomeStore;
   channelEventStore: SqliteChannelEventStore;
   channelBucketStore: SqliteChannelBucketStore;
+  agentOutcomeStore: SqliteAgentOutcomeStore;
+  agentEventStore: SqliteAgentEventStore;
+  agentBucketStore: SqliteAgentBucketStore;
   close: () => void;
 } {
   const db = new Database(path);
@@ -813,6 +991,9 @@ export function createSqliteStores(path: string): {
     channelOutcomeStore: new SqliteChannelOutcomeStore(db),
     channelEventStore: new SqliteChannelEventStore(db),
     channelBucketStore: new SqliteChannelBucketStore(db),
+    agentOutcomeStore: new SqliteAgentOutcomeStore(db),
+    agentEventStore: new SqliteAgentEventStore(db),
+    agentBucketStore: new SqliteAgentBucketStore(db),
     close: () => db.close(),
   };
 }

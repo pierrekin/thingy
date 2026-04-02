@@ -359,6 +359,85 @@ export interface ChannelBucketStore {
   close(): Promise<void>;
 }
 
+// --- Agent types ---
+
+export type AgentOutcome =
+  | { success: true }
+  | { success: false; error: string };
+
+export type AgentEventRecord = {
+  id: number;
+  agent: string;
+  code: string;
+  title: string;
+  startTime: number;
+  endTime: number | null;
+  message: string;
+};
+
+export type OpenAgentEvent = {
+  id: number;
+  agent: string;
+  code: string;
+  title: string;
+  startTime: number;
+  message: string;
+};
+
+export type AgentBucket = {
+  agent: string;
+  bucketStart: number;
+  bucketEnd: number;
+  status: BucketStatus;
+};
+
+export interface AgentOutcomeStore {
+  recordAgentOutcome(
+    agent: string,
+    time: Date,
+    outcome: AgentOutcome,
+    eventId?: number,
+  ): Promise<void>;
+
+  close(): Promise<void>;
+}
+
+export interface AgentEventStore {
+  getOpenAgentEvents(): Promise<OpenAgentEvent[]>;
+
+  openAgentEvent(
+    agent: string,
+    code: string,
+    title: string,
+    time: Date,
+    message: string,
+  ): Promise<number>;
+
+  closeAgentEvent(id: number, time: Date): Promise<void>;
+
+  getAgentEventsInRange(startTime: number, endTime: number): Promise<AgentEventRecord[]>;
+
+  close(): Promise<void>;
+}
+
+export interface AgentBucketStore {
+  getAgentBucketStatus(
+    agent: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined>;
+
+  setAgentBucket(
+    agent: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus,
+  ): Promise<void>;
+
+  getAgentBuckets(startTime: number, endTime: number): Promise<AgentBucket[]>;
+
+  close(): Promise<void>;
+}
+
 export interface MetricsStore {
   /**
    * Get aggregated metrics for a specific check in a time range.

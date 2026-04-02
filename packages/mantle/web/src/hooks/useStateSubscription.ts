@@ -38,6 +38,9 @@ export function useStateSubscription(params: StateSubscriptionParams): string | 
 					case "channel_bucket":
 						store.addChannelBucket(msg);
 						break;
+					case "agent_bucket":
+						store.addAgentBucket(msg);
+						break;
 					case "provider_event":
 						store.addProviderEvent(msg);
 						break;
@@ -49,6 +52,9 @@ export function useStateSubscription(params: StateSubscriptionParams): string | 
 						break;
 					case "channel_event":
 						store.addChannelEvent(msg);
+						break;
+					case "agent_event":
+						store.addAgentEvent(msg);
 						break;
 					case "target_status":
 						store.setTargetStatus(msg);

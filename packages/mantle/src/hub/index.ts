@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { HubConfig } from "../config.ts";
-import type { OutcomeStore, EventStore, BucketStore, MetricsStore, ChannelOutcomeStore, ChannelEventStore, ChannelBucketStore } from "../store/types.ts";
+import type { OutcomeStore, EventStore, BucketStore, MetricsStore, ChannelOutcomeStore, ChannelEventStore, ChannelBucketStore, AgentOutcomeStore, AgentEventStore, AgentBucketStore } from "../store/types.ts";
 import type { ChannelInstance } from "../channel.ts";
 import { createWebApp } from "./web.ts";
 import { createAgentApp } from "./agent.ts";
@@ -17,6 +17,8 @@ import {
 	CheckEventPublisher,
 	ChannelBucketPublisher,
 	ChannelEventPublisher,
+	AgentBucketPublisher,
+	AgentEventPublisher,
 	OutcomePublisher,
 	TargetStatusPublisher,
 } from "./pubsub.ts";
@@ -25,6 +27,12 @@ type ChannelStores = {
 	outcomeStore: ChannelOutcomeStore;
 	eventStore: ChannelEventStore;
 	bucketStore: ChannelBucketStore;
+};
+
+type AgentStores = {
+	outcomeStore: AgentOutcomeStore;
+	eventStore: AgentEventStore;
+	bucketStore: AgentBucketStore;
 };
 
 type RegisteredChannel = {
@@ -40,6 +48,7 @@ export async function startHub(
 	metricsStore: MetricsStore,
 	channels: RegisteredChannel[] = [],
 	channelStores?: ChannelStores,
+	agentStores?: AgentStores,
 ) {
 	const bucketPublishers = {
 		provider: new ProviderBucketPublisher(),
@@ -74,12 +83,22 @@ export async function startHub(
 		dispatcher.subscribe(eventPublishers);
 	}
 
-	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher);
+	const agentBucketPublisher = agentStores ? new AgentBucketPublisher() : null;
+	const agentEventPublisher = agentStores ? new AgentEventPublisher() : null;
+
+	const hubService = new HubService(
+		outcomeStore, eventStore, bucketStore,
+		bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher,
+		agentStores ? { outcomeStore: agentStores.outcomeStore, bucketStore: agentStores.bucketStore } : null,
+		agentBucketPublisher ? { bucket: agentBucketPublisher } : null,
+	);
 	const webService = new WebService(
 		bucketStore, eventStore, metricsStore, outcomeStore,
 		bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher,
 		channelPublishers,
 		channelStores ? { bucketStore: channelStores.bucketStore, eventStore: channelStores.eventStore } : null,
+		agentBucketPublisher && agentEventPublisher ? { bucket: agentBucketPublisher, event: agentEventPublisher } : null,
+		agentStores ? { bucketStore: agentStores.bucketStore, eventStore: agentStores.eventStore } : null,
 	);
 
 	await hubService.init();

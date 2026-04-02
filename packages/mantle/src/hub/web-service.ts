@@ -1,5 +1,5 @@
 import type { MantleSocket } from "./mantle-socket.ts";
-import type { BucketStore, EventStore, MetricsStore, OutcomeStore, ChannelBucketStore, ChannelEventStore } from "../store/types.ts";
+import type { BucketStore, EventStore, MetricsStore, OutcomeStore, ChannelBucketStore, ChannelEventStore, AgentBucketStore, AgentEventStore } from "../store/types.ts";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
@@ -9,6 +9,8 @@ import type {
 	CheckEventPublisher,
 	ChannelBucketPublisher,
 	ChannelEventPublisher,
+	AgentBucketPublisher,
+	AgentEventPublisher,
 	OutcomePublisher,
 	TargetStatusPublisher,
 } from "./pubsub.ts";
@@ -27,6 +29,8 @@ import {
 	type CheckBucketMessage,
 	type ChannelBucketMessage,
 	type ChannelEventMessage,
+	type AgentBucketMessage,
+	type AgentEventMessage,
 	type MetricsBucketMessage,
 	type ProviderEventMessage,
 	type TargetEventMessage,
@@ -63,6 +67,16 @@ type ChannelStores = {
 	eventStore: ChannelEventStore;
 } | null;
 
+type AgentPublishers = {
+	bucket: AgentBucketPublisher;
+	event: AgentEventPublisher;
+} | null;
+
+type AgentStoresForWeb = {
+	bucketStore: AgentBucketStore;
+	eventStore: AgentEventStore;
+} | null;
+
 /**
  * WebService manages WebSocket connections for web clients using the
  * subscription protocol. Clients explicitly subscribe to data streams
@@ -82,6 +96,8 @@ export class WebService {
 		private targetStatusPublisher: TargetStatusPublisher,
 		private channelPublishers: ChannelPublishers = null,
 		private channelStores: ChannelStores = null,
+		private agentPublishers: AgentPublishers = null,
+		private agentStores: AgentStoresForWeb = null,
 	) {}
 
 	/**
@@ -432,6 +448,30 @@ export class WebService {
 				subscription.ws.send(JSON.stringify(msg));
 			}
 		}
+
+		// Send agent data if available
+		if (this.agentStores) {
+			const agentBuckets = await this.agentStores.bucketStore.getAgentBuckets(start, endTime);
+			const filledAgentBuckets = this.fillAgentBuckets(agentBuckets, start, config);
+			for (const bucket of filledAgentBuckets) {
+				const msg: AgentBucketMessage = {
+					type: "agent_bucket",
+					subscriptionId: subscription.id,
+					...bucket,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			}
+
+			const agentEvents = await this.agentStores.eventStore.getAgentEventsInRange(start, endTime);
+			for (const event of agentEvents) {
+				const msg: AgentEventMessage = {
+					type: "agent_event",
+					subscriptionId: subscription.id,
+					...event,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			}
+		}
 	}
 
 	/**
@@ -562,6 +602,31 @@ export class WebService {
 				subscription.ws.send(JSON.stringify(msg));
 			});
 			subscription.addUnsubscriber(unsubChannelEvent);
+		}
+
+		// Subscribe to agent updates if available
+		if (this.agentPublishers) {
+			const unsubAgentBucket = this.agentPublishers.bucket.subscribe((bucketMsg) => {
+				if (!subscription.isInRange(bucketMsg.bucketStart)) return;
+				const msg: AgentBucketMessage = {
+					type: "agent_bucket",
+					subscriptionId: subscription.id,
+					...bucketMsg,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsubAgentBucket);
+
+			const unsubAgentEvent = this.agentPublishers.event.subscribe((event) => {
+				if (!subscription.isInRange(event.startTime)) return;
+				const msg: AgentEventMessage = {
+					type: "agent_event",
+					subscriptionId: subscription.id,
+					...event,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsubAgentEvent);
 		}
 	}
 
@@ -815,6 +880,43 @@ export class WebService {
 					result.push(existing);
 				} else {
 					result.push({ channel, bucketStart, bucketEnd, status: null });
+				}
+			}
+		}
+
+		return result;
+	}
+
+	private fillAgentBuckets(
+		stored: Array<{
+			agent: string;
+			bucketStart: number;
+			bucketEnd: number;
+			status: string | null;
+		}>,
+		rangeStart: number,
+		config: BucketConfig,
+	) {
+		const lookup = new Map<string, (typeof stored)[0]>();
+		const agents = new Set<string>();
+
+		for (const bucket of stored) {
+			agents.add(bucket.agent);
+			lookup.set(`${bucket.agent}:${bucket.bucketStart}`, bucket);
+		}
+
+		const result: typeof stored = [];
+
+		for (const agent of agents) {
+			for (let i = 0; i < config.count; i++) {
+				const bucketStart = rangeStart + i * config.durationMs;
+				const bucketEnd = bucketStart + config.durationMs;
+				const existing = lookup.get(`${agent}:${bucketStart}`);
+
+				if (existing) {
+					result.push(existing);
+				} else {
+					result.push({ agent, bucketStart, bucketEnd, status: null });
 				}
 			}
 		}

@@ -10,6 +10,7 @@ type Props = {
 export function MainPage({ hub, onNavigateToInfra }: Props) {
 	const providersWithEvents = hub.providers.filter((p) => p.events.length > 0);
 	const channelsWithEvents = hub.channels.filter((c) => c.events.length > 0);
+	const agentsWithEvents = hub.agents.filter((a) => a.events.length > 0);
 
 	return (
 		<div className="min-h-screen bg-gray-200">
@@ -52,6 +53,23 @@ export function MainPage({ hub, onNavigateToInfra }: Props) {
 								name={channel.name}
 								statusSlots={channel.statusSlots}
 								events={channel.events}
+								eventLevel="provider"
+							/>
+						))}
+					</section>
+				)}
+
+				{agentsWithEvents.length > 0 && (
+					<section>
+						<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 bg-gray-200">
+							Agents
+						</h2>
+						{agentsWithEvents.map((agent) => (
+							<EntitySection
+								key={agent.name}
+								name={agent.name}
+								statusSlots={agent.statusSlots}
+								events={agent.events}
 								eventLevel="provider"
 							/>
 						))}

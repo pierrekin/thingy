@@ -2,19 +2,24 @@ import type { ChannelInstance } from "./channel.ts";
 import { getChannel } from "./channels.ts";
 import { OperationalError } from "./errors.ts";
 
+export type RegisteredChannel = {
+	name: string;
+	instance: ChannelInstance;
+};
+
 export function createChannelInstances(
 	channelConfigs: Record<string, unknown>,
-): ChannelInstance[] {
-	const instances: ChannelInstance[] = [];
+): RegisteredChannel[] {
+	const channels: RegisteredChannel[] = [];
 
 	for (const [name, config] of Object.entries(channelConfigs)) {
 		const channel = getChannel(name);
 		if (!channel) {
 			throw new OperationalError(`Unknown channel: '${name}'`);
 		}
-		instances.push(channel.createInstance(config));
+		channels.push({ name, instance: channel.createInstance(config) });
 		console.log(`Channel '${name}' initialized`);
 	}
 
-	return instances;
+	return channels;
 }

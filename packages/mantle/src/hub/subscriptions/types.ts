@@ -48,10 +48,12 @@ export type ServerMessage =
 	| ProviderBucketMessage
 	| TargetBucketMessage
 	| CheckBucketMessage
+	| ChannelBucketMessage
 	| MetricsBucketMessage
 	| ProviderEventMessage
 	| TargetEventMessage
 	| CheckEventMessage
+	| ChannelEventMessage
 	| EventInfoMessage
 	| EventOutcomeMessage
 	| TargetStatusMessage;
@@ -180,5 +182,26 @@ export type TargetStatusMessage = {
 	status: "green" | "red" | "grey" | null;
 };
 
-export type BucketMessage = ProviderBucketMessage | TargetBucketMessage | CheckBucketMessage;
-export type EventMessage = ProviderEventMessage | TargetEventMessage | CheckEventMessage;
+export type ChannelBucketMessage = {
+	type: "channel_bucket";
+	subscriptionId: string;
+	channel: string;
+	bucketStart: number;
+	bucketEnd: number;
+	status: "green" | "red" | "grey" | null;
+};
+
+export type ChannelEventMessage = {
+	type: "channel_event";
+	subscriptionId: string;
+	id: number;
+	channel: string;
+	code: string;
+	title: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
+export type BucketMessage = ProviderBucketMessage | TargetBucketMessage | CheckBucketMessage | ChannelBucketMessage;
+export type EventMessage = ProviderEventMessage | TargetEventMessage | CheckEventMessage | ChannelEventMessage;

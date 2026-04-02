@@ -4,9 +4,15 @@ import type {
   EventStore,
   BucketStore,
   MetricsStore,
+  ChannelOutcomeStore,
+  ChannelEventStore,
+  ChannelBucketStore,
   ProviderOutcome,
   TargetOutcome,
   CheckOutcome,
+  ChannelOutcome,
+  ChannelBucket,
+  ChannelEventRecord,
   BucketStatus,
   ProviderBucket,
   TargetBucket,
@@ -19,6 +25,7 @@ import type {
   OpenProviderEvent,
   OpenTargetEvent,
   OpenCheckEvent,
+  OpenChannelEvent,
   MetricBucket,
 } from "./types.ts";
 
@@ -133,6 +140,40 @@ CREATE TABLE IF NOT EXISTS check_buckets (
 CREATE INDEX IF NOT EXISTS idx_provider_buckets_time ON provider_buckets(bucket_start, bucket_end);
 CREATE INDEX IF NOT EXISTS idx_target_buckets_time ON target_buckets(bucket_start, bucket_end);
 CREATE INDEX IF NOT EXISTS idx_check_buckets_time ON check_buckets(bucket_start, bucket_end);
+
+CREATE TABLE IF NOT EXISTS channel_outcomes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel TEXT NOT NULL,
+  event_id INTEGER,
+  time INTEGER NOT NULL,
+  success INTEGER NOT NULL,
+  error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_channel_outcomes_time ON channel_outcomes(channel, time);
+CREATE INDEX IF NOT EXISTS idx_channel_outcomes_event ON channel_outcomes(event_id);
+
+CREATE TABLE IF NOT EXISTS channel_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel TEXT NOT NULL,
+  code TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  start_time INTEGER NOT NULL,
+  end_time INTEGER,
+  message TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_channel_events_open ON channel_events(channel, code) WHERE end_time IS NULL;
+
+CREATE TABLE IF NOT EXISTS channel_buckets (
+  channel TEXT NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  bucket_end INTEGER NOT NULL,
+  status TEXT,
+  PRIMARY KEY (channel, bucket_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_channel_buckets_time ON channel_buckets(bucket_start, bucket_end);
 `;
 
 export class SqliteOutcomeStore implements OutcomeStore {
@@ -618,11 +659,148 @@ export class SqliteMetricsStore implements MetricsStore {
   }
 }
 
+export class SqliteChannelOutcomeStore implements ChannelOutcomeStore {
+  constructor(private db: Database) {}
+
+  async recordChannelOutcome(
+    channel: string,
+    time: Date,
+    outcome: ChannelOutcome,
+    eventId?: number,
+  ): Promise<void> {
+    this.db.prepare(`
+      INSERT INTO channel_outcomes (channel, event_id, time, success, error)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      channel,
+      eventId ?? null,
+      time.getTime(),
+      outcome.success ? 1 : 0,
+      outcome.success ? null : outcome.error,
+    );
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
+export class SqliteChannelEventStore implements ChannelEventStore {
+  constructor(private db: Database) {}
+
+  async getOpenChannelEvents(): Promise<OpenChannelEvent[]> {
+    return this.db.prepare(`
+      SELECT id, channel, code, title, start_time as startTime, message
+      FROM channel_events WHERE end_time IS NULL
+    `).all() as OpenChannelEvent[];
+  }
+
+  async openChannelEvent(
+    channel: string,
+    code: string,
+    title: string,
+    time: Date,
+    message: string,
+  ): Promise<number> {
+    const result = this.db.prepare(`
+      INSERT INTO channel_events (channel, code, title, start_time, message)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(channel, code, title, time.getTime(), message);
+    return Number(result.lastInsertRowid);
+  }
+
+  async closeChannelEvent(id: number, time: Date): Promise<void> {
+    this.db.prepare(`
+      UPDATE channel_events SET end_time = ? WHERE id = ?
+    `).run(time.getTime(), id);
+  }
+
+  async getChannelEventsInRange(startTime: number, endTime: number): Promise<ChannelEventRecord[]> {
+    const rows = this.db.prepare(`
+      SELECT id, channel, code, title, start_time, end_time, message
+      FROM channel_events
+      WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
+    `).all(endTime, startTime) as {
+      id: number;
+      channel: string;
+      code: string;
+      title: string;
+      start_time: number;
+      end_time: number | null;
+      message: string;
+    }[];
+
+    return rows.map((e) => ({
+      id: e.id,
+      channel: e.channel,
+      code: e.code,
+      title: e.title,
+      startTime: e.start_time,
+      endTime: e.end_time,
+      message: e.message,
+    }));
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
+export class SqliteChannelBucketStore implements ChannelBucketStore {
+  constructor(private db: Database) {}
+
+  async getChannelBucketStatus(
+    channel: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined> {
+    const row = this.db.prepare(`
+      SELECT status FROM channel_buckets WHERE channel = ? AND bucket_start = ?
+    `).get(channel, bucketStart) as { status: string | null } | undefined;
+    return row?.status as BucketStatus | undefined;
+  }
+
+  async setChannelBucket(
+    channel: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus,
+  ): Promise<void> {
+    this.db.prepare(`
+      INSERT INTO channel_buckets (channel, bucket_start, bucket_end, status)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT (channel, bucket_start)
+      DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
+    `).run(channel, bucketStart, bucketEnd, status);
+  }
+
+  async getChannelBuckets(startTime: number, endTime: number): Promise<ChannelBucket[]> {
+    const rows = this.db.prepare(`
+      SELECT channel, bucket_start, bucket_end, status
+      FROM channel_buckets
+      WHERE bucket_start >= ? AND bucket_start < ?
+    `).all(startTime, endTime) as { channel: string; bucket_start: number; bucket_end: number; status: string | null }[];
+
+    return rows.map((b) => ({
+      channel: b.channel,
+      bucketStart: b.bucket_start,
+      bucketEnd: b.bucket_end,
+      status: b.status as BucketStatus,
+    }));
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
 export function createSqliteStores(path: string): {
   outcomeStore: SqliteOutcomeStore;
   eventStore: SqliteEventStore;
   bucketStore: SqliteBucketStore;
   metricsStore: SqliteMetricsStore;
+  channelOutcomeStore: SqliteChannelOutcomeStore;
+  channelEventStore: SqliteChannelEventStore;
+  channelBucketStore: SqliteChannelBucketStore;
   close: () => void;
 } {
   const db = new Database(path);
@@ -632,6 +810,9 @@ export function createSqliteStores(path: string): {
     eventStore: new SqliteEventStore(db),
     bucketStore: new SqliteBucketStore(db),
     metricsStore: new SqliteMetricsStore(db),
+    channelOutcomeStore: new SqliteChannelOutcomeStore(db),
+    channelEventStore: new SqliteChannelEventStore(db),
+    channelBucketStore: new SqliteChannelBucketStore(db),
     close: () => db.close(),
   };
 }

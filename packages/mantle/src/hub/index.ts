@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { HubConfig } from "../config.ts";
-import type { OutcomeStore, EventStore, BucketStore, MetricsStore } from "../store/types.ts";
+import type { OutcomeStore, EventStore, BucketStore, MetricsStore, ChannelOutcomeStore, ChannelEventStore, ChannelBucketStore } from "../store/types.ts";
 import type { ChannelInstance } from "../channel.ts";
 import { createWebApp } from "./web.ts";
 import { createAgentApp } from "./agent.ts";
@@ -15,9 +15,22 @@ import {
 	ProviderEventPublisher,
 	TargetEventPublisher,
 	CheckEventPublisher,
+	ChannelBucketPublisher,
+	ChannelEventPublisher,
 	OutcomePublisher,
 	TargetStatusPublisher,
 } from "./pubsub.ts";
+
+type ChannelStores = {
+	outcomeStore: ChannelOutcomeStore;
+	eventStore: ChannelEventStore;
+	bucketStore: ChannelBucketStore;
+};
+
+type RegisteredChannel = {
+	name: string;
+	instance: ChannelInstance;
+};
 
 export async function startHub(
 	config: HubConfig,
@@ -25,7 +38,8 @@ export async function startHub(
 	eventStore: EventStore,
 	bucketStore: BucketStore,
 	metricsStore: MetricsStore,
-	channels: ChannelInstance[] = [],
+	channels: RegisteredChannel[] = [],
+	channelStores?: ChannelStores,
 ) {
 	const bucketPublishers = {
 		provider: new ProviderBucketPublisher(),
@@ -39,14 +53,34 @@ export async function startHub(
 	};
 	const outcomePublisher = new OutcomePublisher();
 	const targetStatusPublisher = new TargetStatusPublisher();
-	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher);
-	const webService = new WebService(bucketStore, eventStore, metricsStore, outcomeStore, bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher);
 
-	const channelDispatcher = new ChannelDispatcher();
-	for (const channel of channels) {
-		channelDispatcher.addChannel(channel);
+	let channelPublishers: { bucket: ChannelBucketPublisher; event: ChannelEventPublisher } | null = null;
+
+	if (channels.length > 0 && channelStores) {
+		channelPublishers = {
+			bucket: new ChannelBucketPublisher(),
+			event: new ChannelEventPublisher(),
+		};
+		const dispatcher = new ChannelDispatcher(
+			channelStores.outcomeStore,
+			channelStores.eventStore,
+			channelStores.bucketStore,
+			channelPublishers,
+		);
+		for (const ch of channels) {
+			dispatcher.addChannel(ch.name, ch.instance);
+		}
+		await dispatcher.init();
+		dispatcher.subscribe(eventPublishers);
 	}
-	channelDispatcher.subscribe(eventPublishers);
+
+	const hubService = new HubService(outcomeStore, eventStore, bucketStore, bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher);
+	const webService = new WebService(
+		bucketStore, eventStore, metricsStore, outcomeStore,
+		bucketPublishers, eventPublishers, outcomePublisher, targetStatusPublisher,
+		channelPublishers,
+		channelStores ? { bucketStore: channelStores.bucketStore, eventStore: channelStores.eventStore } : null,
+	);
 
 	await hubService.init();
 

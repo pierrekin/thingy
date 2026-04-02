@@ -13,79 +13,70 @@ const logChannelConfig = z.object({
 
 type LogChannelConfig = z.infer<typeof logChannelConfig>;
 
-type Writer = {
-	write(line: string): void;
-};
-
-function createWriter(config: LogChannelConfig): Writer {
-	if (config.output === "file") {
-		if (!config.path) {
-			throw new Error("channel-log: 'path' is required when output is 'file'");
-		}
-		const file = Bun.file(config.path);
-		const writer = file.writer();
-		return {
-			write(line: string) {
-				writer.write(line + "\n");
-				writer.flush();
-			},
-		};
-	}
-
-	const stream = config.output === "stderr" ? process.stderr : process.stdout;
-	return {
-		write(line: string) {
-			stream.write(line + "\n");
-		},
-	};
-}
-
 function ts(epoch: number): string {
 	return new Date(epoch).toISOString();
 }
 
 class LogChannelInstance implements ChannelInstance {
-	private writer: Writer;
+	private config: LogChannelConfig;
+	private fileWriter: ReturnType<ReturnType<typeof Bun.file>["writer"]> | null = null;
 
 	constructor(config: LogChannelConfig) {
-		this.writer = createWriter(config);
+		if (config.output === "file" && !config.path) {
+			throw new Error("channel-log: 'path' is required when output is 'file'");
+		}
+		this.config = config;
+	}
+
+	private write(line: string): void {
+		if (this.config.output === "file") {
+			if (!this.fileWriter) {
+				this.fileWriter = Bun.file(this.config.path!).writer();
+			}
+			this.fileWriter.write(line + "\n");
+			this.fileWriter.flush();
+			return;
+		}
+
+		const stream = this.config.output === "stderr" ? process.stderr : process.stdout;
+		stream.write(line + "\n");
 	}
 
 	onProviderEventStarted(event: ProviderEventRecord): void {
-		this.writer.write(
+		this.write(
 			`[${ts(event.startTime)}] EVENT STARTED provider=${event.provider} code=${event.code} title="${event.title}" message="${event.message}"`,
 		);
 	}
 
 	onProviderEventEnded(event: ProviderEventRecord): void {
 		const duration = event.endTime! - event.startTime;
-		this.writer.write(
+		this.write(
 			`[${ts(event.endTime!)}] EVENT ENDED provider=${event.provider} code=${event.code} duration=${duration}ms`,
 		);
 	}
 
 	onTargetEventStarted(event: TargetEventRecord): void {
-		this.writer.write(
+		this.write(
 			`[${ts(event.startTime)}] EVENT STARTED provider=${event.provider} target=${event.target} code=${event.code} title="${event.title}" message="${event.message}"`,
 		);
 	}
 
 	onTargetEventEnded(event: TargetEventRecord): void {
 		const duration = event.endTime! - event.startTime;
-		this.writer.write(
+		this.write(
 			`[${ts(event.endTime!)}] EVENT ENDED provider=${event.provider} target=${event.target} code=${event.code} duration=${duration}ms`,
 		);
 	}
 
 	onCheckEventStarted(event: CheckEventRecord): void {
-		this.writer.write(
+		this.write(
 			`[${ts(event.startTime)}] EVENT STARTED provider=${event.provider} target=${event.target} check=${event.check} code=${event.code} title="${event.title}" message="${event.message}"`,
 		);
 	}
 
 	onCheckEventEnded(event: CheckEventRecord): void {
 		const duration = event.endTime! - event.startTime;
-		this.writer.write(
+		this.write(
 			`[${ts(event.endTime!)}] EVENT ENDED provider=${event.provider} target=${event.target} check=${event.check} code=${event.code} duration=${duration}ms`,
 		);
 	}

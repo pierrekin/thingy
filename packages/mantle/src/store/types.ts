@@ -273,6 +273,92 @@ export type MetricBucket = {
   mean: number | null;
 };
 
+// --- Channel types ---
+
+export type ChannelOutcome =
+  | { success: true }
+  | { success: false; error: string };
+
+export type ChannelEventRecord = {
+  id: number;
+  channel: string;
+  code: string;
+  title: string;
+  startTime: number;
+  endTime: number | null;
+  message: string;
+};
+
+export type OpenChannelEvent = {
+  id: number;
+  channel: string;
+  code: string;
+  title: string;
+  startTime: number;
+  message: string;
+};
+
+export type ChannelBucket = {
+  channel: string;
+  bucketStart: number;
+  bucketEnd: number;
+  status: BucketStatus;
+};
+
+export type StoredChannelOutcome = {
+  id: number;
+  time: number;
+  success: boolean;
+  error: string | null;
+};
+
+export interface ChannelOutcomeStore {
+  recordChannelOutcome(
+    channel: string,
+    time: Date,
+    outcome: ChannelOutcome,
+    eventId?: number,
+  ): Promise<void>;
+
+  close(): Promise<void>;
+}
+
+export interface ChannelEventStore {
+  getOpenChannelEvents(): Promise<OpenChannelEvent[]>;
+
+  openChannelEvent(
+    channel: string,
+    code: string,
+    title: string,
+    time: Date,
+    message: string,
+  ): Promise<number>;
+
+  closeChannelEvent(id: number, time: Date): Promise<void>;
+
+  getChannelEventsInRange(startTime: number, endTime: number): Promise<ChannelEventRecord[]>;
+
+  close(): Promise<void>;
+}
+
+export interface ChannelBucketStore {
+  getChannelBucketStatus(
+    channel: string,
+    bucketStart: number,
+  ): Promise<BucketStatus | undefined>;
+
+  setChannelBucket(
+    channel: string,
+    bucketStart: number,
+    bucketEnd: number,
+    status: BucketStatus,
+  ): Promise<void>;
+
+  getChannelBuckets(startTime: number, endTime: number): Promise<ChannelBucket[]>;
+
+  close(): Promise<void>;
+}
+
 export interface MetricsStore {
   /**
    * Get aggregated metrics for a specific check in a time range.

@@ -75,9 +75,13 @@ const hub = defineCommand({
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
 		const hubConfig = getHubConfig(config);
-		const { outcomeStore, eventStore, bucketStore, metricsStore } = createSqliteStores("mantle.db");
+		const stores = createSqliteStores("mantle.db");
 		const channels = createChannelInstances(config.channels ?? {});
-		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore, channels);
+		await startHub(hubConfig, stores.outcomeStore, stores.eventStore, stores.bucketStore, stores.metricsStore, channels, {
+			outcomeStore: stores.channelOutcomeStore,
+			eventStore: stores.channelEventStore,
+			bucketStore: stores.channelBucketStore,
+		});
 	}),
 });
 
@@ -106,9 +110,13 @@ const standalone = defineCommand({
 		const hubConfig = getHubConfig(config);
 		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
 
-		const { outcomeStore, eventStore, bucketStore, metricsStore } = createSqliteStores("mantle.db");
+		const stores = createSqliteStores("mantle.db");
 		const channels = createChannelInstances(config.channels ?? {});
-		await startHub(hubConfig, outcomeStore, eventStore, bucketStore, metricsStore, channels);
+		await startHub(hubConfig, stores.outcomeStore, stores.eventStore, stores.bucketStore, stores.metricsStore, channels, {
+			outcomeStore: stores.channelOutcomeStore,
+			eventStore: stores.channelEventStore,
+			bucketStore: stores.channelBucketStore,
+		});
 
 		const { checkReporter } = await createHubReporters(id, getHubUrl(hubConfig));
 		startAgent(id, agentConfig, config.providers ?? {}, checkReporter);

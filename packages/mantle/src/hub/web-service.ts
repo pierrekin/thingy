@@ -1,5 +1,5 @@
 import type { MantleSocket } from "./mantle-socket.ts";
-import type { BucketStore, EventStore, MetricsStore, OutcomeStore } from "../store/types.ts";
+import type { BucketStore, EventStore, MetricsStore, OutcomeStore, ChannelBucketStore, ChannelEventStore } from "../store/types.ts";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
@@ -7,6 +7,8 @@ import type {
 	ProviderEventPublisher,
 	TargetEventPublisher,
 	CheckEventPublisher,
+	ChannelBucketPublisher,
+	ChannelEventPublisher,
 	OutcomePublisher,
 	TargetStatusPublisher,
 } from "./pubsub.ts";
@@ -23,6 +25,8 @@ import {
 	type ProviderBucketMessage,
 	type TargetBucketMessage,
 	type CheckBucketMessage,
+	type ChannelBucketMessage,
+	type ChannelEventMessage,
 	type MetricsBucketMessage,
 	type ProviderEventMessage,
 	type TargetEventMessage,
@@ -49,6 +53,16 @@ type EventPublishers = {
 	check: CheckEventPublisher;
 };
 
+type ChannelPublishers = {
+	bucket: ChannelBucketPublisher;
+	event: ChannelEventPublisher;
+} | null;
+
+type ChannelStores = {
+	bucketStore: ChannelBucketStore;
+	eventStore: ChannelEventStore;
+} | null;
+
 /**
  * WebService manages WebSocket connections for web clients using the
  * subscription protocol. Clients explicitly subscribe to data streams
@@ -66,6 +80,8 @@ export class WebService {
 		private eventPublishers: EventPublishers,
 		private outcomePublisher: OutcomePublisher,
 		private targetStatusPublisher: TargetStatusPublisher,
+		private channelPublishers: ChannelPublishers = null,
+		private channelStores: ChannelStores = null,
 	) {}
 
 	/**
@@ -392,6 +408,30 @@ export class WebService {
 			};
 			subscription.ws.send(JSON.stringify(msg));
 		}
+
+		// Send channel data if available
+		if (this.channelStores) {
+			const channelBuckets = await this.channelStores.bucketStore.getChannelBuckets(start, endTime);
+			const filledChannelBuckets = this.fillChannelBuckets(channelBuckets, start, config);
+			for (const bucket of filledChannelBuckets) {
+				const msg: ChannelBucketMessage = {
+					type: "channel_bucket",
+					subscriptionId: subscription.id,
+					...bucket,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			}
+
+			const channelEvents = await this.channelStores.eventStore.getChannelEventsInRange(start, endTime);
+			for (const event of channelEvents) {
+				const msg: ChannelEventMessage = {
+					type: "channel_event",
+					subscriptionId: subscription.id,
+					...event,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			}
+		}
 	}
 
 	/**
@@ -498,6 +538,31 @@ export class WebService {
 			subscription.ws.send(JSON.stringify(msg));
 		});
 		subscription.addUnsubscriber(unsubTargetStatus);
+
+		// Subscribe to channel updates if available
+		if (this.channelPublishers) {
+			const unsubChannelBucket = this.channelPublishers.bucket.subscribe((bucketMsg) => {
+				if (!subscription.isInRange(bucketMsg.bucketStart)) return;
+				const msg: ChannelBucketMessage = {
+					type: "channel_bucket",
+					subscriptionId: subscription.id,
+					...bucketMsg,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsubChannelBucket);
+
+			const unsubChannelEvent = this.channelPublishers.event.subscribe((event) => {
+				if (!subscription.isInRange(event.startTime)) return;
+				const msg: ChannelEventMessage = {
+					type: "channel_event",
+					subscriptionId: subscription.id,
+					...event,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsubChannelEvent);
+		}
 	}
 
 	/**
@@ -713,6 +778,43 @@ export class WebService {
 					result.push(existing);
 				} else {
 					result.push({ provider, target, check, bucketStart, bucketEnd, status: null });
+				}
+			}
+		}
+
+		return result;
+	}
+
+	private fillChannelBuckets(
+		stored: Array<{
+			channel: string;
+			bucketStart: number;
+			bucketEnd: number;
+			status: string | null;
+		}>,
+		rangeStart: number,
+		config: BucketConfig,
+	) {
+		const lookup = new Map<string, (typeof stored)[0]>();
+		const channels = new Set<string>();
+
+		for (const bucket of stored) {
+			channels.add(bucket.channel);
+			lookup.set(`${bucket.channel}:${bucket.bucketStart}`, bucket);
+		}
+
+		const result: typeof stored = [];
+
+		for (const channel of channels) {
+			for (let i = 0; i < config.count; i++) {
+				const bucketStart = rangeStart + i * config.durationMs;
+				const bucketEnd = bucketStart + config.durationMs;
+				const existing = lookup.get(`${channel}:${bucketStart}`);
+
+				if (existing) {
+					result.push(existing);
+				} else {
+					result.push({ channel, bucketStart, bucketEnd, status: null });
 				}
 			}
 		}

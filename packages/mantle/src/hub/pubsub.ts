@@ -2,9 +2,11 @@ import type {
 	ProviderBucket,
 	TargetBucket,
 	CheckBucket,
+	ChannelBucket,
 	ProviderEventRecord,
 	TargetEventRecord,
 	CheckEventRecord,
+	ChannelEventRecord,
 	StoredOutcome,
 } from "../store/types.ts";
 
@@ -125,6 +127,40 @@ export class TargetStatusPublisher {
 	publish(update: TargetStatusUpdate): void {
 		for (const fn of this.subscribers) {
 			fn(update);
+		}
+	}
+}
+
+export type ChannelBucketSubscriber = (bucket: ChannelBucket) => void;
+
+export class ChannelBucketPublisher {
+	private subscribers = new Set<ChannelBucketSubscriber>();
+
+	subscribe(fn: ChannelBucketSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(bucket: ChannelBucket): void {
+		for (const fn of this.subscribers) {
+			fn(bucket);
+		}
+	}
+}
+
+export type ChannelEventSubscriber = (event: ChannelEventRecord) => void;
+
+export class ChannelEventPublisher {
+	private subscribers = new Set<ChannelEventSubscriber>();
+
+	subscribe(fn: ChannelEventSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(event: ChannelEventRecord): void {
+		for (const fn of this.subscribers) {
+			fn(event);
 		}
 	}
 }

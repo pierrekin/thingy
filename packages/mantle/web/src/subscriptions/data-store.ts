@@ -3,10 +3,12 @@ import type {
 	ProviderBucketMessage,
 	TargetBucketMessage,
 	CheckBucketMessage,
+	ChannelBucketMessage,
 	MetricsBucketMessage,
 	ProviderEventMessage,
 	TargetEventMessage,
 	CheckEventMessage,
+	ChannelEventMessage,
 } from "../../../src/hub/subscriptions/types.ts";
 
 /**
@@ -63,6 +65,16 @@ type CheckEvent = {
 	message: string;
 };
 
+type ChannelEvent = {
+	id: number;
+	channel: string;
+	code: string;
+	title: string;
+	startTime: number;
+	endTime: number | null;
+	message: string;
+};
+
 /**
  * The Zustand store state
  */
@@ -71,6 +83,7 @@ interface DataStoreState {
 	providerBuckets: Map<string, Map<string, Map<number, BucketData>>>;
 	targetBuckets: Map<string, Map<string, Map<number, BucketData>>>;
 	checkBuckets: Map<string, Map<string, Map<number, BucketData>>>;
+	channelBuckets: Map<string, Map<string, Map<number, BucketData>>>;
 
 	// Metrics buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
 	metricsBuckets: Map<string, Map<string, Map<number, MetricsBucketData>>>;
@@ -79,6 +92,7 @@ interface DataStoreState {
 	providerEvents: Map<string, Map<number, ProviderEvent>>;
 	targetEvents: Map<string, Map<number, TargetEvent>>;
 	checkEvents: Map<string, Map<number, CheckEvent>>;
+	channelEvents: Map<string, Map<number, ChannelEvent>>;
 
 	// Target status: "provider/target" -> latest status
 	targetStatuses: Map<string, "green" | "red" | "grey" | null>;
@@ -91,10 +105,12 @@ interface DataStoreState {
 	addProviderBucket: (msg: ProviderBucketMessage) => void;
 	addTargetBucket: (msg: TargetBucketMessage) => void;
 	addCheckBucket: (msg: CheckBucketMessage) => void;
+	addChannelBucket: (msg: ChannelBucketMessage) => void;
 	addMetricsBucket: (msg: MetricsBucketMessage) => void;
 	addProviderEvent: (msg: ProviderEventMessage) => void;
 	addTargetEvent: (msg: TargetEventMessage) => void;
 	addCheckEvent: (msg: CheckEventMessage) => void;
+	addChannelEvent: (msg: ChannelEventMessage) => void;
 	setTargetStatus: (msg: { provider: string; target: string; status: "green" | "red" | "grey" | null }) => void;
 	setEventInfo: (msg: { subscriptionId: string; title: string; code: string; startTime: number; endTime: number | null }) => void;
 	addEventOutcome: (msg: { subscriptionId: string; id: number; time: number; error: string | null; violation: string | null }) => void;
@@ -113,10 +129,12 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	providerBuckets: new Map(),
 	targetBuckets: new Map(),
 	checkBuckets: new Map(),
+	channelBuckets: new Map(),
 	metricsBuckets: new Map(),
 	providerEvents: new Map(),
 	targetEvents: new Map(),
 	checkEvents: new Map(),
+	channelEvents: new Map(),
 	targetStatuses: new Map(),
 	eventInfo: new Map(),
 	eventOutcomes: new Map(),
@@ -177,6 +195,25 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			checkBuckets.set(msg.subscriptionId, subBuckets);
 
 			return { checkBuckets };
+		});
+	},
+
+	addChannelBucket: (msg: ChannelBucketMessage) => {
+		set((state) => {
+			const channelBuckets = new Map(state.channelBuckets);
+			const subBuckets = new Map(channelBuckets.get(msg.subscriptionId) ?? new Map());
+			const entityBuckets = new Map(subBuckets.get(msg.channel) ?? new Map());
+
+			entityBuckets.set(msg.bucketStart, {
+				bucketStart: msg.bucketStart,
+				bucketEnd: msg.bucketEnd,
+				status: msg.status,
+			});
+
+			subBuckets.set(msg.channel, entityBuckets);
+			channelBuckets.set(msg.subscriptionId, subBuckets);
+
+			return { channelBuckets };
 		});
 	},
 
@@ -257,6 +294,24 @@ export const useDataStore = create<DataStoreState>((set) => ({
 		});
 	},
 
+	addChannelEvent: (msg: ChannelEventMessage) => {
+		set((state) => {
+			const channelEvents = new Map(state.channelEvents);
+			const subEvents = new Map(channelEvents.get(msg.subscriptionId) ?? new Map());
+			subEvents.set(msg.id, {
+				id: msg.id,
+				channel: msg.channel,
+				code: msg.code,
+				title: msg.title,
+				startTime: msg.startTime,
+				endTime: msg.endTime,
+				message: msg.message,
+			});
+			channelEvents.set(msg.subscriptionId, subEvents);
+			return { channelEvents };
+		});
+	},
+
 	setTargetStatus: (msg) => {
 		set((state) => {
 			const targetStatuses = new Map(state.targetStatuses);
@@ -298,20 +353,24 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			const providerBuckets = new Map(state.providerBuckets);
 			const targetBuckets = new Map(state.targetBuckets);
 			const checkBuckets = new Map(state.checkBuckets);
+			const channelBuckets = new Map(state.channelBuckets);
 			const metricsBuckets = new Map(state.metricsBuckets);
 			const providerEvents = new Map(state.providerEvents);
 			const targetEvents = new Map(state.targetEvents);
 			const checkEvents = new Map(state.checkEvents);
+			const channelEvents = new Map(state.channelEvents);
 			const eventInfo = new Map(state.eventInfo);
 			const eventOutcomes = new Map(state.eventOutcomes);
 
 			providerBuckets.delete(subscriptionId);
 			targetBuckets.delete(subscriptionId);
 			checkBuckets.delete(subscriptionId);
+			channelBuckets.delete(subscriptionId);
 			metricsBuckets.delete(subscriptionId);
 			providerEvents.delete(subscriptionId);
 			targetEvents.delete(subscriptionId);
 			checkEvents.delete(subscriptionId);
+			channelEvents.delete(subscriptionId);
 			eventInfo.delete(subscriptionId);
 			eventOutcomes.delete(subscriptionId);
 
@@ -319,10 +378,12 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				providerBuckets,
 				targetBuckets,
 				checkBuckets,
+				channelBuckets,
 				metricsBuckets,
 				providerEvents,
 				targetEvents,
 				checkEvents,
+				channelEvents,
 				eventInfo,
 				eventOutcomes,
 			};
@@ -334,6 +395,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			const providerBuckets = new Map(state.providerBuckets);
 			const targetBuckets = new Map(state.targetBuckets);
 			const checkBuckets = new Map(state.checkBuckets);
+			const channelBuckets = new Map(state.channelBuckets);
 
 			// GC provider buckets
 			const subProviderBuckets = providerBuckets.get(subscriptionId);
@@ -377,7 +439,21 @@ export const useDataStore = create<DataStoreState>((set) => ({
 				checkBuckets.set(subscriptionId, newSubCheckBuckets);
 			}
 
-			return { providerBuckets, targetBuckets, checkBuckets };
+			// GC channel buckets
+			const subChannelBuckets = channelBuckets.get(subscriptionId);
+			if (subChannelBuckets) {
+				const newSubChannelBuckets = new Map(subChannelBuckets);
+				for (const [key, buckets] of newSubChannelBuckets) {
+					if (buckets.size > keepCount * 2) {
+						const sorted = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+						const toKeep = sorted.slice(-keepCount);
+						newSubChannelBuckets.set(key, new Map(toKeep));
+					}
+				}
+				channelBuckets.set(subscriptionId, newSubChannelBuckets);
+			}
+
+			return { providerBuckets, targetBuckets, checkBuckets, channelBuckets };
 		});
 	},
 }));
@@ -414,4 +490,10 @@ export const getTargetEvents = (subscriptionId: string) =>
 
 export const getCheckEvents = (subscriptionId: string) =>
 	useDataStore.getState().checkEvents.get(subscriptionId) ?? new Map();
+
+export const getChannelBuckets = (subscriptionId: string) =>
+	useDataStore.getState().channelBuckets.get(subscriptionId) ?? new Map();
+
+export const getChannelEvents = (subscriptionId: string) =>
+	useDataStore.getState().channelEvents.get(subscriptionId) ?? new Map();
 

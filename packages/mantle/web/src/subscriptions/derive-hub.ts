@@ -1,4 +1,4 @@
-import type { Hub, Provider, Target, Check, Event, StatusSlot } from "../types";
+import type { Hub, Provider, Channel, Target, Check, Event, StatusSlot } from "../types";
 import { useDataStore } from "./data-store";
 import type { StateSubscriptionParams } from "./types";
 
@@ -78,6 +78,8 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 	const providerEventsMap = state.providerEvents.get(subscriptionId) ?? new Map();
 	const targetEventsMap = state.targetEvents.get(subscriptionId) ?? new Map();
 	const checkEventsMap = state.checkEvents.get(subscriptionId) ?? new Map();
+	const channelBucketsMap = state.channelBuckets.get(subscriptionId) ?? new Map();
+	const channelEventsMap = state.channelEvents.get(subscriptionId) ?? new Map();
 
 	// Collect all unique provider names
 	const providerNames = new Set<string>();
@@ -193,10 +195,33 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 		targets.push(...providerTargets);
 	}
 
+	// Build channels
+	const channels: Channel[] = Array.from(channelBucketsMap.keys())
+		.sort()
+		.map((name) => {
+			const events: Event[] = [];
+			for (const e of channelEventsMap.values()) {
+				if (e.channel === name) {
+					events.push(toEvent(e));
+				}
+			}
+			events.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+
+			const bucketMap = channelBucketsMap.get(name);
+			const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
+			const visibleSlots = filterSlotsInWindow(slots, window);
+
+			return {
+				name,
+				statusSlots: visibleSlots,
+				events,
+			};
+		});
+
 	return {
 		name: "Hub",
 		providers,
-		channels: [],
+		channels,
 		targets,
 	};
 }

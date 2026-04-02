@@ -1,5 +1,9 @@
-import { MantleClient } from "../client/index.ts";
-import type { ServerMessage } from "../client/index.ts";
+import { defineCommand } from "citty";
+import { loadConfig } from "../../config.ts";
+import { handleOperationalErrors } from "../../errors.ts";
+import { MantleClient } from "../../client/index.ts";
+import type { ServerMessage } from "../../client/index.ts";
+import { configArg, getHubConfig, getHubUrl } from "../shared.ts";
 
 type TargetStatus = {
 	provider: string;
@@ -7,7 +11,24 @@ type TargetStatus = {
 	status: "green" | "red" | "grey" | null;
 };
 
-export async function runStatus(hubUrl: string): Promise<void> {
+export const status = defineCommand({
+	meta: { name: "status", description: "Show target statuses" },
+	args: {
+		config: configArg,
+		hub: { type: "string", description: "Hub URL" },
+	},
+	run: handleOperationalErrors(async ({ args }) => {
+		let hubUrl = args.hub;
+		if (!hubUrl) {
+			const config = await loadConfig(args.config);
+			const hubConfig = getHubConfig(config);
+			hubUrl = getHubUrl(hubConfig);
+		}
+		await runStatus(hubUrl);
+	}),
+});
+
+async function runStatus(hubUrl: string): Promise<void> {
 	const wsUrl = hubUrl.replace(/^http/, "ws") + "/api/ws";
 	const client = new MantleClient(wsUrl);
 

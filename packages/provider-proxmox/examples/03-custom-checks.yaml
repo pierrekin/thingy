@@ -1,0 +1,53 @@
+# Customize check thresholds and disable checks per target
+#
+# Check defaults:
+#   state  - equals: running (vm/lxc)
+#   online - equals: true (node)
+#   cpu    - max: 80%
+#   memory - max: 90%
+
+providers:
+  proxmox:
+    url: https://proxmox.example.com:8006
+    tokenId: root@pam!monitor
+    tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    # Set provider-wide defaults for all VMs
+    checks:
+      vm:
+        cpu:
+          max: 70
+
+agent:
+  name: my-agent
+  targets:
+    # Uses provider defaults (cpu max 70%)
+    - name: web-server
+      provider: proxmox
+      type: vm
+      vmId: 100
+
+    # Tighter memory threshold for the database
+    - name: db-server
+      provider: proxmox
+      type: vm
+      vmId: 101
+      checks:
+        memory:
+          max: 75
+
+    # Backup VM should be stopped
+    - name: backup-vm
+      provider: proxmox
+      type: vm
+      vmId: 102
+      checks:
+        state:
+          equals: stopped
+        cpu: __disabled__
+        memory: __disabled__
+
+    # LXC containers work the same way
+    - name: dns-container
+      provider: proxmox
+      type: lxc
+      vmId: 300

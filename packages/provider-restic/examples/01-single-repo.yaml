@@ -1,0 +1,14 @@
+# Monitor a single restic backup repository
+# Alerts if the latest snapshot is older than 24 hours (default)
+
+providers:
+  restic: {}
+
+agent:
+  name: my-agent
+  targets:
+    - name: daily-backup
+      provider: restic
+      type: repo
+      repository: /mnt/backups/server
+      password: my-restic-password

@@ -1,0 +1,26 @@
+# Monitor a single Proxmox node and a few VMs
+# Checks: online status for the node, state/cpu/memory for VMs
+
+providers:
+  proxmox:
+    url: https://proxmox.example.com:8006
+    tokenId: root@pam!monitor
+    tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+agent:
+  name: my-agent
+  targets:
+    - name: pve1
+      provider: proxmox
+      type: node
+      node: pve1
+
+    - name: web-server
+      provider: proxmox
+      type: vm
+      vmId: 100
+
+    - name: db-server
+      provider: proxmox
+      type: vm
+      vmId: 101

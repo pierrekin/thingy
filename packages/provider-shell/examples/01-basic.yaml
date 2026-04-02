@@ -1,0 +1,23 @@
+# Run shell commands as health checks
+# By default, exit code 0 = ok, anything else = error
+
+providers:
+  shell: {}
+
+agent:
+  name: my-agent
+  targets:
+    - name: nginx
+      provider: shell
+      type: command
+      command: "systemctl is-active nginx"
+
+    - name: docker
+      provider: shell
+      type: command
+      command: "docker info > /dev/null 2>&1"
+
+    - name: dns
+      provider: shell
+      type: command
+      command: "dig +short example.com | grep -q ."

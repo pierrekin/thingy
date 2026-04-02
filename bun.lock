@@ -14,11 +14,12 @@
     },
     "packages/mantle": {
       "name": "mantle",
-      "version": "0.0.1",
+      "version": "0.0.7",
       "dependencies": {
         "citty": "^0.2.1",
         "provider-proxmox": "workspace:*",
         "provider-restic": "workspace:*",
+        "provider-shell": "workspace:*",
         "yaml": "^2.7.0",
         "zod": "^4.3.6",
       },
@@ -32,6 +33,13 @@
     },
     "packages/provider-restic": {
       "name": "provider-restic",
+      "version": "0.0.1",
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
+    },
+    "packages/provider-shell": {
+      "name": "provider-shell",
       "version": "0.0.1",
       "dependencies": {
         "zod": "^4.3.6",
@@ -54,6 +62,8 @@
     "provider-proxmox": ["provider-proxmox@workspace:packages/provider-proxmox"],
 
     "provider-restic": ["provider-restic@workspace:packages/provider-restic"],
+
+    "provider-shell": ["provider-shell@workspace:packages/provider-shell"],
 
     "undici-types": ["undici-types@7.18.2", "", {}, "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w=="],
 

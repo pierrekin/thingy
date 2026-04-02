@@ -1,0 +1,44 @@
+# Advanced shell options: timeouts, custom shells, environment variables
+#
+# Options:
+#   command  - the command to run (required)
+#   timeout  - kill command after N milliseconds (default: 30000)
+#   shell    - shell binary to use (default: /bin/sh)
+#   env      - extra environment variables for this target
+
+providers:
+  shell:
+    # Provider-level env applies to all shell targets
+    env:
+      MONITORING: "true"
+
+agent:
+  name: my-agent
+  targets:
+    # Health check with a short timeout
+    - name: api-health
+      provider: shell
+      type: command
+      command: "curl -sf http://localhost:3000/health"
+      timeout: 5000
+
+    # Use both checks: exit code AND parsed output
+    - name: queue-depth
+      provider: shell
+      type: command
+      command: "redis-cli LLEN jobs:pending"
+      checks:
+        exit_code:
+          equals: 0
+        output:
+          max: 1000
+
+    # Per-target environment variables
+    - name: s3-reachable
+      provider: shell
+      type: command
+      command: "aws s3 ls $BUCKET > /dev/null"
+      timeout: 10000
+      env:
+        BUCKET: s3://my-bucket
+        AWS_REGION: us-east-1

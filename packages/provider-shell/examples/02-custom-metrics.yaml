@@ -1,0 +1,46 @@
+# Parse stdout as a numeric metric using the `output` check
+# Disable `exit_code` when you only care about the metric value
+#
+# Checks:
+#   exit_code - equals: 0 (enabled by default)
+#   output    - parses stdout as a number (disabled by default)
+
+providers:
+  shell: {}
+
+agent:
+  name: my-agent
+  targets:
+    # Disk usage percentage
+    - name: disk-root
+      provider: shell
+      type: command
+      command: "df / --output=pcent | tail -1 | tr -d '% '"
+      checks:
+        exit_code: __disabled__
+        output:
+          max: 90
+
+    # Number of active database connections
+    - name: db-connections
+      provider: shell
+      type: command
+      command: "psql -tAc 'SELECT count(*) FROM pg_stat_activity'"
+      env:
+        PGHOST: localhost
+        PGUSER: monitor
+        PGDATABASE: mydb
+      checks:
+        exit_code: __disabled__
+        output:
+          max: 100
+
+    # System load average (1 minute)
+    - name: load-avg
+      provider: shell
+      type: command
+      command: "awk '{print $1}' /proc/loadavg"
+      checks:
+        exit_code: __disabled__
+        output:
+          max: 8

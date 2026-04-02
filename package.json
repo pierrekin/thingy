@@ -4,6 +4,9 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "dev": "bun run packages/mantle/src/index.ts",
+    "dev:make-certs": "mkdir -p $HOME/.local/certs && mkcert -cert-file $HOME/.local/certs/localhost+1.pem -key-file $HOME/.local/certs/localhost+1-key.pem localhost mantle-dev.alphen.house",
+    "dev:run-caddy": "CERTS_DIR=$HOME/.local/certs caddy run --config packages/mantle/web/Caddyfile",
+    "dev:run-vite": "cd packages/mantle/web && bun run vite",
     "build:web": "cd packages/mantle/web && bun install && bun run build",
     "build": "bun run build:web && bun build packages/mantle/src/index.ts --compile --target=${TARGET:-bun} --outfile=${OUTFILE:-dist/mantle}",
     "clean": "rm -f .*.bun-build",

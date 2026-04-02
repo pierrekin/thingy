@@ -65,11 +65,13 @@ export interface OutcomeStore {
     offset?: number,
   ): Promise<StoredOutcome[]>;
 
-  getLatestTargetOutcomes(): Promise<Array<{
+  getLatestTargetStatuses(): Promise<Array<{
     provider: string;
     target: string;
-    success: boolean;
+    status: BucketStatus;
   }>>;
+
+  getLatestTargetStatus(provider: string, target: string): Promise<BucketStatus>;
 
   close(): Promise<void>;
 }

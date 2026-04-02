@@ -413,14 +413,14 @@ export class WebService {
 		}
 
 		// Send latest target statuses
-		const latestOutcomes = await this.outcomeStore.getLatestTargetOutcomes();
-		for (const outcome of latestOutcomes) {
+		const latestStatuses = await this.outcomeStore.getLatestTargetStatuses();
+		for (const entry of latestStatuses) {
 			const msg: TargetStatusMessage = {
 				type: "target_status",
 				subscriptionId: subscription.id,
-				provider: outcome.provider,
-				target: outcome.target,
-				status: outcome.success ? "green" : "red",
+				provider: entry.provider,
+				target: entry.target,
+				status: entry.status,
 			};
 			subscription.ws.send(JSON.stringify(msg));
 		}

@@ -314,24 +314,49 @@ export class SqliteOutcomeStore implements OutcomeStore {
     }));
   }
 
-  async getLatestTargetOutcomes(): Promise<Array<{
+  async getLatestTargetStatuses(): Promise<Array<{
     provider: string;
     target: string;
-    success: boolean;
+    status: BucketStatus;
   }>> {
     const rows = this.db.prepare(`
-      SELECT provider, target, success
-      FROM target_outcomes
+      SELECT provider, target,
+        MIN(CASE
+          WHEN success = 0 THEN 0
+          WHEN violation IS NOT NULL THEN 0
+          ELSE 1
+        END) as all_green
+      FROM check_outcomes
       WHERE id IN (
-        SELECT MAX(id) FROM target_outcomes GROUP BY provider, target
+        SELECT MAX(id) FROM check_outcomes GROUP BY provider, target, check_name
       )
-    `).all() as Array<{ provider: string; target: string; success: number }>;
+      GROUP BY provider, target
+    `).all() as Array<{ provider: string; target: string; all_green: number }>;
 
     return rows.map((r) => ({
       provider: r.provider,
       target: r.target,
-      success: r.success === 1,
+      status: r.all_green === 1 ? "green" as const : "red" as const,
     }));
+  }
+
+  async getLatestTargetStatus(provider: string, target: string): Promise<BucketStatus> {
+    const row = this.db.prepare(`
+      SELECT MIN(CASE
+        WHEN success = 0 THEN 0
+        WHEN violation IS NOT NULL THEN 0
+        ELSE 1
+      END) as all_green
+      FROM check_outcomes
+      WHERE id IN (
+        SELECT MAX(id) FROM check_outcomes
+        WHERE provider = ? AND target = ?
+        GROUP BY check_name
+      )
+    `).get(provider, target) as { all_green: number } | undefined;
+
+    if (!row || row.all_green === null) return null;
+    return row.all_green === 1 ? "green" : "red";
   }
 
   async close(): Promise<void> {

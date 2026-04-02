@@ -144,7 +144,7 @@ export class HubService {
 			check: checkStatus,
 		});
 
-		this.targetStatusPublisher.publish({ provider, target, status: checkStatus });
+		await this.publishTargetStatus(provider, target);
 	}
 
 	private async recordError(
@@ -170,7 +170,7 @@ export class HubService {
 				target: "grey",
 				check: "grey",
 			});
-			this.targetStatusPublisher.publish({ provider, target, status: "grey" });
+			await this.publishTargetStatus(provider, target);
 		} else if (level === "target") {
 			await this.events.handleProviderOutcome(provider, time, null);
 			await this.events.handleTargetOutcome(provider, target, time, { code, title, message });
@@ -186,7 +186,7 @@ export class HubService {
 				target: "red",
 				check: "grey",
 			});
-			this.targetStatusPublisher.publish({ provider, target, status: "red" });
+			await this.publishTargetStatus(provider, target);
 		} else {
 			await this.events.handleProviderOutcome(provider, time, null);
 			await this.events.handleTargetOutcome(provider, target, time, null);
@@ -203,8 +203,13 @@ export class HubService {
 				target: "red",
 				check: "red",
 			});
-			this.targetStatusPublisher.publish({ provider, target, status: "red" });
+			await this.publishTargetStatus(provider, target);
 		}
+	}
+
+	private async publishTargetStatus(provider: string, target: string): Promise<void> {
+		const status = await this.outcomeStore.getLatestTargetStatus(provider, target);
+		this.targetStatusPublisher.publish({ provider, target, status });
 	}
 
 	private async updateBuckets(

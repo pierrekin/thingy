@@ -3,7 +3,7 @@ import { loadConfig } from "../config.ts";
 import { handleOperationalErrors } from "../errors.ts";
 import { startHub } from "../hub/index.ts";
 import { startAgent } from "../agent/index.ts";
-import { createSqliteStores } from "../store/index.ts";
+import { createSqliteStores } from "../store/sqlite.ts";
 import { createHubReporters } from "../agent/hub-client.ts";
 import { createChannelInstances } from "../create-channels.ts";
 import { configArg, agentArg, getHubConfig, getHubUrl, getAgentConfig } from "./shared.ts";

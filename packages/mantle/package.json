@@ -4,6 +4,8 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
+    "mantle-framework": "workspace:*",
+    "mantle-store": "workspace:*",
     "channel-log": "workspace:*",
     "citty": "^0.2.1",
     "provider-proxmox": "workspace:*",

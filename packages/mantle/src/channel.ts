@@ -3,7 +3,7 @@ import type {
 	ProviderEventRecord,
 	TargetEventRecord,
 	CheckEventRecord,
-} from "./store/types.ts";
+} from "mantle-store";
 
 export interface ChannelInstance {
 	onProviderEventStarted(event: ProviderEventRecord): void;

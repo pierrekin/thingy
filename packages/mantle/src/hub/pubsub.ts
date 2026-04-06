@@ -10,7 +10,7 @@ import type {
 	ChannelEventRecord,
 	AgentEventRecord,
 	StoredOutcome,
-} from "../store/types.ts";
+} from "mantle-store";
 
 export type ProviderBucketSubscriber = (bucket: ProviderBucket) => void;
 export type TargetBucketSubscriber = (bucket: TargetBucket) => void;

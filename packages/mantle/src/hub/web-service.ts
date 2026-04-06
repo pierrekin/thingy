@@ -1,5 +1,5 @@
 import type { MantleSocket } from "./mantle-socket.ts";
-import type { BucketStore, EventStore, MetricsStore, OutcomeStore, ChannelBucketStore, ChannelEventStore, ChannelOutcomeStore, AgentBucketStore, AgentEventStore, AgentOutcomeStore } from "../store/types.ts";
+import type { BucketStore, EventStore, MetricsStore, OutcomeStore, ChannelBucketStore, ChannelEventStore, ChannelOutcomeStore, AgentBucketStore, AgentEventStore, AgentOutcomeStore } from "mantle-store";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,

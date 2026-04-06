@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import type { ProviderOutcome, TargetOutcome, CheckOutcome, ChannelOutcome, AgentOutcome, BucketStatus } from "mantle-framework";
 import type {
   OutcomeStore,
   EventStore,
@@ -10,16 +11,10 @@ import type {
   AgentOutcomeStore,
   AgentEventStore,
   AgentBucketStore,
-  ProviderOutcome,
-  TargetOutcome,
-  CheckOutcome,
-  ChannelOutcome,
-  AgentOutcome,
   ChannelBucket,
   AgentBucket,
   ChannelEventRecord,
   AgentEventRecord,
-  BucketStatus,
   ProviderBucket,
   TargetBucket,
   CheckBucket,
@@ -34,7 +29,8 @@ import type {
   OpenChannelEvent,
   OpenAgentEvent,
   MetricBucket,
-} from "./types.ts";
+  StoredOutcome,
+} from "mantle-store";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS provider_outcomes (

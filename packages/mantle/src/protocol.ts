@@ -1,4 +1,4 @@
-import type { OutcomeError, Violation } from "./store/types.ts";
+import type { OutcomeError, Violation } from "mantle-framework";
 
 export type CheckResultPayload =
   | { ok: true; measurement: number; violation?: Violation }

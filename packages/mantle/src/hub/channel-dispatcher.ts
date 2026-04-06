@@ -1,10 +1,10 @@
 import type { ChannelInstance } from "../channel.ts";
+import type { BucketStatus } from "mantle-framework";
 import type {
 	ChannelOutcomeStore,
 	ChannelEventStore,
 	ChannelBucketStore,
-	BucketStatus,
-} from "../store/types.ts";
+} from "mantle-store";
 import type {
 	ProviderEventPublisher,
 	TargetEventPublisher,

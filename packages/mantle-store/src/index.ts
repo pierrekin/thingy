@@ -1,4 +1,5 @@
 export type {
+  // Store interfaces
   OutcomeStore,
   EventStore,
   BucketStore,
@@ -9,14 +10,10 @@ export type {
   AgentOutcomeStore,
   AgentEventStore,
   AgentBucketStore,
-  OutcomeError,
-  Violation,
-  ProviderOutcome,
-  TargetOutcome,
-  CheckOutcome,
-  ChannelOutcome,
-  AgentOutcome,
-  BucketStatus,
+
+  // Row / view types
+  StoredOutcome,
+  StoredChannelOutcome,
   ProviderBucket,
   TargetBucket,
   CheckBucket,
@@ -29,6 +26,10 @@ export type {
   ChannelEventRecord,
   AgentEventRecord,
   StoredEvents,
+  OpenProviderEvent,
+  OpenTargetEvent,
+  OpenCheckEvent,
+  OpenChannelEvent,
+  OpenAgentEvent,
   MetricBucket,
 } from "./types.ts";
-export { SqliteOutcomeStore, SqliteEventStore, SqliteBucketStore, SqliteMetricsStore, SqliteChannelOutcomeStore, SqliteChannelEventStore, SqliteChannelBucketStore, SqliteAgentOutcomeStore, SqliteAgentEventStore, SqliteAgentBucketStore, createSqliteStores } from "./sqlite.ts";

@@ -2,7 +2,7 @@ import { defineCommand } from "citty";
 import { loadConfig } from "../config.ts";
 import { handleOperationalErrors } from "../errors.ts";
 import { startHub } from "../hub/index.ts";
-import { createSqliteStores } from "../store/index.ts";
+import { createSqliteStores } from "../store/sqlite.ts";
 import { createChannelInstances } from "../create-channels.ts";
 import { configArg, getHubConfig } from "./shared.ts";
 

@@ -1,5 +1,5 @@
 import type { EventStore, ProviderEventRecord, TargetEventRecord, CheckEventRecord } from "mantle-store";
-import type { ProviderEventPublisher, TargetEventPublisher, CheckEventPublisher } from "../hub/pubsub.ts";
+import type { ProviderEventPublisher, TargetEventPublisher, CheckEventPublisher } from "./pubsub.ts";
 
 type OpenEvent = {
   id: number;

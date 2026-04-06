@@ -1,11 +1,13 @@
 {
-  "name": "provider-shell",
+  "name": "mantle-hub",
   "version": "0.0.1",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
     "mantle-framework": "workspace:*",
-    "zod": "^4.3.6"
+    "mantle-store": "workspace:*",
+    "channel-log": "workspace:*",
+    "hono": "^4.12.9"
   }
 }

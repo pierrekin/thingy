@@ -1,4 +1,4 @@
-import type { AgentMessage, CheckResultPayload } from "../protocol.ts";
+import type { AgentMessage, CheckResultPayload } from "mantle-framework";
 
 export interface CheckReporter {
 	sendCheckResult(

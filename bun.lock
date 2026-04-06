@@ -16,6 +16,8 @@
       "name": "channel-log",
       "version": "0.0.1",
       "dependencies": {
+        "mantle-framework": "workspace:*",
+        "mantle-store": "workspace:*",
         "zod": "^4.3.6",
       },
     },
@@ -23,20 +25,41 @@
       "name": "mantle",
       "version": "0.0.9",
       "dependencies": {
-        "channel-log": "workspace:*",
         "citty": "^0.2.1",
+        "mantle-agent": "workspace:*",
         "mantle-framework": "workspace:*",
+        "mantle-hub": "workspace:*",
         "mantle-store": "workspace:*",
+      },
+    },
+    "packages/mantle-agent": {
+      "name": "mantle-agent",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
         "provider-proxmox": "workspace:*",
         "provider-restic": "workspace:*",
         "provider-shell": "workspace:*",
-        "yaml": "^2.7.0",
-        "zod": "^4.3.6",
       },
     },
     "packages/mantle-framework": {
       "name": "mantle-framework",
       "version": "0.0.1",
+      "dependencies": {
+        "mantle-store": "workspace:*",
+        "yaml": "^2.7.0",
+        "zod": "^4.3.6",
+      },
+    },
+    "packages/mantle-hub": {
+      "name": "mantle-hub",
+      "version": "0.0.1",
+      "dependencies": {
+        "channel-log": "workspace:*",
+        "hono": "^4.12.9",
+        "mantle-framework": "workspace:*",
+        "mantle-store": "workspace:*",
+      },
     },
     "packages/mantle-store": {
       "name": "mantle-store",
@@ -49,6 +72,7 @@
       "name": "provider-proxmox",
       "version": "0.0.1",
       "dependencies": {
+        "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
     },
@@ -56,6 +80,7 @@
       "name": "provider-restic",
       "version": "0.0.1",
       "dependencies": {
+        "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
     },
@@ -63,6 +88,7 @@
       "name": "provider-shell",
       "version": "0.0.1",
       "dependencies": {
+        "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
     },
@@ -82,7 +108,11 @@
 
     "mantle": ["mantle@workspace:packages/mantle"],
 
+    "mantle-agent": ["mantle-agent@workspace:packages/mantle-agent"],
+
     "mantle-framework": ["mantle-framework@workspace:packages/mantle-framework"],
+
+    "mantle-hub": ["mantle-hub@workspace:packages/mantle-hub"],
 
     "mantle-store": ["mantle-store@workspace:packages/mantle-store"],
 

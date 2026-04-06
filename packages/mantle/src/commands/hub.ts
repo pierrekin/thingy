@@ -1,9 +1,8 @@
 import { defineCommand } from "citty";
-import { loadConfig } from "../config.ts";
-import { handleOperationalErrors } from "../errors.ts";
-import { startHub } from "../hub/index.ts";
+import { loadConfig, handleOperationalErrors } from "mantle-framework";
+import { startHub } from "mantle-hub";
 import { createSqliteStores } from "../store/sqlite.ts";
-import { createChannelInstances } from "../create-channels.ts";
+import { createChannelInstances } from "mantle-hub";
 import { configArg, getHubConfig } from "./shared.ts";
 
 export const hub = defineCommand({

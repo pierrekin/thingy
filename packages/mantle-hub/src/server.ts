@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import type { Server } from "bun";
-import type { AgentMessage } from "../protocol.ts";
+import type { AgentMessage } from "mantle-framework";
 import type { HubService } from "./service.ts";
 import type { WebService } from "./web-service.ts";
 import { createMantleSocketHandler, type MantleSocket } from "./mantle-socket.ts";

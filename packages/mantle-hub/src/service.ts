@@ -1,7 +1,7 @@
 import type { BucketStatus } from "mantle-framework";
 import type { OutcomeStore, EventStore, BucketStore, AgentOutcomeStore, AgentBucketStore } from "mantle-store";
-import type { AgentMessage } from "../protocol.ts";
-import { EventTracker } from "../agent/events.ts";
+import type { AgentMessage } from "mantle-framework";
+import { EventTracker } from "./events.ts";
 import type {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,

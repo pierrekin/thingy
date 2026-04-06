@@ -1,4 +1,4 @@
-import type { ChannelInstance } from "../channel.ts";
+import type { ChannelInstance } from "mantle-framework";
 import type { BucketStatus } from "mantle-framework";
 import type {
 	ChannelOutcomeStore,

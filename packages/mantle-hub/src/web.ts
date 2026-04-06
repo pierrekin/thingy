@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { assets } from "../../web/generated/assets.ts";
+import { assets } from "../web/generated/assets.ts";
 
 export function createWebApp() {
 	const app = new Hono();

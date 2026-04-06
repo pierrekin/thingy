@@ -1,4 +1,4 @@
-import type { Channel } from "./channel.ts";
+import type { Channel } from "mantle-framework";
 import log from "channel-log";
 
 const channels: Record<string, Channel> = {

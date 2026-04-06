@@ -4,9 +4,9 @@ import type {
 	StateSubscriptionRequest,
 	MetricsSubscriptionRequest,
 	EventSubscriptionRequest,
-} from "../hub/subscriptions/types.ts";
+} from "mantle-hub";
 
-export type { ServerMessage } from "../hub/subscriptions/types.ts";
+export type { ServerMessage } from "mantle-hub";
 export type {
 	ProviderBucketMessage,
 	TargetBucketMessage,
@@ -19,7 +19,7 @@ export type {
 	EventOutcomeMessage,
 	TargetStatusMessage,
 	SnapshotCompleteMessage,
-} from "../hub/subscriptions/types.ts";
+} from "mantle-hub";
 
 export type StateFilters = {
 	start: number;

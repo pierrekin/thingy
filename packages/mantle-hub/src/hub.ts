@@ -1,7 +1,6 @@
 import { Hono } from "hono";
-import type { HubConfig } from "../config.ts";
+import type { HubConfig, ChannelInstance } from "mantle-framework";
 import type { OutcomeStore, EventStore, BucketStore, MetricsStore, ChannelOutcomeStore, ChannelEventStore, ChannelBucketStore, AgentOutcomeStore, AgentEventStore, AgentBucketStore } from "mantle-store";
-import type { ChannelInstance } from "../channel.ts";
 import { createWebApp } from "./web.ts";
 import { createAgentApp } from "./agent.ts";
 import { createFetchHandler, createWebSocketHandler } from "./server.ts";

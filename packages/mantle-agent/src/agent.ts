@@ -1,14 +1,13 @@
-import type { AgentConfig } from "../config.ts";
-import { OperationalError } from "../errors.ts";
-import { getProvider } from "../providers.ts";
-import type { ProviderInstance } from "../provider.ts";
-import { IntervalScheduler } from "../scheduler/index.ts";
+import type { AgentConfig, ProviderInstance } from "mantle-framework";
+import { OperationalError } from "mantle-framework";
+import { getProvider } from "./providers.ts";
+import { IntervalScheduler } from "./scheduler/index.ts";
 import {
   resolveAgentConfig,
   isCheckError,
   evaluate,
   type ResolvedCheck,
-} from "../framework/index.ts";
+} from "mantle-framework";
 import type { CheckReporter } from "./hub-client.ts";
 
 type ProviderConfigs = Record<string, unknown>;

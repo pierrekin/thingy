@@ -1,7 +1,7 @@
 import { type CheckConfig, type Operator, type EnumValues } from "./check.ts";
 import type { ProviderDefinition } from "./provider.ts";
-import type { AgentConfig } from "../config.ts";
-import { parseInterval } from "../util/interval.ts";
+import type { AgentConfig } from "./config.ts";
+import { parseInterval } from "./interval.ts";
 import { resolveCheckConfig } from "./rules.ts";
 
 export type ResolvedCheck = {

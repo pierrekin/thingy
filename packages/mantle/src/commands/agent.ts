@@ -1,8 +1,6 @@
 import { defineCommand } from "citty";
-import { loadConfig } from "../config.ts";
-import { handleOperationalErrors, OperationalError } from "../errors.ts";
-import { startAgent } from "../agent/index.ts";
-import { createHubReporters } from "../agent/hub-client.ts";
+import { loadConfig, handleOperationalErrors, OperationalError } from "mantle-framework";
+import { startAgent, createHubReporters } from "mantle-agent";
 import { configArg, agentArg, getAgentConfig } from "./shared.ts";
 
 export const agent = defineCommand({

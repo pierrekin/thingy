@@ -1,4 +1,4 @@
-import type { Provider } from "./provider.ts";
+import type { Provider } from "mantle-framework";
 import proxmox from "provider-proxmox";
 import restic from "provider-restic";
 import shell from "provider-shell";

@@ -6,12 +6,8 @@
   "dependencies": {
     "mantle-framework": "workspace:*",
     "mantle-store": "workspace:*",
-    "channel-log": "workspace:*",
-    "citty": "^0.2.1",
-    "provider-proxmox": "workspace:*",
-    "provider-restic": "workspace:*",
-    "provider-shell": "workspace:*",
-    "yaml": "^2.7.0",
-    "zod": "^4.3.6"
+    "mantle-agent": "workspace:*",
+    "mantle-hub": "workspace:*",
+    "citty": "^0.2.1"
   }
 }

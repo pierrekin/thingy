@@ -1,6 +1,6 @@
 import type { z } from "zod";
-import type { CheckResult } from "./framework/result.ts";
-import type { ProviderDefinition } from "./framework/provider.ts";
+import type { CheckResult } from "./result.ts";
+import type { ProviderDefinition } from "./provider.ts";
 
 export interface ProviderInstance {
 	check(target: unknown, checks: string[]): Promise<CheckResult[]>;

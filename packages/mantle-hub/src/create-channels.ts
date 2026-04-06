@@ -1,6 +1,6 @@
-import type { ChannelInstance } from "./channel.ts";
+import type { ChannelInstance } from "mantle-framework";
+import { OperationalError } from "mantle-framework";
 import { getChannel } from "./channels.ts";
-import { OperationalError } from "./errors.ts";
 
 export type RegisteredChannel = {
 	name: string;

@@ -1,4 +1,4 @@
-import type { OutcomeError } from "mantle-framework";
+import type { OutcomeError } from "./types.ts";
 
 export type CheckResult =
   | {

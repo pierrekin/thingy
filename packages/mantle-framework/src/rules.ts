@@ -1,5 +1,5 @@
 import type { CheckConfig, EnumValues, Operator } from "./check.ts";
-import type { Violation } from "mantle-framework";
+import type { Violation } from "./types.ts";
 
 type EvaluationResult = {
   violations: Violation[];

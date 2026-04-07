@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { useWebSocket, type ConnectionStatus } from "../hooks/useWebSocket";
-import type { MantleClient } from "../../../src/client/index.ts";
+import type { MantleClient } from "mantle/src/client/index.ts";
 
 type WebSocketContextValue = {
 	client: MantleClient | null;

@@ -1,11 +1,15 @@
 {
-  "name": "web",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@mantle-team/dashboard",
+  "version": "0.0.1",
+  "private": false,
   "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": ["dist/**"],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -15,6 +19,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "mantle": "workspace:*",
+    "mantle-hub": "workspace:*",
     "@eslint/js": "^9.39.4",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^24.12.0",

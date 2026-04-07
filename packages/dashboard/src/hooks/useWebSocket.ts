@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MantleClient } from "../../../src/client/index.ts";
+import { MantleClient } from "mantle/src/client/index.ts";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 

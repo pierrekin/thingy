@@ -1,10 +1,10 @@
 import { z } from "zod";
-import type { ChannelInstance } from "../../mantle/src/channel.ts";
+import type { ChannelInstance } from "mantle-framework";
 import type {
 	ProviderEventRecord,
 	TargetEventRecord,
 	CheckEventRecord,
-} from "../../mantle/src/store/types.ts";
+} from "mantle-store";
 
 const logChannelConfig = z.object({
 	output: z.enum(["stdout", "stderr", "file"]).default("stdout"),
@@ -87,4 +87,4 @@ export default {
 	configSchema: logChannelConfig,
 	createInstance: (config: unknown) =>
 		new LogChannelInstance(logChannelConfig.parse(config ?? {})),
-} satisfies import("../../mantle/src/channel.ts").Channel;
+} satisfies import("mantle-framework").Channel;

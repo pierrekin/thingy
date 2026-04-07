@@ -3,6 +3,7 @@ import { hub } from "./commands/hub.ts";
 import { agent } from "./commands/agent.ts";
 import { standalone } from "./commands/standalone.ts";
 import { status } from "./commands/client/status.ts";
+import { cloud } from "./commands/cloud/index.ts";
 
 export const main = defineCommand({
 	meta: {
@@ -15,5 +16,6 @@ export const main = defineCommand({
 		agent,
 		standalone,
 		status,
+		cloud,
 	},
 });

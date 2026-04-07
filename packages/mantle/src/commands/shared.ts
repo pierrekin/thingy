@@ -1,5 +1,4 @@
-import { type Config, type HubConfig, type AgentConfig } from "../config.ts";
-import { OperationalError } from "../errors.ts";
+import { type Config, type HubConfig, type AgentConfig, OperationalError } from "mantle-framework";
 
 export function getHubConfig(config: Config): HubConfig {
 	if (!config.hub) {

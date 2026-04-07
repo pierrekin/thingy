@@ -1,6 +1,5 @@
 import { defineCommand } from "citty";
-import { loadConfig } from "../../config.ts";
-import { handleOperationalErrors } from "../../errors.ts";
+import { loadConfig, handleOperationalErrors } from "mantle-framework";
 import { MantleClient } from "../../client/index.ts";
 import type { ServerMessage } from "../../client/index.ts";
 import { configArg, getHubConfig, getHubUrl } from "../shared.ts";

@@ -6,7 +6,7 @@ import {
   providerConfigSchema,
   allTargetConfigsSchema,
   type CheckResult,
-} from "../../mantle/src/framework/index.ts";
+} from "mantle-framework";
 import {
   ResticClient,
   ResticBinaryError,

@@ -3,12 +3,11 @@ import {
   defineCheck,
   defineProvider,
   bindCheck,
-  resolveEnabledChecks,
   providerConfigSchema,
   allTargetConfigsSchema,
   DISABLED,
   type CheckResult,
-} from "../../mantle/src/framework/index.ts";
+} from "mantle-framework";
 import { ProxmoxClient, ProxmoxApiError } from "./client.ts";
 
 class TargetNotFoundError extends Error {

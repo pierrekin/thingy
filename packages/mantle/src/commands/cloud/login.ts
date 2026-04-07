@@ -6,7 +6,7 @@ function getCallbackPort(): number {
 	return 49152 + Math.floor(Math.random() * 16383);
 }
 
-function startCallbackServer(port: number): Promise<{ token: string; email: string; tenant: string }> {
+function startCallbackServer(port: number): Promise<{ token: string; email: string; organisation: string }> {
 	return new Promise((resolve, reject) => {
 		const timeout = setTimeout(() => {
 			server.stop();
@@ -21,15 +21,15 @@ function startCallbackServer(port: number): Promise<{ token: string; email: stri
 				if (url.pathname === "/callback") {
 					const token = url.searchParams.get("token");
 					const email = url.searchParams.get("email");
-					const tenant = url.searchParams.get("tenant");
+					const organisation = url.searchParams.get("organisation");
 
-					if (!token || !email || !tenant) {
+					if (!token || !email || !organisation) {
 						return new Response("Missing parameters", { status: 400 });
 					}
 
 					clearTimeout(timeout);
 					server.stop();
-					resolve({ token, email, tenant });
+					resolve({ token, email, organisation });
 
 					return new Response(
 						"<html><body><h2>Logged in! You can close this tab.</h2></body></html>",
@@ -62,9 +62,9 @@ export const login = defineCommand({
 		const resultPromise = startCallbackServer(port);
 		await openBrowser(loginUrl);
 
-		const { token, email, tenant } = await resultPromise;
+		const { token, email, organisation } = await resultPromise;
 
-		await saveCredentials({ token, email, tenant });
-		console.log(`Logged in as ${email} (tenant: ${tenant})`);
+		await saveCredentials({ token, email, organisation });
+		console.log(`Logged in as ${email} (${organisation})`);
 	},
 });

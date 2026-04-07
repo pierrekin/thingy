@@ -8,7 +8,7 @@ import { cloud } from "./commands/cloud/index.ts";
 export const main = defineCommand({
 	meta: {
 		name: "mantle",
-		version: "0.0.9",
+		version: "0.0.10",
 		description: "Mantle CLI",
 	},
 	subCommands: {

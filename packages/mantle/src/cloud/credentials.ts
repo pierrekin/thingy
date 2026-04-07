@@ -3,7 +3,7 @@ import { readFile, mkdir } from "node:fs/promises";
 export type Credentials = {
 	token: string;
 	email: string;
-	tenant: string;
+	organisation: string;
 };
 
 const CREDENTIALS_DIR = `${process.env.HOME}/.mantle`;

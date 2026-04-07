@@ -98,6 +98,22 @@ jobs:
             $PRERELEASE \
             artifacts/*
 
+  publish-r2-binaries:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          sha256sum mantle-* > checksums.txt
+
       - name: Upload binaries to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

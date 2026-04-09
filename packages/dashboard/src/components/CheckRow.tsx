@@ -6,7 +6,7 @@ import type { ConnectionStatus } from "../hooks/useWebSocket";
 import { useMetricsSubscription } from "../hooks/useMetricsSubscription";
 import { useMetricsData } from "../hooks/useMetricsData";
 import { SparkChart } from "./SparkChart";
-import type { MantleClient } from "mantle/src/client/index.ts";
+import type { MantleClient } from "@mantle-team/client";
 
 type Props = {
 	provider: string;

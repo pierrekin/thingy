@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
+    "@mantle-team/client": "^0.0.1",
     "mantle-framework": "workspace:*",
     "mantle-store": "workspace:*",
     "channel-log": "workspace:*",

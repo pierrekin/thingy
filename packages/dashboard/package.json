@@ -1,12 +1,18 @@
 {
   "name": "@mantle-team/dashboard",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "type": "module",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "files": ["dist/**"],
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles": "./src/index.css"
+  },
+  "files": ["src/**", "dist/**"],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,13 +20,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "@mantle-team/client": "^0.0.2",
     "zustand": "^5.0.12"
   },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
-    "mantle": "workspace:*",
-    "mantle-hub": "workspace:*",
     "@eslint/js": "^9.39.4",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^24.12.0",

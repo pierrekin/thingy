@@ -14,7 +14,7 @@ function roundDown(timestamp: number, bucketDurationMs: number): number {
 	return Math.floor(timestamp / bucketDurationMs) * bucketDurationMs;
 }
 
-function AppContent() {
+export function AppContent() {
 	const [page, setPage] = useState<Page>("main");
 	const { status } = useWebSocketContext();
 
@@ -54,9 +54,13 @@ function AppContent() {
 	);
 }
 
-export default function App() {
+type AppProps = {
+	getAuthToken?: () => Promise<string | null>;
+};
+
+export default function App({ getAuthToken }: AppProps) {
 	return (
-		<WebSocketProvider>
+		<WebSocketProvider getAuthToken={getAuthToken}>
 			<div className="mx-auto max-w-md min-h-screen">
 				<AppContent />
 			</div>

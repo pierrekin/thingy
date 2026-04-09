@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MantleClient } from "mantle/src/client/index.ts";
+import { MantleClient } from "@mantle-team/client";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -7,7 +7,9 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected";
  * WebSocket hook that manages a MantleClient connection lifecycle.
  * Handles auto-reconnect on disconnect.
  */
-export function useWebSocket() {
+export type GetAuthToken = () => Promise<string | null>;
+
+export function useWebSocket(getAuthToken?: GetAuthToken) {
 	const [status, setStatus] = useState<ConnectionStatus>("connecting");
 	const clientRef = useRef<MantleClient | null>(null);
 	const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -15,7 +17,7 @@ export function useWebSocket() {
 	useEffect(() => {
 		let cleaned = false;
 
-		function connect() {
+		async function connect() {
 			const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 			const wsUrl = `${protocol}//${window.location.host}/api/ws`;
 
@@ -34,8 +36,15 @@ export function useWebSocket() {
 			});
 
 			client.connect()
-				.then(() => {
+				.then(async () => {
 					if (cleaned) return;
+					if (getAuthToken) {
+						const token = await getAuthToken();
+						if (!token) {
+							throw new Error("getAuthToken returned null");
+						}
+						client.authenticate(token);
+					}
 					setStatus("connected");
 				})
 				.catch(() => {

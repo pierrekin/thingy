@@ -11,7 +11,7 @@ import type {
 	CheckEventMessage,
 	ChannelEventMessage,
 	AgentEventMessage,
-} from "mantle-hub/src/subscriptions/types.ts";
+} from "@mantle-team/client";
 
 /**
  * Raw bucket data without the subscription metadata

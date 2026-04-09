@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { useDataStore } from "../subscriptions/data-store";
 import type { StateSubscriptionParams } from "../subscriptions/types";
-import type { ServerMessage } from "mantle/src/client/index.ts";
+import type { ServerMessage } from "@mantle-team/client";
 
 /**
  * Hook to create and manage a state subscription.

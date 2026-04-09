@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useDataStore } from "../subscriptions/data-store";
 import type { ConnectionStatus } from "./useWebSocket";
 import type { EventSubscriptionParams } from "../subscriptions/types";
-import type { MantleClient } from "mantle/src/client/index.ts";
-import type { ServerMessage } from "mantle/src/client/index.ts";
+import type { MantleClient, ServerMessage } from "@mantle-team/client";
 
 export function useEventSubscription(
 	params: EventSubscriptionParams,

@@ -23,9 +23,21 @@ export class MantleSocket {
 	onclose: (() => void) | null = null;
 	onerror: ((event: Event) => void) | null = null;
 
-	constructor(url: string, config?: MantleSocketConfig) {
+	constructor(url: string, config?: MantleSocketConfig, callbacks?: {
+		onopen?: () => void;
+		onmessage?: (data: string) => void;
+		onclose?: () => void;
+		onerror?: (event: Event) => void;
+	}) {
 		this.maxSize = config?.maxSize ?? DEFAULT_MAX_SIZE;
 		this.lingerMs = config?.lingerMs ?? DEFAULT_LINGER_MS;
+
+		if (callbacks) {
+			this.onopen = callbacks.onopen ?? null;
+			this.onmessage = callbacks.onmessage ?? null;
+			this.onclose = callbacks.onclose ?? null;
+			this.onerror = callbacks.onerror ?? null;
+		}
 
 		this.ws = new WebSocket(url);
 

@@ -1,0 +1,6 @@
+@import "@mantle-team/mantle-brand";
+@import "tailwindcss";
+
+html {
+  background-color: var(--color-charcoal);
+}

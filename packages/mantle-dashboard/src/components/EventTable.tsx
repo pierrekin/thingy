@@ -15,14 +15,14 @@ function EventRow({ event, onClick }: { event: Event; onClick: () => void }) {
 
 	return (
 		<div
-			className="flex items-center gap-3 py-2 px-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50"
+			className="flex items-center gap-3 py-2 px-3 border-b border-surface last:border-b-0 cursor-pointer hover:bg-charcoal"
 			onClick={onClick}
 		>
-			<span className={isOngoing ? "text-red-500" : "text-gray-400"}>
+			<span className={isOngoing ? "text-critical" : "text-warm-grey"}>
 				{isOngoing ? "○" : "●"}
 			</span>
-			<span className="text-gray-500 text-sm font-mono whitespace-nowrap shrink-0">{timeRange}</span>
-			<span className="text-gray-700 text-sm truncate">{event.title}</span>
+			<span className="text-warm-grey text-sm font-mono whitespace-nowrap shrink-0">{timeRange}</span>
+			<span className="text-mist text-sm truncate">{event.title}</span>
 		</div>
 	);
 }
@@ -42,7 +42,7 @@ export function EventTable({ events, eventLevel }: Props) {
 
 	return (
 		<>
-			<div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+			<div className="bg-charcoal-mid border border-surface rounded-lg overflow-hidden">
 				{events.map((event) => (
 					<EventRow
 						key={event.id}

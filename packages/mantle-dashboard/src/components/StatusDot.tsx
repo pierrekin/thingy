@@ -1,10 +1,10 @@
 import type { SlotStatus } from "../types";
 
 const statusDotColors: Record<string, string> = {
-	green: "bg-green-500",
-	red: "bg-red-500",
-	grey: "bg-gray-300",
-	null: "bg-gray-200",
+	green: "bg-signal",
+	red: "bg-critical",
+	grey: "bg-warm-grey",
+	null: "bg-surface",
 };
 
 export function StatusDot({ status }: { status: SlotStatus }) {

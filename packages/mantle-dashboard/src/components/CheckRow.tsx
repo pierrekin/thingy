@@ -47,9 +47,9 @@ export function CheckRow({ provider, target, check, client, connectionStatus }: 
 	const metricsData = useMetricsData(subscriptionId ?? "", provider, target, check.name);
 
 	return (
-		<div className="bg-gray-100">
+		<div className="bg-surface">
 			<div className="px-4 py-2">
-				<span className="text-sm text-gray-600">{check.name}</span>
+				<span className="text-sm text-mist">{check.name}</span>
 			</div>
 			<div className="px-4">
 				<SparkChart data={metricsData} domainStart={domainStart} domainEnd={domainEnd} />

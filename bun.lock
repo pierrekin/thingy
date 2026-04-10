@@ -23,9 +23,10 @@
     },
     "packages/dashboard": {
       "name": "@mantle-team/dashboard",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
-        "@mantle-team/client": "^0.0.1",
+        "@mantle-team/client": "^0.0.2",
+        "@mantle-team/mantle-brand": "^0.0.2",
         "zustand": "^5.0.12",
       },
       "devDependencies": {
@@ -54,7 +55,7 @@
       "name": "mantle",
       "version": "0.0.10",
       "dependencies": {
-        "@mantle-team/client": "workspace:*",
+        "@mantle-team/client": "^0.0.1",
         "citty": "^0.2.1",
         "mantle-agent": "workspace:*",
         "mantle-framework": "workspace:*",
@@ -72,9 +73,18 @@
         "provider-shell": "workspace:*",
       },
     },
+    "packages/mantle-brand": {
+      "name": "@mantle-team/mantle-brand",
+      "version": "0.0.2",
+      "dependencies": {
+        "@fontsource-variable/inconsolata": "^5.2.8",
+        "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
+        "@fontsource-variable/syne": "^5.2.7",
+      },
+    },
     "packages/mantle-client": {
       "name": "@mantle-team/client",
-      "version": "0.0.1",
+      "version": "0.0.2",
     },
     "packages/mantle-framework": {
       "name": "mantle-framework",
@@ -89,7 +99,7 @@
       "name": "mantle-hub",
       "version": "0.0.1",
       "dependencies": {
-        "@mantle-team/client": "workspace:*",
+        "@mantle-team/client": "^0.0.1",
         "channel-log": "workspace:*",
         "hono": "^4.12.9",
         "mantle-framework": "workspace:*",
@@ -335,6 +345,12 @@
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.4.1", "", { "dependencies": { "@eslint/core": "^0.17.0", "levn": "^0.4.1" } }, "sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA=="],
 
+    "@fontsource-variable/inconsolata": ["@fontsource-variable/inconsolata@5.2.8", "", {}, "sha512-IXXYUznF45QyPG05Q7NgsVFa4i1HnVyqbfEGLlHidZRElO0T3PCq6y+Vlz9nT4rnqsLqAkdi4wjhsoJey6pYTg=="],
+
+    "@fontsource-variable/plus-jakarta-sans": ["@fontsource-variable/plus-jakarta-sans@5.2.8", "", {}, "sha512-iQecBizIdZxezODNHzOn4SvvRMrZL/S8k4MEXGDynCmUrImVW0VmX+tIAMqnADwH4haXlHSXqMgU6+kcfBQJdw=="],
+
+    "@fontsource-variable/syne": ["@fontsource-variable/syne@5.2.7", "", {}, "sha512-B2z7P0mGdNSAgz6SmtK7HXReZL22WJ8Z8sk5Z1ZuKiCSRM7DwWLjWXLwhbQ+CvmtNS/+p95jGvVEfQT9bm+UKw=="],
+
     "@humanfs/core": ["@humanfs/core@0.19.1", "", {}, "sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA=="],
 
     "@humanfs/node": ["@humanfs/node@0.16.7", "", { "dependencies": { "@humanfs/core": "^0.19.1", "@humanwhocodes/retry": "^0.4.0" } }, "sha512-/zUx+yOsIrG4Y43Eh2peDeKCxlRt/gET6aHfaKpuq267qXdYDFViVHfMaLyygZOnl0kGWxFIgsBy8QFuTLUXEQ=="],
@@ -360,6 +376,8 @@
     "@mantle-team/client": ["@mantle-team/client@workspace:packages/mantle-client"],
 
     "@mantle-team/dashboard": ["@mantle-team/dashboard@workspace:packages/dashboard"],
+
+    "@mantle-team/mantle-brand": ["@mantle-team/mantle-brand@workspace:packages/mantle-brand"],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.2", "", { "dependencies": { "@tybys/wasm-util": "^0.10.1" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-sNXv5oLJ7ob93xkZ1XnxisYhGYXfaG9f65/ZgYuAu3qt7b3NadcOEhLvx28hv31PgX8SZJRYrAIPQilQmFpLVw=="],
 
@@ -1125,6 +1143,8 @@
 
     "@eslint/eslintrc/globals": ["globals@14.0.0", "", {}, "sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ=="],
 
+    "@mantle-team/dashboard/@mantle-team/mantle-brand": ["@mantle-team/mantle-brand@0.0.2", "https://npm.pkg.github.com/download/@mantle-team/mantle-brand/0.0.2/7e20a4947ace60a27a2edb35913eb2acf1c590b8", { "dependencies": { "@fontsource-variable/inconsolata": "^5.2.8", "@fontsource-variable/plus-jakarta-sans": "^5.2.8", "@fontsource-variable/syne": "^5.2.7" } }, "sha512-/Cav7skbybEAi4rj4q9UAUJ9AGPBmZzc6FdPRR1J43NgTiDBFvc+AKaqpOKSoAqQBEyimrhQJKTGYlBBNTwm7g=="],
+
     "@rollup/plugin-node-resolve/@rollup/pluginutils": ["@rollup/pluginutils@5.3.0", "", { "dependencies": { "@types/estree": "^1.0.0", "estree-walker": "^2.0.2", "picomatch": "^4.0.2" }, "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" }, "optionalPeers": ["rollup"] }, "sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q=="],
 
     "@rollup/plugin-replace/magic-string": ["magic-string@0.25.9", "", { "dependencies": { "sourcemap-codec": "^1.4.8" } }, "sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ=="],
@@ -1160,6 +1180,10 @@
     "filelist/minimatch": ["minimatch@5.1.9", "", { "dependencies": { "brace-expansion": "^2.0.1" } }, "sha512-7o1wEA2RyMP7Iu7GNba9vc0RWWGACJOCZBJX2GJWip0ikV+wcOsgVuY9uE8CPiyQhkGFSlhuSkZPavN7u1c2Fw=="],
 
     "glob/minimatch": ["minimatch@10.2.5", "", { "dependencies": { "brace-expansion": "^5.0.5" } }, "sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg=="],
+
+    "mantle/@mantle-team/client": ["@mantle-team/client@0.0.1", "https://npm.pkg.github.com/download/@mantle-team/client/0.0.1/25a3cd29cf69d673f2971c00001dece1e6c0efa9", {}, "sha512-kMHlb0QAZthYGxhXCqaFHrPkefYJB3jv6a6+eoNP4HzZf3GtZ1DbseLTNxefWiks86eXHpinbmglhC5DQLqjSg=="],
+
+    "mantle-hub/@mantle-team/client": ["@mantle-team/client@0.0.1", "https://npm.pkg.github.com/download/@mantle-team/client/0.0.1/25a3cd29cf69d673f2971c00001dece1e6c0efa9", {}, "sha512-kMHlb0QAZthYGxhXCqaFHrPkefYJB3jv6a6+eoNP4HzZf3GtZ1DbseLTNxefWiks86eXHpinbmglhC5DQLqjSg=="],
 
     "path-scurry/lru-cache": ["lru-cache@11.3.2", "", {}, "sha512-wgWa6FWQ3QRRJbIjbsldRJZxdxYngT/dO0I5Ynmlnin8qy7tC6xYzbcJjtN4wHLXtkbVwHzk0C+OejVw1XM+DQ=="],
 

@@ -1,7 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { WebSocketProvider, useWebSocketContext } from "./context/WebSocketContext";
 import { useStateSubscription } from "./hooks/useStateSubscription";
 import { useVisibleHub } from "./hooks/useVisibleHub";
+import { Navbar } from "./components/Navbar";
+import { NavButton } from "./components/NavButton";
 import { MainPage } from "./pages/MainPage";
 import { InfrastructurePage } from "./pages/InfrastructurePage";
 
@@ -14,7 +16,12 @@ function roundDown(timestamp: number, bucketDurationMs: number): number {
 	return Math.floor(timestamp / bucketDurationMs) * bucketDurationMs;
 }
 
-export function AppContent() {
+type AppContentProps = {
+	navbarIcon?: ReactNode;
+	navbarTrailing?: ReactNode;
+};
+
+export function AppContent({ navbarIcon, navbarTrailing }: AppContentProps) {
 	const [page, setPage] = useState<Page>("main");
 	const { status } = useWebSocketContext();
 
@@ -36,17 +43,28 @@ export function AppContent() {
 	// Query visible data
 	const hub = useVisibleHub(subscriptionId, subscriptionParams);
 
-	if (page === "infrastructure") {
-		return (
-			<InfrastructurePage hub={hub} onNavigateBack={() => setPage("main")} />
+	const navActions =
+		page === "main" ? (
+			<NavButton onClick={() => setPage("infrastructure")}>Infrastructure</NavButton>
+		) : (
+			<NavButton onClick={() => setPage("main")}>Targets</NavButton>
 		);
-	}
 
 	return (
 		<>
-			<MainPage hub={hub} onNavigateToInfra={() => setPage("infrastructure")} />
+			<Navbar
+				title={hub.name}
+				icon={navbarIcon}
+				actions={navActions}
+				trailing={navbarTrailing}
+			/>
+			{page === "infrastructure" ? (
+				<InfrastructurePage hub={hub} />
+			) : (
+				<MainPage hub={hub} />
+			)}
 			{status === "disconnected" && (
-				<div className="fixed bottom-4 right-4 bg-red-500 text-white px-3 py-2 rounded-md text-sm">
+				<div className="fixed bottom-4 right-4 bg-critical text-bone px-3 py-2 rounded-md text-sm">
 					Disconnected - Reconnecting...
 				</div>
 			)}
@@ -56,13 +74,15 @@ export function AppContent() {
 
 type AppProps = {
 	getAuthToken?: () => Promise<string | null>;
+	navbarIcon?: ReactNode;
+	navbarTrailing?: ReactNode;
 };
 
-export default function App({ getAuthToken }: AppProps) {
+export default function App({ getAuthToken, navbarIcon, navbarTrailing }: AppProps) {
 	return (
 		<WebSocketProvider getAuthToken={getAuthToken}>
-			<div className="mx-auto max-w-md min-h-screen">
-				<AppContent />
+			<div className="mx-auto max-w-md min-h-screen bg-charcoal">
+				<AppContent navbarIcon={navbarIcon} navbarTrailing={navbarTrailing} />
 			</div>
 		</WebSocketProvider>
 	);

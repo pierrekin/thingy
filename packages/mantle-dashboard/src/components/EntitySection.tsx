@@ -13,9 +13,9 @@ type Props = {
 
 export function EntitySection({ name, statusSlots, latestStatus, events, eventLevel }: Props) {
 	return (
-		<div className="bg-white">
+		<div className="bg-charcoal-mid">
 			<div className="px-4 py-2 flex items-center gap-2">
-				<h3 className="text-sm font-medium text-gray-900 flex-1">{name}</h3>
+				<h3 className="text-sm font-medium text-bone flex-1">{name}</h3>
 				<StatusDot status={latestStatus} />
 			</div>
 			<StatusBar slots={statusSlots} />

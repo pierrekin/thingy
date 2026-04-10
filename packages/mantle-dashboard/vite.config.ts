@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { colors } from "@mantle-team/mantle-brand/tokens";
 
 export default defineConfig({
 	plugins: [
@@ -18,8 +19,8 @@ export default defineConfig({
 				name: "Mantle",
 				short_name: "Mantle",
 				description: "Mantle Dashboard",
-				theme_color: "#863bff",
-				background_color: "#e5e7eb",
+				theme_color: colors.charcoal,
+				background_color: colors.charcoal,
 				display: "standalone",
 				icons: [
 					{

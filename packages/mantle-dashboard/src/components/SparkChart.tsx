@@ -18,7 +18,7 @@ export function SparkChart({
 	domainStart,
 	domainEnd,
 	height = 30,
-	color = "#3b82f6",
+	color = "var(--color-signal)",
 }: SparkChartProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [width, setWidth] = useState(0);
@@ -75,7 +75,7 @@ export function SparkChart({
 							strokeLinejoin="round"
 						/>
 					) : (
-						<text x={width / 2} y={height / 2} textAnchor="middle" fill="#999" fontSize="12">
+						<text x={width / 2} y={height / 2} textAnchor="middle" fill="var(--color-warm-grey)" fontSize="12">
 							No data
 						</text>
 					)}

@@ -1,10 +1,10 @@
 import type { StatusSlot } from "../types";
 
 const statusColors = {
-	green: "bg-green-500",
-	red: "bg-red-500",
-	grey: "bg-gray-300",
-	null: "bg-transparent border border-gray-200",
+	green: "bg-signal",
+	red: "bg-critical",
+	grey: "bg-warm-grey",
+	null: "bg-transparent border border-surface",
 };
 
 export function StatusBar({ slots }: { slots: StatusSlot[] }) {

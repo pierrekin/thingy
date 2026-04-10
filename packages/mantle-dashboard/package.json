@@ -1,5 +1,5 @@
 {
-  "name": "@mantle-team/dashboard",
+  "name": "@mantle-team/mantle-dashboard",
   "version": "0.0.2",
   "private": false,
   "type": "module",
@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@mantle-team/client": "^0.0.2",
+    "@mantle-team/mantle-brand": "^0.0.2",
     "zustand": "^5.0.12"
   },
   "peerDependencies": {

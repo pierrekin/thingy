@@ -24,13 +24,13 @@ export function TargetSection({ target }: Props) {
 
 	return (
 		<div>
-			<div className="bg-white">
+			<div className="bg-charcoal-mid">
 				<button
 					onClick={() => setIsExpanded(!isExpanded)}
 					className="w-full text-left px-4 py-2 flex items-center gap-2"
 				>
-					<span className="text-xs text-gray-400">{isExpanded ? "▼" : "▶"}</span>
-					<span className="text-sm font-medium text-gray-900 flex-1">{target.name}</span>
+					<span className="text-xs text-warm-grey">{isExpanded ? "▼" : "▶"}</span>
+					<span className="text-sm font-medium text-bone flex-1">{target.name}</span>
 					<StatusDot status={target.latestStatus} />
 				</button>
 				{showStatusBar && <StatusBar slots={target.statusSlots} />}
@@ -39,7 +39,7 @@ export function TargetSection({ target }: Props) {
 			{showChecks && (
 				<>
 					{hasTargetEvents && (
-						<div className="bg-white px-4 pb-2">
+						<div className="bg-charcoal-mid px-4 pb-2">
 							<EventTable events={target.events} eventLevel="target" />
 						</div>
 					)}

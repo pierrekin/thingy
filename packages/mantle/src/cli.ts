@@ -4,11 +4,12 @@ import { agent } from "./commands/agent.ts";
 import { standalone } from "./commands/standalone.ts";
 import { status } from "./commands/client/status.ts";
 import { cloud } from "./commands/cloud/index.ts";
+import { version } from "../package.json";
 
 export const main = defineCommand({
 	meta: {
 		name: "mantle",
-		version: "0.0.10",
+		version,
 		description: "Mantle CLI",
 	},
 	subCommands: {

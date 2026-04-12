@@ -30,10 +30,10 @@ jobs:
             container: oven/bun:1-alpine
             target: bun-linux-arm64
             artifact: linux-aarch64-musl
-          - os: macos-latest
+          - os: macos-26
             target: bun-darwin-x64
             artifact: darwin-x86_64
-          - os: macos-latest
+          - os: macos-26
             target: bun-darwin-arm64
             artifact: darwin-aarch64
     runs-on: ${{ matrix.os }}

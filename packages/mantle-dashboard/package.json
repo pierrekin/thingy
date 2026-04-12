@@ -20,8 +20,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mantle-team/client": "^0.0.2",
-    "@mantle-team/mantle-brand": "^0.0.5",
+    "@mantle-team/client": "workspace:*",
+    "@mantle-team/mantle-brand": "workspace:*",
     "zustand": "^5.0.12"
   },
   "peerDependencies": {

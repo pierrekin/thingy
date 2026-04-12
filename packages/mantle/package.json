@@ -1,6 +1,6 @@
 {
   "name": "mantle",
-  "version": "0.0.12-rc1",
+  "version": "0.0.12-rc2",
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {

@@ -36,13 +36,41 @@ if (dirty.exitCode !== 0 || dirty.stdout.toString().trim().length > 0) {
   process.exit(1);
 }
 
-const packageJsonPath = join(root, "packages", "mantle", "package.json");
+const isPrerelease = semver.includes("-");
 
+const packageJsonPath = join(root, "packages", "mantle", "package.json");
 const pkg = JSON.parse(await Bun.file(packageJsonPath).text());
 pkg.version = semver;
 await Bun.write(packageJsonPath, JSON.stringify(pkg, null, 2) + "\n");
 
-const addResult = Bun.spawnSync(["git", "-C", root, "add", packageJsonPath]);
+const filesToStage = [packageJsonPath];
+
+if (!isPrerelease) {
+  const changelogsDir = join(root, "changelogs");
+  const nextPath = join(changelogsDir, "next.md");
+  const versionPath = join(changelogsDir, `${semver}.md`);
+
+  const nextFile = Bun.file(nextPath);
+  if (!(await nextFile.exists())) {
+    console.error(`changelogs/next.md is missing`);
+    process.exit(1);
+  }
+
+  const nextContent = (await nextFile.text()).trim();
+  if (!nextContent || nextContent === "placeholder") {
+    console.error(`changelogs/next.md is invalid`);
+    process.exit(1);
+  }
+
+  // Rename next.md to {version}.md and create a fresh next.md
+  await Bun.write(versionPath, nextContent + "\n");
+  await Bun.write(nextPath, "placeholder\n");
+  filesToStage.push(versionPath, nextPath);
+}
+
+const addResult = Bun.spawnSync([
+  "git", "-C", root, "add", ...filesToStage,
+]);
 if (addResult.exitCode !== 0) {
   console.error("git add failed");
   process.exit(1);

@@ -103,14 +103,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PRERELEASE=""
-          if echo "${{ github.ref_name }}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+-'; then
-            PRERELEASE="--prerelease"
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          if echo "$TAG" | grep -q '-'; then
+            gh release create "$TAG" \
+              --generate-notes \
+              --prerelease \
+              artifacts/*
+          else
+            NOTES_FILE="changelogs/${VERSION}.md"
+            gh release create "$TAG" \
+              --notes-file "$NOTES_FILE" \
+              artifacts/*
           fi
-          gh release create "${{ github.ref_name }}" \
-            --generate-notes \
-            $PRERELEASE \
-            artifacts/*
 
   publish-r2-release:
     needs: build
@@ -154,6 +159,7 @@ jobs:
           aws s3 cp latest.txt "s3://mantle-team-mantle-binaries/latest.txt" --endpoint-url "$AWS_ENDPOINT_URL"
 
       - name: Update release manifest
+        if: ${{ !contains(github.ref_name, '-') }}
         env:
           VERSION: ${{ github.ref_name }}
           CHECKSUMS_PATH: artifacts/checksums.txt

@@ -1,5 +1,6 @@
 import { tmpdir } from "os";
 import { join } from "path";
+import { readFile } from "fs/promises";
 
 /**
  * Publishes a release manifest entry to object storage.
@@ -41,7 +42,7 @@ type Artifact = {
 type Release = {
   version: string;
   date: string;
-  notes: string[];
+  notes: string;
   artifacts: Artifact[];
 };
 
@@ -117,6 +118,11 @@ async function main() {
 
   const version = rawVersion.replace(/^v/, "");
 
+  const changelogPath = join(import.meta.dir, "../changelogs", `${version}.md`);
+  const notes = await readFile(changelogPath, "utf-8").catch(() => {
+    throw new Error(`changelogs/${version}.md is missing`);
+  });
+
   const checksumsText = await Bun.file(checksumsPath).text();
   const artifacts = parseChecksums(checksumsText);
 
@@ -127,40 +133,36 @@ async function main() {
   const newRelease: Release = {
     version,
     date: new Date().toISOString().split("T")[0]!,
-    notes: ["placeholder"],
+    notes: notes.trim(),
     artifacts,
   };
 
   const indexContent = await storageGet(bucket, INDEX_KEY);
   const index: Index = indexContent
     ? (JSON.parse(indexContent) as Index)
-    : { latest: version, total: 0, fileCount: 0, releases: [] };
+    : { latest: version, total: 0, fileCount: 1, releases: [] };
 
-  index.releases.unshift(newRelease);
   index.total += 1;
   index.latest = version;
 
-  // Drain overflow from the index into the current release file.
-  // In practice this runs at most once per release.
-  while (index.releases.length > RELEASES_IN_INDEX) {
-    const overflow = index.releases.pop()!;
+  // Always append to the current release file first.
+  const releaseFileKey = `manifest/${index.fileCount}-releases.json`;
+  const releaseFileContent = await storageGet(bucket, releaseFileKey);
+  const releaseFile: ReleaseFile = releaseFileContent
+    ? (JSON.parse(releaseFileContent) as ReleaseFile)
+    : { releases: [] };
 
-    if (index.fileCount === 0) {
-      index.fileCount = 1;
-    }
+  releaseFile.releases.push(newRelease);
+  await storagePut(bucket, releaseFileKey, JSON.stringify(releaseFile, null, 2));
 
-    const releaseFileKey = `manifest/${index.fileCount}-releases.json`;
-    const releaseFileContent = await storageGet(bucket, releaseFileKey);
-    const releaseFile: ReleaseFile = releaseFileContent
-      ? (JSON.parse(releaseFileContent) as ReleaseFile)
-      : { releases: [] };
+  if (releaseFile.releases.length >= RELEASES_PER_FILE) {
+    index.fileCount += 1;
+  }
 
-    releaseFile.releases.push(overflow);
-    await storagePut(bucket, releaseFileKey, JSON.stringify(releaseFile, null, 2));
-
-    if (releaseFile.releases.length >= RELEASES_PER_FILE) {
-      index.fileCount += 1;
-    }
+  // Update the index with the latest RELEASES_IN_INDEX releases.
+  index.releases.unshift(newRelease);
+  if (index.releases.length > RELEASES_IN_INDEX) {
+    index.releases.pop();
   }
 
   await storagePut(bucket, INDEX_KEY, JSON.stringify(index, null, 2));

@@ -54,6 +54,12 @@ jobs:
       - name: Build binary
         run: TARGET=${{ matrix.target }} OUTFILE=mantle-${{ matrix.artifact }} bun run build
 
+      - name: Codesign binary (macOS)
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        run: |
+          codesign --remove-signature mantle-${{ matrix.artifact }}
+          codesign --sign - mantle-${{ matrix.artifact }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:

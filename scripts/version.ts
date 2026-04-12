@@ -22,6 +22,12 @@ if (!/^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$/.test(semver)) {
 
 const root = join(import.meta.dir, "..");
 
+const existingTag = Bun.spawnSync(["git", "-C", root, "tag", "-l", tag]);
+if (existingTag.stdout.toString().trim() === tag) {
+  console.error(`Tag ${tag} already exists`);
+  process.exit(1);
+}
+
 const dirty = Bun.spawnSync(["git", "-C", root, "status", "--porcelain"]);
 if (dirty.exitCode !== 0 || dirty.stdout.toString().trim().length > 0) {
   console.error(

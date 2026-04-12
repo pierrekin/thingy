@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 
-const dashboardDistDir = join(__dirname, "../../dashboard/dist");
+const dashboardDistDir = join(__dirname, "../../mantle-dashboard/dist");
 const outputPath = join(__dirname, "../generated/assets.ts");
 
 const assets: Record<string, { content: string; contentType: string }> = {};

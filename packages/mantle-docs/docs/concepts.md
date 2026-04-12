@@ -1,3 +1,10 @@
+---
+title: Concepts
+section: Introduction
+order: 2
+description: The mental model behind providers, targets, checks, and agents.
+---
+
 # Concepts
 
 Mantle monitors infrastructure by running **checks** against **targets** from **providers**.

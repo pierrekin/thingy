@@ -1,0 +1,9 @@
+{
+  "name": "@mantle-team/mantle-docs",
+  "version": "0.0.1",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": ["docs"]
+}

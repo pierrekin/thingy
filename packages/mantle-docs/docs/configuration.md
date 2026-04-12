@@ -1,3 +1,10 @@
+---
+title: Configuration
+section: Reference
+order: 1
+description: All configuration options for providers, agents, and checks.
+---
+
 # Configuration
 
 ## Structure

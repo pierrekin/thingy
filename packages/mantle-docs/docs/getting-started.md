@@ -1,3 +1,10 @@
+---
+title: Getting Started
+section: Introduction
+order: 1
+description: Install Mantle and run your first automation.
+---
+
 # Getting Started
 
 ## Install

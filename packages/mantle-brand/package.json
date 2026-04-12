@@ -1,20 +1,23 @@
 {
   "name": "@mantle-team/mantle-brand",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": false,
   "type": "module",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
+  "scripts": {
+    "build": "bun build ./src/tokens.ts --outfile ./dist/tokens.js --target browser"
+  },
   "exports": {
     ".": "./index.css",
-    "./tokens": "./tokens.ts",
+    "./tokens": "./dist/tokens.js",
     "./logo-dark.svg": "./assets/logo-dark.svg",
     "./logo-light.svg": "./assets/logo-light.svg",
     "./mark-dark.svg": "./assets/mark-dark.svg",
     "./mark-light.svg": "./assets/mark-light.svg"
   },
-  "files": ["index.css", "tokens.ts", "assets/*.svg"],
+  "files": ["index.css", "dist/", "assets/*.svg"],
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
     "@fontsource-variable/inconsolata": "^5.2.8",

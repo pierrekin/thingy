@@ -21,12 +21,47 @@
         "zod": "^4.3.6",
       },
     },
-    "packages/dashboard": {
-      "name": "@mantle-team/dashboard",
+    "packages/mantle": {
+      "name": "mantle",
+      "version": "0.0.11-rc1",
+      "dependencies": {
+        "@mantle-team/client": "^0.0.1",
+        "citty": "^0.2.1",
+        "mantle-agent": "workspace:*",
+        "mantle-framework": "workspace:*",
+        "mantle-hub": "workspace:*",
+        "mantle-store": "workspace:*",
+      },
+    },
+    "packages/mantle-agent": {
+      "name": "mantle-agent",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "provider-proxmox": "workspace:*",
+        "provider-restic": "workspace:*",
+        "provider-shell": "workspace:*",
+      },
+    },
+    "packages/mantle-brand": {
+      "name": "@mantle-team/mantle-brand",
+      "version": "0.0.5",
+      "dependencies": {
+        "@fontsource-variable/inconsolata": "^5.2.8",
+        "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
+        "@fontsource-variable/syne": "^5.2.7",
+      },
+    },
+    "packages/mantle-client": {
+      "name": "@mantle-team/client",
+      "version": "0.0.2",
+    },
+    "packages/mantle-dashboard": {
+      "name": "@mantle-team/mantle-dashboard",
       "version": "0.0.2",
       "dependencies": {
         "@mantle-team/client": "^0.0.2",
-        "@mantle-team/mantle-brand": "^0.0.2",
+        "@mantle-team/mantle-brand": "^0.0.5",
         "zustand": "^5.0.12",
       },
       "devDependencies": {
@@ -50,41 +85,6 @@
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
       },
-    },
-    "packages/mantle": {
-      "name": "mantle",
-      "version": "0.0.10",
-      "dependencies": {
-        "@mantle-team/client": "^0.0.1",
-        "citty": "^0.2.1",
-        "mantle-agent": "workspace:*",
-        "mantle-framework": "workspace:*",
-        "mantle-hub": "workspace:*",
-        "mantle-store": "workspace:*",
-      },
-    },
-    "packages/mantle-agent": {
-      "name": "mantle-agent",
-      "version": "0.0.1",
-      "dependencies": {
-        "mantle-framework": "workspace:*",
-        "provider-proxmox": "workspace:*",
-        "provider-restic": "workspace:*",
-        "provider-shell": "workspace:*",
-      },
-    },
-    "packages/mantle-brand": {
-      "name": "@mantle-team/mantle-brand",
-      "version": "0.0.2",
-      "dependencies": {
-        "@fontsource-variable/inconsolata": "^5.2.8",
-        "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
-        "@fontsource-variable/syne": "^5.2.7",
-      },
-    },
-    "packages/mantle-client": {
-      "name": "@mantle-team/client",
-      "version": "0.0.2",
     },
     "packages/mantle-framework": {
       "name": "mantle-framework",
@@ -375,9 +375,9 @@
 
     "@mantle-team/client": ["@mantle-team/client@workspace:packages/mantle-client"],
 
-    "@mantle-team/dashboard": ["@mantle-team/dashboard@workspace:packages/dashboard"],
-
     "@mantle-team/mantle-brand": ["@mantle-team/mantle-brand@workspace:packages/mantle-brand"],
+
+    "@mantle-team/mantle-dashboard": ["@mantle-team/mantle-dashboard@workspace:packages/mantle-dashboard"],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.2", "", { "dependencies": { "@tybys/wasm-util": "^0.10.1" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-sNXv5oLJ7ob93xkZ1XnxisYhGYXfaG9f65/ZgYuAu3qt7b3NadcOEhLvx28hv31PgX8SZJRYrAIPQilQmFpLVw=="],
 
@@ -1142,8 +1142,6 @@
     "@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, "sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag=="],
 
     "@eslint/eslintrc/globals": ["globals@14.0.0", "", {}, "sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ=="],
-
-    "@mantle-team/dashboard/@mantle-team/mantle-brand": ["@mantle-team/mantle-brand@0.0.2", "https://npm.pkg.github.com/download/@mantle-team/mantle-brand/0.0.2/7e20a4947ace60a27a2edb35913eb2acf1c590b8", { "dependencies": { "@fontsource-variable/inconsolata": "^5.2.8", "@fontsource-variable/plus-jakarta-sans": "^5.2.8", "@fontsource-variable/syne": "^5.2.7" } }, "sha512-/Cav7skbybEAi4rj4q9UAUJ9AGPBmZzc6FdPRR1J43NgTiDBFvc+AKaqpOKSoAqQBEyimrhQJKTGYlBBNTwm7g=="],
 
     "@rollup/plugin-node-resolve/@rollup/pluginutils": ["@rollup/pluginutils@5.3.0", "", { "dependencies": { "@types/estree": "^1.0.0", "estree-walker": "^2.0.2", "picomatch": "^4.0.2" }, "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" }, "optionalPeers": ["rollup"] }, "sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q=="],
 

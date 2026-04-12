@@ -112,11 +112,20 @@ jobs:
             $PRERELEASE \
             artifacts/*
 
-  publish-r2-binaries:
+  publish-r2-release:
     needs: build
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -128,30 +137,31 @@ jobs:
           cd artifacts
           sha256sum mantle-* > checksums.txt
 
-      - name: Upload binaries to R2
+      - name: Upload binaries
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
         run: |
-          # Extract version from tag (remove 'v' prefix)
           VERSION=${GITHUB_REF#refs/tags/v}
-
-          # Install AWS CLI
           pip install awscli
-
-          # Upload each binary to R2 with version prefix
           cd artifacts
           for file in mantle-*; do
             aws s3 cp "$file" "s3://mantle-team-mantle-binaries/releases/v${VERSION}/$file" --endpoint-url "$AWS_ENDPOINT_URL"
           done
-
-          # Upload checksums
           aws s3 cp checksums.txt "s3://mantle-team-mantle-binaries/releases/v${VERSION}/checksums.txt" --endpoint-url "$AWS_ENDPOINT_URL"
-
-          # Create/update latest.txt with the current version
           echo "v${VERSION}" > latest.txt
           aws s3 cp latest.txt "s3://mantle-team-mantle-binaries/latest.txt" --endpoint-url "$AWS_ENDPOINT_URL"
+
+      - name: Update release manifest
+        env:
+          VERSION: ${{ github.ref_name }}
+          CHECKSUMS_PATH: artifacts/checksums.txt
+          S3_BUCKET: mantle-team-mantle-binaries
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+        run: bun run manifest:publish
 
   publish-homebrew-tap:
     needs: publish-github-release

@@ -1,0 +1,16 @@
+services:
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:${LIDARR_VERSION:-latest}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+      LIDARR__Auth__ApiKey: e2etestapikeyfortesting12345678
+    ports:
+      - "8686:8686"
+    healthcheck:
+      test: curl -sf http://localhost:8686/ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s

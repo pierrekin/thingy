@@ -2,8 +2,9 @@ import type { Provider } from "mantle-framework";
 import { providers as proxmoxProviders } from "provider-proxmox";
 import { providers as resticProviders } from "provider-restic";
 import { providers as shellProviders } from "provider-shell";
+import { providers as servarrProviders } from "provider-servarr";
 
-const allProviders = [...proxmoxProviders, ...resticProviders, ...shellProviders];
+const allProviders = [...proxmoxProviders, ...resticProviders, ...shellProviders, ...servarrProviders];
 
 const registry: Record<string, Provider> = Object.fromEntries(
 	allProviders.map((p) => [p.name, p]),

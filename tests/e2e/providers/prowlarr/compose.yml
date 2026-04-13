@@ -1,0 +1,16 @@
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:${PROWLARR_VERSION:-latest}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+      PROWLARR__Auth__ApiKey: e2etestapikeyfortesting12345678
+    ports:
+      - "9696:9696"
+    healthcheck:
+      test: curl -sf http://localhost:9696/ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s

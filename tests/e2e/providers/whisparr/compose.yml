@@ -1,0 +1,17 @@
+services:
+  whisparr:
+    image: ghcr.io/hotio/whisparr:${WHISPARR_VERSION:-latest}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+    volumes:
+      - ./config.xml:/config/config.xml:ro
+    ports:
+      - "6969:6969"
+    healthcheck:
+      test: curl -sf http://localhost:6969/ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s

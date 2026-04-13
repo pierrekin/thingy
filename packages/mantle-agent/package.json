@@ -8,6 +8,7 @@
     "mantle-framework": "workspace:*",
     "provider-proxmox": "workspace:*",
     "provider-restic": "workspace:*",
-    "provider-shell": "workspace:*"
+    "provider-shell": "workspace:*",
+    "provider-servarr": "workspace:*"
   }
 }

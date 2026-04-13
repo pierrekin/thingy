@@ -1,0 +1,16 @@
+{
+  "name": "channel-email",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "mantle-framework": "workspace:*",
+    "mantle-store": "workspace:*",
+    "nodemailer": "^6.10.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^6.4.17"
+  }
+}

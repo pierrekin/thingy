@@ -4,3 +4,4 @@
 - add webhook channel
 - add discord channel
 - add telegram channel
+- add email channel

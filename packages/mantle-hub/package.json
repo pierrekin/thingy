@@ -12,6 +12,7 @@
     "channel-webhook": "workspace:*",
     "channel-discord": "workspace:*",
     "channel-telegram": "workspace:*",
+    "channel-email": "workspace:*",
     "hono": "^4.12.9"
   }
 }

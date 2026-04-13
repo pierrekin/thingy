@@ -10,6 +10,7 @@
     "mantle-store": "workspace:*",
     "channel-log": "workspace:*",
     "channel-webhook": "workspace:*",
+    "channel-discord": "workspace:*",
     "hono": "^4.12.9"
   }
 }

@@ -1,2 +1,3 @@
 - add docs package
 - namespace providers and channels
+- add rotation and format to the log channel

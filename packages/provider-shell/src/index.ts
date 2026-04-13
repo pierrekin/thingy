@@ -6,6 +6,7 @@ import {
 	providerConfigSchema,
 	allTargetConfigsSchema,
 	type CheckResult,
+	type Provider,
 } from "mantle-framework";
 
 // --- Checks ---
@@ -31,7 +32,7 @@ const shellProviderConfig = z.object({
 });
 
 export const shellProvider = defineProvider({
-	name: "shell",
+	name: "@mantle/shell/command",
 	config: shellProviderConfig,
 	defaultInterval: "1m",
 	targetTypes: {
@@ -218,11 +219,13 @@ export class ShellProviderInstance {
 
 // --- Default export ---
 
-export default {
-	name: "shell",
+export const shellCommand = {
+	name: shellProvider.name,
 	definition: shellProvider,
 	providerConfigSchema: shellProviderConfigSchema,
 	targetConfigSchema: shellTargetConfigSchema,
 	createInstance: (config: unknown) =>
 		new ShellProviderInstance(config as ShellProviderConfig),
-};
+} satisfies Provider;
+
+export const providers: Provider[] = [shellCommand];

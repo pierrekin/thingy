@@ -1,1 +1,2 @@
 - add docs package
+- namespace providers and channels

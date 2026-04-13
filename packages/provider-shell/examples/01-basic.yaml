@@ -2,22 +2,22 @@
 # By default, exit code 0 = ok, anything else = error
 
 providers:
-  shell: {}
+  "@mantle/shell/command": {}
 
 agent:
   name: my-agent
   targets:
     - name: nginx
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "systemctl is-active nginx"
 
     - name: docker
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "docker info > /dev/null 2>&1"
 
     - name: dns
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "dig +short example.com | grep -q ."

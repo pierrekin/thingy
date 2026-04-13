@@ -7,6 +7,7 @@ import {
   allTargetConfigsSchema,
   DISABLED,
   type CheckResult,
+  type Provider,
 } from "mantle-framework";
 import { ProxmoxClient, ProxmoxApiError } from "./client.ts";
 
@@ -57,7 +58,7 @@ const proxmoxConnectionConfig = z.object({
 });
 
 export const proxmoxProvider = defineProvider({
-  name: "proxmox",
+  name: "@mantle/proxmox/static",
   config: proxmoxConnectionConfig,
   defaultInterval: "30s",
   targetTypes: {
@@ -264,10 +265,12 @@ export class ProxmoxProviderInstance {
   }
 }
 
-export default {
-  name: "proxmox",
+export const proxmoxStatic = {
+  name: proxmoxProvider.name,
   definition: proxmoxProvider,
   providerConfigSchema: proxmoxProviderConfigSchema,
   targetConfigSchema: proxmoxTargetConfigSchema,
   createInstance: (config: unknown) => new ProxmoxProviderInstance(config as ProxmoxProviderConfig),
-};
+} satisfies Provider;
+
+export const providers: Provider[] = [proxmoxStatic];

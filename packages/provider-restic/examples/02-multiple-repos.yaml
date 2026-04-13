@@ -6,7 +6,7 @@
 # Use provider-level `env` for shared credentials (e.g. S3 access keys)
 
 providers:
-  restic:
+  "@mantle/restic/repo":
     env:
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -16,7 +16,7 @@ agent:
   targets:
     # Hourly backups — alert after 2 hours
     - name: db-backup
-      provider: restic
+      provider: "@mantle/restic/repo"
       type: repo
       repository: s3:s3.amazonaws.com/backups/db
       passwordFile: /etc/restic/db-password
@@ -27,7 +27,7 @@ agent:
 
     # Daily backups — default 24h threshold is fine
     - name: files-backup
-      provider: restic
+      provider: "@mantle/restic/repo"
       type: repo
       repository: s3:s3.amazonaws.com/backups/files
       passwordFile: /etc/restic/files-password
@@ -35,7 +35,7 @@ agent:
 
     # Weekly backups — alert after 8 days
     - name: archive-backup
-      provider: restic
+      provider: "@mantle/restic/repo"
       type: repo
       repository: /mnt/archive
       password: archive-password

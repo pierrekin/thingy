@@ -7,7 +7,7 @@
 #   env      - extra environment variables for this target
 
 providers:
-  shell:
+  "@mantle/shell/command":
     # Provider-level env applies to all shell targets
     env:
       MONITORING: "true"
@@ -17,14 +17,14 @@ agent:
   targets:
     # Health check with a short timeout
     - name: api-health
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "curl -sf http://localhost:3000/health"
       timeout: 5000
 
     # Use both checks: exit code AND parsed output
     - name: queue-depth
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "redis-cli LLEN jobs:pending"
       checks:
@@ -35,7 +35,7 @@ agent:
 
     # Per-target environment variables
     - name: s3-reachable
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "aws s3 ls $BUCKET > /dev/null"
       timeout: 10000

@@ -1,9 +1,9 @@
 # Monitor multiple Proxmox clusters with different credentials
-# Use `type: proxmox` when the instance name doesn't match the provider name
+# Use `type: "@mantle/proxmox/static"` when the instance name doesn't match the provider name
 
 providers:
   proxmox-prod:
-    type: proxmox
+    type: "@mantle/proxmox/static"
     url: https://proxmox-prod.example.com:8006
     tokenId: root@pam!monitor
     tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -12,7 +12,7 @@ providers:
       node: 10s
 
   proxmox-staging:
-    type: proxmox
+    type: "@mantle/proxmox/static"
     url: https://proxmox-staging.example.com:8006
     tokenId: root@pam!monitor
     tokenSecret: yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy

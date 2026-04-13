@@ -6,14 +6,14 @@
 #   output    - parses stdout as a number (disabled by default)
 
 providers:
-  shell: {}
+  "@mantle/shell/command": {}
 
 agent:
   name: my-agent
   targets:
     # Disk usage percentage
     - name: disk-root
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "df / --output=pcent | tail -1 | tr -d '% '"
       checks:
@@ -23,7 +23,7 @@ agent:
 
     # Number of active database connections
     - name: db-connections
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "psql -tAc 'SELECT count(*) FROM pg_stat_activity'"
       env:
@@ -37,7 +37,7 @@ agent:
 
     # System load average (1 minute)
     - name: load-avg
-      provider: shell
+      provider: "@mantle/shell/command"
       type: command
       command: "awk '{print $1}' /proc/loadavg"
       checks:

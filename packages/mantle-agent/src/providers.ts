@@ -1,18 +1,18 @@
 import type { Provider } from "mantle-framework";
-import proxmox from "provider-proxmox";
-import restic from "provider-restic";
-import shell from "provider-shell";
+import { providers as proxmoxProviders } from "provider-proxmox";
+import { providers as resticProviders } from "provider-restic";
+import { providers as shellProviders } from "provider-shell";
 
-const providers: Record<string, Provider> = {
-	proxmox,
-	restic,
-	shell,
-};
+const allProviders = [...proxmoxProviders, ...resticProviders, ...shellProviders];
+
+const registry: Record<string, Provider> = Object.fromEntries(
+	allProviders.map((p) => [p.name, p]),
+);
 
 export function getProvider(name: string): Provider | undefined {
-	return providers[name];
+	return registry[name];
 }
 
 export function getAllProviders(): Provider[] {
-	return Object.values(providers);
+	return allProviders;
 }

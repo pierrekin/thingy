@@ -2,13 +2,13 @@
 # Alerts if the latest snapshot is older than 24 hours (default)
 
 providers:
-  restic: {}
+  "@mantle/restic/repo": {}
 
 agent:
   name: my-agent
   targets:
     - name: daily-backup
-      provider: restic
+      provider: "@mantle/restic/repo"
       type: repo
       repository: /mnt/backups/server
       password: my-restic-password

@@ -6,10 +6,10 @@
 
 providers:
   restic-local:
-    type: restic
+    type: "@mantle/restic/repo"
 
   restic-s3:
-    type: restic
+    type: "@mantle/restic/repo"
     env:
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY

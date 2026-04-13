@@ -6,6 +6,7 @@ import {
   providerConfigSchema,
   allTargetConfigsSchema,
   type CheckResult,
+  type Provider,
 } from "mantle-framework";
 import {
   ResticClient,
@@ -26,7 +27,7 @@ const resticProviderConfig = z.object({
 });
 
 export const resticProvider = defineProvider({
-  name: "restic",
+  name: "@mantle/restic/repo",
   config: resticProviderConfig,
   defaultInterval: "5m",
   targetTypes: {
@@ -180,11 +181,13 @@ export class ResticProviderInstance {
   }
 }
 
-export default {
-  name: "restic",
+export const resticRepo = {
+  name: resticProvider.name,
   definition: resticProvider,
   providerConfigSchema: resticProviderConfigSchema,
   targetConfigSchema: resticTargetConfigSchema,
   createInstance: (config: unknown) =>
     new ResticProviderInstance(config as ResticProviderConfig),
-};
+} satisfies Provider;
+
+export const providers: Provider[] = [resticRepo];

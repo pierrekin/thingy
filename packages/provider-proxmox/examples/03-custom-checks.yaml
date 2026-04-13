@@ -8,6 +8,7 @@
 
 providers:
   proxmox:
+    type: "@mantle/proxmox/static"
     url: https://proxmox.example.com:8006
     tokenId: root@pam!monitor
     tokenSecret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx

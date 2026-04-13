@@ -12,6 +12,7 @@ export interface ChannelInstance {
 	onTargetEventEnded(event: TargetEventRecord): void;
 	onCheckEventStarted(event: CheckEventRecord): void;
 	onCheckEventEnded(event: CheckEventRecord): void;
+	close(): Promise<void>;
 }
 
 export interface Channel {

@@ -21,9 +21,18 @@
         "zod": "^4.3.6",
       },
     },
+    "packages/channel-webhook": {
+      "name": "channel-webhook",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "mantle-store": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
     "packages/mantle": {
       "name": "mantle",
-      "version": "0.0.11-rc1",
+      "version": "0.0.12",
       "dependencies": {
         "@mantle-team/client": "workspace:*",
         "citty": "^0.2.1",
@@ -86,6 +95,10 @@
         "react-dom": "^19.0.0",
       },
     },
+    "packages/mantle-docs": {
+      "name": "@mantle-team/mantle-docs",
+      "version": "0.0.1",
+    },
     "packages/mantle-framework": {
       "name": "mantle-framework",
       "version": "0.0.1",
@@ -101,6 +114,7 @@
       "dependencies": {
         "@mantle-team/client": "workspace:*",
         "channel-log": "workspace:*",
+        "channel-webhook": "workspace:*",
         "hono": "^4.12.9",
         "mantle-framework": "workspace:*",
         "mantle-store": "workspace:*",
@@ -379,6 +393,8 @@
 
     "@mantle-team/mantle-dashboard": ["@mantle-team/mantle-dashboard@workspace:packages/mantle-dashboard"],
 
+    "@mantle-team/mantle-docs": ["@mantle-team/mantle-docs@workspace:packages/mantle-docs"],
+
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.2", "", { "dependencies": { "@tybys/wasm-util": "^0.10.1" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-sNXv5oLJ7ob93xkZ1XnxisYhGYXfaG9f65/ZgYuAu3qt7b3NadcOEhLvx28hv31PgX8SZJRYrAIPQilQmFpLVw=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.122.0", "", {}, "sha512-oLAl5kBpV4w69UtFZ9xqcmTi+GENWOcPF7FCrczTiBbmC0ibXxCwyvZGbO39rCVEuLGAZM84DH0pUIyyv/YJzA=="],
@@ -550,6 +566,8 @@
     "chalk": ["chalk@4.1.2", "", { "dependencies": { "ansi-styles": "^4.1.0", "supports-color": "^7.1.0" } }, "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA=="],
 
     "channel-log": ["channel-log@workspace:packages/channel-log"],
+
+    "channel-webhook": ["channel-webhook@workspace:packages/channel-webhook"],
 
     "citty": ["citty@0.2.1", "", {}, "sha512-kEV95lFBhQgtogAPlQfJJ0WGVSokvLr/UEoFPiKKOXF7pl98HfUVUD0ejsuTCld/9xH9vogSywZ5KqHzXrZpqg=="],
 

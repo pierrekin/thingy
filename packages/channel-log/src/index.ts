@@ -157,6 +157,8 @@ class LogChannelInstance implements ChannelInstance {
 			message: event.message,
 		}));
 	}
+
+	async close(): Promise<void> {}
 }
 
 const logConfig = z.object({

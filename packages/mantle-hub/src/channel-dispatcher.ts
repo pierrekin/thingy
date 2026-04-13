@@ -193,10 +193,11 @@ export class ChannelDispatcher {
 		return null;
 	}
 
-	cleanup(): void {
+	async cleanup(): Promise<void> {
 		for (const unsub of this.unsubscribers) {
 			unsub();
 		}
 		this.unsubscribers = [];
+		await Promise.all(this.channels.map((ch) => ch.instance.close()));
 	}
 }

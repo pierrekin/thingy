@@ -2,8 +2,9 @@ import type { Channel } from "mantle-framework";
 import { channels as logChannels } from "channel-log";
 import { channels as webhookChannels } from "channel-webhook";
 import { channels as discordChannels } from "channel-discord";
+import { channels as telegramChannels } from "channel-telegram";
 
-const allChannels = [...logChannels, ...webhookChannels, ...discordChannels];
+const allChannels = [...logChannels, ...webhookChannels, ...discordChannels, ...telegramChannels];
 
 const registry: Record<string, Channel> = Object.fromEntries(
 	allChannels.map((c) => [c.name, c]),

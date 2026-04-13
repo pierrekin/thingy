@@ -1,0 +1,12 @@
+{
+  "name": "channel-telegram",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "mantle-framework": "workspace:*",
+    "mantle-store": "workspace:*",
+    "zod": "^4.3.6"
+  }
+}

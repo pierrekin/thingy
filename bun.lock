@@ -30,6 +30,15 @@
         "zod": "^4.3.6",
       },
     },
+    "packages/channel-telegram": {
+      "name": "channel-telegram",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "mantle-store": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
     "packages/channel-webhook": {
       "name": "channel-webhook",
       "version": "0.0.1",
@@ -124,6 +133,7 @@
         "@mantle-team/client": "workspace:*",
         "channel-discord": "workspace:*",
         "channel-log": "workspace:*",
+        "channel-telegram": "workspace:*",
         "channel-webhook": "workspace:*",
         "hono": "^4.12.9",
         "mantle-framework": "workspace:*",
@@ -578,6 +588,8 @@
     "channel-discord": ["channel-discord@workspace:packages/channel-discord"],
 
     "channel-log": ["channel-log@workspace:packages/channel-log"],
+
+    "channel-telegram": ["channel-telegram@workspace:packages/channel-telegram"],
 
     "channel-webhook": ["channel-webhook@workspace:packages/channel-webhook"],
 

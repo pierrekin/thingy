@@ -3,3 +3,4 @@
 - add rotation and format to the log channel
 - add webhook channel
 - add discord channel
+- add telegram channel

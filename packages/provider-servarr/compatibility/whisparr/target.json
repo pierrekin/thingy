@@ -1,0 +1,12 @@
+{
+  "image": "ghcr.io/hotio/whisparr",
+  "imageSource": "https://github.com/hotio/whisparr",
+  "softwareSource": "https://github.com/Whisparr/Whisparr-Eros",
+  "versions": [
+    { "tag": "v3-v3.2.4", "softwareVersion": "3.2.4" },
+    { "tag": "v3-v3.3.0", "softwareVersion": "3.3.0" },
+    { "tag": "v3-v3.3.1", "softwareVersion": "3.3.1" },
+    { "tag": "v3-v3.3.2", "softwareVersion": "3.3.2" },
+    { "tag": "v3-v3.3.3", "softwareVersion": "3.3.3" }
+  ]
+}

@@ -1,0 +1,15 @@
+<Config>
+  <BindAddress>*</BindAddress>
+  <Port>6969</Port>
+  <EnableSsl>False</EnableSsl>
+  <LaunchBrowser>False</LaunchBrowser>
+  <ApiKey>e2etestapikeyfortesting12345678</ApiKey>
+  <AuthenticationMethod>None</AuthenticationMethod>
+  <AuthenticationRequired>Enabled</AuthenticationRequired>
+  <Branch>v3</Branch>
+  <LogLevel>info</LogLevel>
+  <UpdateMechanism>Docker</UpdateMechanism>
+  <UrlBase></UrlBase>
+  <GithubOwnerRepo>Whisparr/Whisparr-Eros</GithubOwnerRepo>
+  <InstanceName>Whisparr</InstanceName>
+</Config>

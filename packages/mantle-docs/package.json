@@ -5,5 +5,12 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "files": ["docs"]
+  "files": ["docs", "compatibility"],
+  "scripts": {
+    "build:compat": "bun run scripts/build-compat.ts"
+  },
+  "devDependencies": {
+    "provider-servarr": "workspace:*",
+    "provider-mylarr": "workspace:*"
+  }
 }

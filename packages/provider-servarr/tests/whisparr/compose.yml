@@ -1,0 +1,16 @@
+services:
+  whisparr:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+      WHISPARR__Auth__ApiKey: e2etestapikeyfortesting12345678
+    ports:
+      - "6969:6969"
+    healthcheck:
+      test: curl -sf http://localhost:6969/ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s

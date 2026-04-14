@@ -1,0 +1,11 @@
+{
+  "provider": "whisparr",
+  "providerVersion": "0.0.1",
+  "image": "ghcr.io/hotio/whisparr",
+  "imageTag": "v3-v3.3.1",
+  "imageDigest": "sha256:8d9bfeb626dc1d5112b56e5ed51c326c07c39e13ee9afe7cdca74f7bf5444252",
+  "softwareVersion": "3.3.1",
+  "testedAt": "2026-04-14T15:45:41.547Z",
+  "result": "pass",
+  "log": " Network whisparr_default Creating \n Network whisparr_default Created \n Container whisparr-whisparr-1 Creating \n Container whisparr-whisparr-1 Created \n Container whisparr-whisparr-1 Starting \n Container whisparr-whisparr-1 Started \n Container whisparr-whisparr-1 Waiting \n Container whisparr-whisparr-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/whisparr/whisparr.test.ts:\n(pass) smoke: api > ping is reachable without auth [16.14ms]\n(pass) smoke: api > system/status returns a version string [16.03ms]\n(pass) smoke: api > health returns an array of items with expected shape [7.34ms]\n(pass) smoke: api > queue returns totalRecords and records array [46.04ms]\n(pass) provider: checks > health.errors returns a non-negative count [3.07ms]\n(pass) provider: checks > health.warnings returns a non-negative count [0.76ms]\n(pass) provider: checks > queue.size returns a non-negative count [5.37ms]\n(pass) provider: checks > queue.errors returns a non-negative count [1.21ms]\n\n 8 pass\n 0 fail\n 22 expect() calls\nRan 8 tests across 1 file. [152.00ms]\n Container whisparr-whisparr-1 Stopping \n Container whisparr-whisparr-1 Stopped \n Container whisparr-whisparr-1 Removing \n Container whisparr-whisparr-1 Removed \n Network whisparr_default Removing \n Network whisparr_default Removed"
+}

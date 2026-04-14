@@ -1,0 +1,10 @@
+{
+  "name": "provider-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:latest": "bun run run.ts check latest",
+    "check:all": "bun run run.ts check all"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "provider": "prowlarr",
+  "providerVersion": "0.0.1",
+  "image": "lscr.io/linuxserver/prowlarr",
+  "imageTag": "1.36.3",
+  "imageDigest": "sha256:1a6cdd0cc2350f8527dab39bc8467c9a2553bbbcf75a2c66f882fc53d73d5deb",
+  "softwareVersion": "1.36.3",
+  "testedAt": "2026-04-14T15:33:30.982Z",
+  "result": "pass",
+  "log": " Network prowlarr_default Creating \n Network prowlarr_default Created \n Container prowlarr-prowlarr-1 Creating \n Container prowlarr-prowlarr-1 Created \n Container prowlarr-prowlarr-1 Starting \n Container prowlarr-prowlarr-1 Started \n Container prowlarr-prowlarr-1 Waiting \n Container prowlarr-prowlarr-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/prowlarr/prowlarr.test.ts:\n(pass) smoke: api > ping is reachable without auth [10.18ms]\n(pass) smoke: api > system/status returns a version string [28.49ms]\n(pass) smoke: api > health returns an array of items with expected shape [11.19ms]\n(pass) smoke: api > indexer returns an array [8.81ms]\n(pass) provider: checks > health.errors returns a non-negative count [1.44ms]\n(pass) provider: checks > health.warnings returns a non-negative count [0.82ms]\n\n 6 pass\n 0 fail\n 13 expect() calls\nRan 6 tests across 1 file. [126.00ms]\n Container prowlarr-prowlarr-1 Stopping \n Container prowlarr-prowlarr-1 Stopped \n Container prowlarr-prowlarr-1 Removing \n Container prowlarr-prowlarr-1 Removed \n Network prowlarr_default Removing \n Network prowlarr_default Removed"
+}

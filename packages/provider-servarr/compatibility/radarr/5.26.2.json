@@ -1,0 +1,11 @@
+{
+  "provider": "radarr",
+  "providerVersion": "0.0.1",
+  "image": "lscr.io/linuxserver/radarr",
+  "imageTag": "5.26.2",
+  "imageDigest": "sha256:7eb64f5af8bbe48e79bc55c0c37ca8db89b2f073a9ff0094f603916ae1df9de8",
+  "softwareVersion": "5.26.2",
+  "testedAt": "2026-04-14T15:44:56.957Z",
+  "result": "pass",
+  "log": " Network radarr_default Creating \n Network radarr_default Created \n Container radarr-radarr-1 Creating \n Container radarr-radarr-1 Created \n Container radarr-radarr-1 Starting \n Container radarr-radarr-1 Started \n Container radarr-radarr-1 Waiting \n Container radarr-radarr-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/radarr/radarr.test.ts:\n(pass) smoke: api > ping is reachable without auth [9.32ms]\n(pass) smoke: api > system/status returns a version string [22.45ms]\n(pass) smoke: api > health returns an array of items with expected shape [11.70ms]\n(pass) smoke: api > diskspace returns entries with freeSpace and totalSpace [20.16ms]\n(pass) smoke: api > queue returns totalRecords and records array [36.10ms]\n(pass) provider: checks > health.errors returns a non-negative count [1.65ms]\n(pass) provider: checks > health.warnings returns a non-negative count [0.93ms]\n(pass) provider: checks > queue.size returns a non-negative count [2.47ms]\n(pass) provider: checks > queue.errors returns a non-negative count [1.23ms]\n\n 9 pass\n 0 fail\n 26 expect() calls\nRan 9 tests across 1 file. [143.00ms]\n Container radarr-radarr-1 Stopping \n Container radarr-radarr-1 Stopped \n Container radarr-radarr-1 Removing \n Container radarr-radarr-1 Removed \n Network radarr_default Removing \n Network radarr_default Removed"
+}

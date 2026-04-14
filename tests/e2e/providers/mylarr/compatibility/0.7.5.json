@@ -1,7 +1,0 @@
-{
-  "provider": "mylarr",
-  "version": "0.7.5",
-  "image": "lscr.io/linuxserver/mylar3",
-  "testedAt": "2026-04-14T08:38:09.199Z",
-  "result": "pass"
-}

@@ -1,8 +1,0 @@
-{
-  "name": "e2e",
-  "private": true,
-  "dependencies": {
-    "provider-servarr": "workspace:*",
-    "provider-mylarr": "workspace:*"
-  }
-}

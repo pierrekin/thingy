@@ -1,0 +1,13 @@
+{
+  "image": "lscr.io/linuxserver/sonarr",
+  "imageSource": "https://github.com/linuxserver/docker-sonarr",
+  "softwareSource": "https://github.com/Sonarr/Sonarr",
+  "versions": [
+    { "tag": "4.0.12", "softwareVersion": "4.0.12" },
+    { "tag": "4.0.13", "softwareVersion": "4.0.13" },
+    { "tag": "4.0.14", "softwareVersion": "4.0.14" },
+    { "tag": "4.0.15", "softwareVersion": "4.0.15" },
+    { "tag": "4.0.16", "softwareVersion": "4.0.16" },
+    { "tag": "4.0.17", "softwareVersion": "4.0.17" }
+  ]
+}

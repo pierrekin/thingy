@@ -1,0 +1,11 @@
+{
+  "provider": "sonarr",
+  "providerVersion": "0.0.1",
+  "image": "lscr.io/linuxserver/sonarr",
+  "imageTag": "4.0.13",
+  "imageDigest": "sha256:b666479159c0ffc17d5c2281737c9a88d78afcaa0aa52cb441b46336f6feba31",
+  "softwareVersion": "4.0.13",
+  "testedAt": "2026-04-14T15:44:59.006Z",
+  "result": "pass",
+  "log": " Network sonarr_default Creating \n Network sonarr_default Created \n Container sonarr-fake-meta-1 Creating \n Container sonarr-fake-meta-1 Created \n Container sonarr-sonarr-1 Creating \n Container sonarr-sonarr-1 Created \n Container sonarr-fake-meta-1 Starting \n Container sonarr-fake-meta-1 Started \n Container sonarr-sonarr-1 Starting \n Container sonarr-sonarr-1 Started \n Container sonarr-sonarr-1 Waiting \n Container sonarr-fake-meta-1 Waiting \n Container sonarr-fake-meta-1 Healthy \n Container sonarr-sonarr-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/sonarr/sonarr.test.ts:\n(pass) smoke: api > ping is reachable without auth [11.76ms]\n(pass) smoke: api > system/status returns a version string [32.74ms]\n(pass) smoke: api > health returns an array of items with expected shape [11.93ms]\n(pass) smoke: api > diskspace returns entries with freeSpace and totalSpace [19.15ms]\n(pass) smoke: api > queue returns totalRecords and records array [32.70ms]\n(pass) provider: checks > health.errors returns a non-negative count [1.30ms]\n(pass) provider: checks > health.warnings returns a non-negative count [0.79ms]\n(pass) provider: checks > queue.size returns a non-negative count [1.68ms]\n(pass) provider: checks > queue.errors returns a non-negative count [1.01ms]\n\n 9 pass\n 0 fail\n 26 expect() calls\nRan 9 tests across 1 file. [160.00ms]\n Container sonarr-sonarr-1 Stopping \n Container sonarr-sonarr-1 Stopped \n Container sonarr-sonarr-1 Removing \n Container sonarr-sonarr-1 Removed \n Container sonarr-fake-meta-1 Stopping \n Container sonarr-fake-meta-1 Stopped \n Container sonarr-fake-meta-1 Removing \n Container sonarr-fake-meta-1 Removed \n Network sonarr_default Removing \n Network sonarr_default Removed"
+}

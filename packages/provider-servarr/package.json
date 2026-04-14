@@ -4,6 +4,18 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "files": ["src", "compatibility"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "test:e2e:sonarr":   "bun run tests/sonarr/run.ts",
+    "test:e2e:radarr":   "bun run tests/radarr/run.ts",
+    "test:e2e:lidarr":   "bun run tests/lidarr/run.ts",
+    "test:e2e:prowlarr": "bun run tests/prowlarr/run.ts",
+    "test:e2e:whisparr":    "bun run tests/whisparr/run.ts",
+    "test:e2e:whisparr-v2": "bun run tests/whisparr-v2/run.ts"
+  },
   "dependencies": {
     "mantle-framework": "workspace:*",
     "zod": "^4.3.6"

@@ -1,0 +1,30 @@
+services:
+  config-init:
+    image: busybox
+    volumes:
+      - whisparr-v2-config:/config
+      - ./config.xml:/seed/config.xml:ro
+    command: cp /seed/config.xml /config/config.xml
+
+  whisparr-v2:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+    volumes:
+      - whisparr-v2-config:/config
+    ports:
+      - "6969:6969"
+    healthcheck:
+      test: curl -sf http://localhost:6969/ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+volumes:
+  whisparr-v2-config:

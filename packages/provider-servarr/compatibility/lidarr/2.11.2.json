@@ -1,0 +1,11 @@
+{
+  "provider": "lidarr",
+  "providerVersion": "0.0.1",
+  "image": "lscr.io/linuxserver/lidarr",
+  "imageTag": "2.11.2",
+  "imageDigest": "sha256:e01a6968d2c58f04278a67da9690e62b0cba07f5dbacb03b0cfbf195940f94a7",
+  "softwareVersion": "2.11.2",
+  "testedAt": "2026-04-14T15:33:31.131Z",
+  "result": "pass",
+  "log": " Network lidarr_default Creating \n Network lidarr_default Created \n Container lidarr-lidarr-1 Creating \n Container lidarr-lidarr-1 Created \n Container lidarr-lidarr-1 Starting \n Container lidarr-lidarr-1 Started \n Container lidarr-lidarr-1 Waiting \n Container lidarr-lidarr-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/lidarr/lidarr.test.ts:\n(pass) smoke: api > ping is reachable without auth [10.39ms]\n(pass) smoke: api > system/status returns a version string [26.31ms]\n(pass) smoke: api > health returns an array of items with expected shape [38.52ms]\n(pass) smoke: api > diskspace returns entries with freeSpace and totalSpace [18.11ms]\n(pass) smoke: api > queue returns totalRecords and records array [31.15ms]\n(pass) provider: checks > health.errors returns a non-negative count [1.72ms]\n(pass) provider: checks > health.warnings returns a non-negative count [1.01ms]\n(pass) provider: checks > queue.size returns a non-negative count [2.23ms]\n(pass) provider: checks > queue.errors returns a non-negative count [0.89ms]\n\n 9 pass\n 0 fail\n 26 expect() calls\nRan 9 tests across 1 file. [196.00ms]\n Container lidarr-lidarr-1 Stopping \n Container lidarr-lidarr-1 Stopped \n Container lidarr-lidarr-1 Removing \n Container lidarr-lidarr-1 Removed \n Network lidarr_default Removing \n Network lidarr_default Removed"
+}

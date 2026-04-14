@@ -2,8 +2,7 @@
   "name": "mantle",
   "private": true,
   "workspaces": [
-    "packages/*",
-    "tests/e2e"
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun run packages/mantle/src/index.ts",
@@ -19,9 +18,10 @@
     "docker:release": "docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/mantle-team/mantle:${VERSION} -t ghcr.io/mantle-team/mantle:latest --push .",
     "version": "bun run scripts/version.ts",
     "manifest:publish": "bun run scripts/publish-manifest.ts",
-    "test:e2e": "bun run tests/e2e/run.ts",
-    "test:e2e:all": "bun run tests/e2e/run.ts --all",
-    "test:e2e:validate": "bun run tests/e2e/validate.ts"
+    "test:e2e": "bun run packages/provider-e2e/run.ts check latest",
+    "test:e2e:all": "bun run packages/provider-e2e/run.ts check all",
+    "validate:missing": "bun run packages/provider-e2e/run.ts validate missing",
+    "validate:all": "bun run packages/provider-e2e/run.ts validate all"
   },
   "devDependencies": {
     "@types/bun": "^1.3.11"

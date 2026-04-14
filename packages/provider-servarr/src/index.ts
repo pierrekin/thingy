@@ -441,6 +441,76 @@ class ProwlarrProviderInstance {
 	}
 }
 
+// --- Whisparr v2 ---
+
+const whisparrV2Provider = defineProvider({
+	name: "@mantle/whisparr-v2/remote",
+	config: servarrConfig,
+	defaultInterval: "5m",
+	targetTypes: {
+		series: {
+			schema: z.object({ seriesId: z.number() }),
+			checks: {
+				monitored: bindCheck(monitoredCheck),
+				missing_episodes: bindCheck(missingEpisodesCheck),
+			},
+			defaultInterval: "5m",
+		},
+		queue: {
+			schema: z.object({}),
+			checks: {
+				size: bindCheck(queueSizeCheck),
+				errors: bindCheck(queueErrorsCheck),
+			},
+			defaultInterval: "1m",
+		},
+		health: {
+			schema: z.object({}),
+			checks: {
+				errors: bindCheck(healthErrorsCheck),
+				warnings: bindCheck(healthWarningsCheck),
+			},
+			defaultInterval: "5m",
+		},
+	},
+});
+
+class WhisparrV2ProviderInstance {
+	private client: ServarrClientV3;
+	constructor(private config: { url: string; api_key: string; timeoutMs: number }) {
+		this.client = new ServarrClientV3(config.url, config.api_key, config.timeoutMs);
+	}
+	getErrorTitle(code: string): string { return errorTitle(code); }
+	async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
+		const t = target as { type: string; seriesId?: number };
+		switch (t.type) {
+			case "series": return this.checkSeries(t.seriesId!, checks);
+			case "queue": return checkQueue(this.client, checks);
+			case "health": return checkHealth(this.client, checks);
+			default: throw new Error(`Unknown target type: ${t.type}`);
+		}
+	}
+	private async checkSeries(id: number, checks: string[]): Promise<CheckResult[]> {
+		let series: Awaited<ReturnType<typeof this.client.getSeries>>;
+		try {
+			series = await this.client.getSeries(id);
+		} catch (err) {
+			if (err instanceof ServarrApiError) {
+				return err.code === "not_found" ? targetError(checks, err) : providerError(checks, err);
+			}
+			return unknownError(checks, err);
+		}
+		const missing = series.statistics.totalEpisodeCount - series.statistics.episodeFileCount;
+		return checks.map((check) => {
+			switch (check) {
+				case "monitored": return { check, value: series.monitored ? 1 : 0 };
+				case "missing_episodes": return { check, value: Math.max(0, missing) };
+				default: return { check, error: { level: "check" as const, code: "unknown_check", title: `Unknown check: ${check}`, message: `The check "${check}" is not supported on this target type` } };
+			}
+		});
+	}
+}
+
 // --- Whisparr ---
 
 const whisparrProvider = defineProvider({
@@ -549,6 +619,14 @@ const prowlarrRemote = {
 	createInstance: (config: unknown) => new ProwlarrProviderInstance(makeInstance(config)),
 } satisfies Provider;
 
+const whisparrV2Remote = {
+	name: whisparrV2Provider.name,
+	definition: whisparrV2Provider,
+	providerConfigSchema: providerConfigSchema(whisparrV2Provider.config, whisparrV2Provider.targetTypes, whisparrV2Provider.name),
+	targetConfigSchema: allTargetConfigsSchema(whisparrV2Provider.targetTypes),
+	createInstance: (config: unknown) => new WhisparrV2ProviderInstance(makeInstance(config)),
+} satisfies Provider;
+
 const whisparrRemote = {
 	name: whisparrProvider.name,
 	definition: whisparrProvider,
@@ -562,5 +640,6 @@ export const providers: Provider[] = [
 	radarrRemote,
 	lidarrRemote,
 	prowlarrRemote,
+	whisparrV2Remote,
 	whisparrRemote,
 ];

@@ -1,0 +1,11 @@
+{
+  "provider": "mylarr",
+  "providerVersion": "0.0.1",
+  "image": "lscr.io/linuxserver/mylar3",
+  "imageTag": "0.8.2",
+  "imageDigest": "sha256:837e6e95e861e7625a28380ce31b6a7d03f6ff204806c685ad9b555734f4c8bc",
+  "softwareVersion": "0.8.2",
+  "testedAt": "2026-04-14T15:47:15.048Z",
+  "result": "pass",
+  "log": " Network mylarr_default Creating \n Network mylarr_default Created \n Volume mylarr_mylar_config Creating \n Volume mylarr_mylar_config Created \n Container mylarr-init-1 Creating \n Container mylarr-init-1 Created \n Container mylarr-mylarr-1 Creating \n Container mylarr-mylarr-1 Created \n Container mylarr-init-1 Starting \n Container mylarr-init-1 Started \n Container mylarr-init-1 Waiting \n Container mylarr-init-1 Exited \n Container mylarr-mylarr-1 Starting \n Container mylarr-mylarr-1 Started \n Container mylarr-init-1 Waiting \n Container mylarr-mylarr-1 Waiting \n Container mylarr-init-1 Exited \n Container mylarr-mylarr-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/mylarr/mylarr.test.ts:\n(pass) smoke: api > getVersion returns success with version info [2.79ms]\n(pass) smoke: api > getIndex returns success with an array of comics [1.04ms]\n(pass) smoke: api > getWanted returns an object with issues array [0.90ms]\n(pass) smoke: api > wrong API key returns success=false with auth error [0.89ms]\n(pass) provider: checks > wanted.count returns a non-negative count [1.32ms]\n\n 5 pass\n 0 fail\n 10 expect() calls\nRan 5 tests across 1 file. [50.00ms]\n Container mylarr-mylarr-1 Stopping \n Container mylarr-mylarr-1 Stopped \n Container mylarr-mylarr-1 Removing \n Container mylarr-mylarr-1 Removed \n Container mylarr-init-1 Stopping \n Container mylarr-init-1 Stopped \n Container mylarr-init-1 Removing \n Container mylarr-init-1 Removed \n Volume mylarr_mylar_config Removing \n Network mylarr_default Removing \n Volume mylarr_mylar_config Removed \n Network mylarr_default Removed"
+}

@@ -5,5 +5,6 @@
 - add discord channel
 - add telegram channel
 - add email channel
-- add servarr providers (sonarr, radarr, lidarr, prowlarr, whisparr)
+- add servarr providers
 - add mylarr provider
+- add provider end to end tests

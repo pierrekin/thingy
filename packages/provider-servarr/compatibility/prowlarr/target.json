@@ -1,0 +1,13 @@
+{
+  "image": "lscr.io/linuxserver/prowlarr",
+  "imageSource": "https://github.com/linuxserver/docker-prowlarr",
+  "softwareSource": "https://github.com/Prowlarr/Prowlarr",
+  "versions": [
+    { "tag": "1.36.3", "softwareVersion": "1.36.3" },
+    { "tag": "1.37.0", "softwareVersion": "1.37.0" },
+    { "tag": "2.0.5",  "softwareVersion": "2.0.5"  },
+    { "tag": "2.1.5",  "softwareVersion": "2.1.5"  },
+    { "tag": "2.3.0",  "softwareVersion": "2.3.0"  },
+    { "tag": "2.3.5",  "softwareVersion": "2.3.5"  }
+  ]
+}

@@ -1,0 +1,28 @@
+name: Provider E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/provider-**"
+      - "tests/e2e/providers/**"
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run provider e2e tests
+        run: bun run test:e2e

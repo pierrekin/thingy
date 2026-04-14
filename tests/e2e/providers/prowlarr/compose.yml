@@ -1,6 +1,6 @@
 services:
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:${PROWLARR_VERSION:-latest}
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
     environment:
       PUID: "1000"
       PGID: "1000"

@@ -1,0 +1,7 @@
+{
+  "provider": "sonarr",
+  "version": "4.0.17",
+  "image": "lscr.io/linuxserver/sonarr",
+  "testedAt": "2026-04-13T21:13:33.326Z",
+  "result": "pass"
+}

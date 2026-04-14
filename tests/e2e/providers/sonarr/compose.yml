@@ -1,16 +1,26 @@
 services:
   sonarr:
-    image: lscr.io/linuxserver/sonarr:${SONARR_VERSION:-latest}
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
     environment:
       PUID: "1000"
       PGID: "1000"
       TZ: UTC
       SONARR__Auth__ApiKey: e2etestapikeyfortesting12345678
+      SONARR__App__MetadataSource: http://fake-meta:8080
     ports:
       - "8989:8989"
+    depends_on:
+      fake-meta:
+        condition: service_started
     healthcheck:
       test: curl -sf http://localhost:8989/ping
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 15s
+
+  fake-meta:
+    image: oven/bun:latest
+    command: bun run /app/server.ts
+    volumes:
+      - ../../fake-meta:/app

@@ -20,7 +20,8 @@
     "version": "bun run scripts/version.ts",
     "manifest:publish": "bun run scripts/publish-manifest.ts",
     "test:e2e": "bun run tests/e2e/run.ts",
-    "test:e2e:sonarr": "bun run tests/e2e/run.ts sonarr"
+    "test:e2e:all": "bun run tests/e2e/run.ts --all",
+    "test:e2e:validate": "bun run tests/e2e/validate.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.3.11"

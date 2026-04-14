@@ -1,0 +1,32 @@
+services:
+  init:
+    image: busybox
+    command:
+      - sh
+      - -c
+      - "mkdir -p /config && printf '[General]\\napi_enabled = 1\\napi_key = e2etestapikeyfortautulli01234567\\n' > /config/config.ini"
+    volumes:
+      - tautulli_config:/config
+
+  tautulli:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+    volumes:
+      - tautulli_config:/config
+    ports:
+      - "8181:8181"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: curl -sf "http://localhost:8181/api/v2?apikey=e2etestapikeyfortautulli01234567&cmd=get_activity"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  tautulli_config:

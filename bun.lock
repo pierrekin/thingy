@@ -85,6 +85,7 @@
         "provider-restic": "workspace:*",
         "provider-servarr": "workspace:*",
         "provider-shell": "workspace:*",
+        "provider-tautulli": "workspace:*",
       },
     },
     "packages/mantle-brand": {
@@ -223,6 +224,14 @@
     },
     "packages/provider-shell": {
       "name": "provider-shell",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
+    "packages/provider-tautulli": {
+      "name": "provider-tautulli",
       "version": "0.0.1",
       "dependencies": {
         "mantle-framework": "workspace:*",
@@ -1036,6 +1045,8 @@
     "provider-servarr": ["provider-servarr@workspace:packages/provider-servarr"],
 
     "provider-shell": ["provider-shell@workspace:packages/provider-shell"],
+
+    "provider-tautulli": ["provider-tautulli@workspace:packages/provider-tautulli"],
 
     "punycode": ["punycode@2.3.1", "", {}, "sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg=="],
 

@@ -1,0 +1,32 @@
+services:
+  init:
+    image: busybox
+    command:
+      - sh
+      - -c
+      - "mkdir -p /config/mylar && { echo '[API]'; echo 'api_enabled = True'; echo 'api_key = e2etestapikeyfortesting123456789'; } > /config/mylar/config.ini"
+    volumes:
+      - mylar_config:/config
+
+  mylarr:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+    volumes:
+      - mylar_config:/config
+    ports:
+      - "8090:8090"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: curl -sf "http://localhost:8090/api/?apikey=e2etestapikeyfortesting123456789&cmd=getVersion"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mylar_config:

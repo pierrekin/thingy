@@ -6,3 +6,4 @@
 - add telegram channel
 - add email channel
 - add servarr providers (sonarr, radarr, lidarr, prowlarr, whisparr)
+- add mylarr provider

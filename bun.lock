@@ -78,6 +78,7 @@
       "version": "0.0.1",
       "dependencies": {
         "mantle-framework": "workspace:*",
+        "provider-mylarr": "workspace:*",
         "provider-proxmox": "workspace:*",
         "provider-restic": "workspace:*",
         "provider-servarr": "workspace:*",
@@ -162,6 +163,14 @@
         "mantle-framework": "workspace:*",
       },
     },
+    "packages/provider-mylarr": {
+      "name": "provider-mylarr",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
     "packages/provider-proxmox": {
       "name": "provider-proxmox",
       "version": "0.0.1",
@@ -197,6 +206,7 @@
     "tests/e2e": {
       "name": "e2e",
       "dependencies": {
+        "provider-mylarr": "workspace:*",
         "provider-servarr": "workspace:*",
       },
     },
@@ -993,6 +1003,8 @@
     "prelude-ls": ["prelude-ls@1.2.1", "", {}, "sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g=="],
 
     "pretty-bytes": ["pretty-bytes@6.1.1", "", {}, "sha512-mQUvGU6aUFQ+rNvTIAcZuWGRT9a6f6Yrg9bHs4ImKF+HZCEK+plBvnAZYSIQztknZF2qnzNtr6F8s0+IuptdlQ=="],
+
+    "provider-mylarr": ["provider-mylarr@workspace:packages/provider-mylarr"],
 
     "provider-proxmox": ["provider-proxmox@workspace:packages/provider-proxmox"],
 

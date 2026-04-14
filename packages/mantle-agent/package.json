@@ -9,6 +9,7 @@
     "provider-proxmox": "workspace:*",
     "provider-restic": "workspace:*",
     "provider-shell": "workspace:*",
-    "provider-servarr": "workspace:*"
+    "provider-servarr": "workspace:*",
+    "provider-mylarr": "workspace:*"
   }
 }

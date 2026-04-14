@@ -1,0 +1,12 @@
+{
+  "image": "lscr.io/linuxserver/bazarr",
+  "imageSource": "https://github.com/linuxserver/docker-bazarr",
+  "softwareSource": "https://github.com/morpheus65535/bazarr",
+  "versions": [
+    { "tag": "1.5.2", "softwareVersion": "1.5.2" },
+    { "tag": "1.5.3", "softwareVersion": "1.5.3" },
+    { "tag": "1.5.4", "softwareVersion": "1.5.4" },
+    { "tag": "1.5.5", "softwareVersion": "1.5.5" },
+    { "tag": "1.5.6", "softwareVersion": "1.5.6" }
+  ]
+}

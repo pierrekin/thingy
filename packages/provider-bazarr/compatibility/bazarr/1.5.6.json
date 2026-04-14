@@ -1,0 +1,10 @@
+{
+  "provider": "bazarr",
+  "providerVersion": "0.0.1",
+  "image": "lscr.io/linuxserver/bazarr",
+  "imageTag": "1.5.6",
+  "imageDigest": "sha256:21a4813c5ba120d72ac5f54869b790792bda0784205268eccbc204adb6dbe485",
+  "softwareVersion": "1.5.6",
+  "testedAt": "2026-04-14T20:48:58.236Z",
+  "log": " Network bazarr_default Creating \n Network bazarr_default Created \n Volume bazarr_bazarr_config Creating \n Volume bazarr_bazarr_config Created \n Container bazarr-init-1 Creating \n Container bazarr-init-1 Created \n Container bazarr-bazarr-1 Creating \n Container bazarr-bazarr-1 Created \n Container bazarr-init-1 Starting \n Container bazarr-init-1 Started \n Container bazarr-init-1 Waiting \n Container bazarr-init-1 Exited \n Container bazarr-bazarr-1 Starting \n Container bazarr-bazarr-1 Started \n Container bazarr-bazarr-1 Waiting \n Container bazarr-init-1 Waiting \n Container bazarr-init-1 Exited \n Container bazarr-bazarr-1 Healthy\nbun test v1.3.12 (700fc117)\n\n 8 pass\n 0 fail\n 11 expect() calls\nRan 8 tests across 1 file. [80.00ms]\n Container bazarr-bazarr-1 Stopping \n Container bazarr-bazarr-1 Stopped \n Container bazarr-bazarr-1 Removing \n Container bazarr-bazarr-1 Removed \n Container bazarr-init-1 Stopping \n Container bazarr-init-1 Stopped \n Container bazarr-init-1 Removing \n Container bazarr-init-1 Removed \n Network bazarr_default Removing \n Volume bazarr_bazarr_config Removing \n Volume bazarr_bazarr_config Removed \n Network bazarr_default Removed"
+}

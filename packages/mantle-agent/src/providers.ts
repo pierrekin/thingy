@@ -4,8 +4,9 @@ import { providers as resticProviders } from "provider-restic";
 import { providers as shellProviders } from "provider-shell";
 import { providers as servarrProviders } from "provider-servarr";
 import { providers as mylarrProviders } from "provider-mylarr";
+import { providers as bazarrProviders } from "provider-bazarr";
 
-const allProviders = [...proxmoxProviders, ...resticProviders, ...shellProviders, ...servarrProviders, ...mylarrProviders];
+const allProviders = [...proxmoxProviders, ...resticProviders, ...shellProviders, ...servarrProviders, ...mylarrProviders, ...bazarrProviders];
 
 const registry: Record<string, Provider> = Object.fromEntries(
 	allProviders.map((p) => [p.name, p]),

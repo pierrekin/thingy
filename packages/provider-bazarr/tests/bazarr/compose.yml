@@ -1,0 +1,38 @@
+services:
+  init:
+    image: busybox
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /config/config
+        echo "auth:" > /config/config/config.yaml
+        echo "  apikey: e2etestapikeyfortesting123bazarr" >> /config/config/config.yaml
+        echo "  type: Form" >> /config/config/config.yaml
+        echo "  username: ''" >> /config/config/config.yaml
+        echo "  password: ''" >> /config/config/config.yaml
+    volumes:
+      - bazarr_config:/config
+
+  bazarr:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+    volumes:
+      - bazarr_config:/config
+    ports:
+      - "6767:6767"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -H 'X-Api-Key: e2etestapikeyfortesting123bazarr' http://localhost:6767/api/system/status"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  bazarr_config:

@@ -13,6 +13,7 @@
     "provider-mylarr": "workspace:*",
     "provider-bazarr": "workspace:*",
     "provider-jellyfin": "workspace:*",
-    "provider-tautulli": "workspace:*"
+    "provider-tautulli": "workspace:*",
+    "provider-nzbhydra2": "workspace:*"
   }
 }

@@ -19,4 +19,5 @@ export const providers: Provider[] = [
   { name: "bazarr",    packageDir: join(PACKAGES, "provider-bazarr"),   script: "test:e2e:bazarr" },
   { name: "jellyfin",  packageDir: join(PACKAGES, "provider-jellyfin"),  script: "test:e2e:jellyfin" },
   { name: "tautulli", packageDir: join(PACKAGES, "provider-tautulli"), script: "test:e2e:tautulli" },
+  { name: "nzbhydra2", packageDir: join(PACKAGES, "provider-nzbhydra2"), script: "test:e2e:nzbhydra2" },
 ];

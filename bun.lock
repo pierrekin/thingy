@@ -81,6 +81,7 @@
         "provider-bazarr": "workspace:*",
         "provider-jellyfin": "workspace:*",
         "provider-mylarr": "workspace:*",
+        "provider-nzbhydra2": "workspace:*",
         "provider-proxmox": "workspace:*",
         "provider-restic": "workspace:*",
         "provider-servarr": "workspace:*",
@@ -192,6 +193,14 @@
     },
     "packages/provider-mylarr": {
       "name": "provider-mylarr",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
+    "packages/provider-nzbhydra2": {
+      "name": "provider-nzbhydra2",
       "version": "0.0.1",
       "dependencies": {
         "mantle-framework": "workspace:*",
@@ -1037,6 +1046,8 @@
     "provider-jellyfin": ["provider-jellyfin@workspace:packages/provider-jellyfin"],
 
     "provider-mylarr": ["provider-mylarr@workspace:packages/provider-mylarr"],
+
+    "provider-nzbhydra2": ["provider-nzbhydra2@workspace:packages/provider-nzbhydra2"],
 
     "provider-proxmox": ["provider-proxmox@workspace:packages/provider-proxmox"],
 

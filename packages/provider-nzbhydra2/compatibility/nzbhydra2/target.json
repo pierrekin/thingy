@@ -1,0 +1,12 @@
+{
+  "image": "lscr.io/linuxserver/nzbhydra2",
+  "imageSource": "https://github.com/linuxserver/docker-nzbhydra2",
+  "softwareSource": "https://github.com/theotherp/nzbhydra2",
+  "versions": [
+    { "tag": "8.5.0", "softwareVersion": "8.5.0" },
+    { "tag": "8.5.1", "softwareVersion": "8.5.1" },
+    { "tag": "8.5.2", "softwareVersion": "8.5.2" },
+    { "tag": "8.5.3", "softwareVersion": "8.5.3" },
+    { "tag": "8.5.4", "softwareVersion": "8.5.4" }
+  ]
+}

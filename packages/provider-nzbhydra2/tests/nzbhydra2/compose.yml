@@ -1,0 +1,36 @@
+services:
+  init:
+    image: busybox
+    command:
+      - sh
+      - -c
+      - "cp /tmp/nzbhydra.yml /config/nzbhydra.yml"
+    volumes:
+      - ./nzbhydra.yml:/tmp/nzbhydra.yml:ro
+      - nzbhydra2_config:/config
+
+  nzbhydra2:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+    volumes:
+      - nzbhydra2_config:/config
+    ports:
+      - "5076:5076"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: >-
+        curl -sf -X POST http://localhost:5076/api/stats/indexers
+        -H "Content-Type: application/json"
+        -d '{"apikey":"442HS2R934QOGQBGIII34TRK2P"}'
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 60s
+
+volumes:
+  nzbhydra2_config:

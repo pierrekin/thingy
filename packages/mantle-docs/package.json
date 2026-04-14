@@ -1,13 +1,13 @@
 {
   "name": "@mantle-team/mantle-docs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "files": ["docs", "compatibility"],
+  "files": ["src", "docs", "dist"],
   "scripts": {
-    "build:compat": "bun run scripts/build-compat.ts"
+    "build:compatibility": "bun run scripts/build-compatibility.ts"
   },
   "devDependencies": {
     "provider-servarr": "workspace:*",

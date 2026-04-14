@@ -1,23 +1,21 @@
 import { providers } from "./providers.ts";
 
-const [command, arg] = Bun.argv.slice(2) as [string | undefined, string | undefined];
+const rawArgs = Bun.argv.slice(2);
+const record = rawArgs.includes("--record");
+const positional = rawArgs.filter(a => !a.startsWith("-"));
+const [command, target] = positional;
 
-const validCommands: Record<string, string[]> = {
-  check: ["latest", "all"],
-  validate: ["missing", "all"],
-};
-
-if (!command || !validCommands[command] || (arg && !validCommands[command]!.includes(arg))) {
-  console.error("Usage: bun run test:e2e <check latest|check all|validate missing|validate all>");
+if (command !== "test" || !target) {
+  console.error("Usage: bun run run.ts test [--record] <latest|all|missing|<version>>");
   process.exit(1);
 }
 
-if (!arg) {
-  console.error("Usage: bun run test:e2e <check latest|check all|validate missing|validate all>");
+if (target === "missing" && !record) {
+  console.error("'missing' is only valid with --record");
   process.exit(1);
 }
 
-console.log(`Running e2e (${command} ${arg}) for: ${providers.map((p) => p.name).join(", ")}`);
+console.log(`Running e2e (test${record ? " --record" : ""} ${target}) for: ${providers.map((p) => p.name).join(", ")}`);
 
 async function drain(readable: ReadableStream<Uint8Array> | null): Promise<void> {
   if (!readable) return;
@@ -33,7 +31,7 @@ async function drain(readable: ReadableStream<Uint8Array> | null): Promise<void>
 async function run(provider: typeof providers[number]): Promise<{ name: string; passed: boolean }> {
   console.log(`START ${provider.name}`);
 
-  const proc = Bun.spawn(["bun", "run", provider.script, command!, arg!], {
+  const proc = Bun.spawn(["bun", "run", provider.script, ...rawArgs], {
     cwd: provider.packageDir,
     stdout: "pipe",
     stderr: "pipe",

@@ -5,9 +5,7 @@ on:
     branches: [main]
     paths:
       - "packages/provider-**"
-      - "tests/e2e/providers/**"
-  schedule:
-    - cron: "0 2 * * *"
+      - "packages/mantle-framework/**"
   workflow_dispatch:
 
 jobs:

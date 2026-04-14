@@ -100,40 +100,37 @@ export async function createRunner(meta: ImportMeta, config: RunnerConfig): Prom
   const target: Target = JSON.parse(readFileSync(targetPath, "utf8"));
   const { version: providerVersion } = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
 
-  const [command, arg] = Bun.argv.slice(2) as [string | undefined, string | undefined];
+  const rawArgs = Bun.argv.slice(2);
+  const record = rawArgs.includes("--record");
+  const positional = rawArgs.filter(a => !a.startsWith("-"));
+  const command = positional[0];
+  const target_arg = positional[1];
 
-  if (command !== "check" && command !== "validate") {
-    console.error(`Usage: bun run run.ts <check latest|check all|check <version>|validate <version>>`);
+  if (command !== "test" || !target_arg) {
+    console.error(`Usage: bun run run.ts test [--record] <latest|all|missing|<version>>`);
+    process.exit(1);
+  }
+
+  if (target_arg === "missing" && !record) {
+    console.error(`'missing' is only valid with --record`);
     process.exit(1);
   }
 
   let entries: VersionEntry[];
 
-  if (command === "validate") {
-    if (!arg) { console.error("validate requires a version tag or 'missing'"); process.exit(1); }
-    if (arg === "missing") {
-      entries = target.versions.filter(v => !existsSync(join(compatDir, `${v.softwareVersion}.json`)));
-      if (entries.length === 0) { console.log(`OK  ${config.name}: all versions validated`); return; }
-    } else {
-      const entry = target.versions.find(v => v.tag === arg);
-      if (!entry) {
-        console.error(`Tag "${arg}" not found in target.json — add { tag, softwareVersion } entry before validating`);
-        process.exit(1);
-      }
-      entries = [entry];
-    }
+  if (record && target_arg === "missing") {
+    entries = target.versions.filter(v => !existsSync(join(compatDir, `${v.softwareVersion}.json`)));
+    if (entries.length === 0) { console.log(`OK  ${config.name}: all versions recorded`); return; }
+  } else if (target_arg === "all") {
+    if (target.versions.length === 0) { console.log(`SKIP  ${config.name}: no versions in target.json`); return; }
+    entries = target.versions;
+  } else if (target_arg === "latest") {
+    if (target.versions.length === 0) { console.log(`SKIP  ${config.name}: no versions in target.json`); return; }
+    entries = [target.versions[target.versions.length - 1]!];
   } else {
-    if (!arg || arg === "latest") {
-      if (target.versions.length === 0) { console.log(`SKIP  ${config.name}: no versions in target.json`); return; }
-      entries = [target.versions[target.versions.length - 1]!];
-    } else if (arg === "all") {
-      if (target.versions.length === 0) { console.log(`SKIP  ${config.name}: no versions in target.json`); return; }
-      entries = target.versions;
-    } else {
-      const entry = target.versions.find(v => v.tag === arg || v.softwareVersion === arg);
-      if (!entry) { console.error(`Version "${arg}" not found in target.json`); process.exit(1); }
-      entries = [entry];
-    }
+    const entry = target.versions.find(v => v.tag === target_arg || v.softwareVersion === target_arg);
+    if (!entry) { console.error(`Version "${target_arg}" not found in target.json`); process.exit(1); }
+    entries = [entry];
   }
 
   const results: VersionResult[] = [];
@@ -147,7 +144,7 @@ export async function createRunner(meta: ImportMeta, config: RunnerConfig): Prom
     }
     results.push(result);
 
-    if (result.passed && command === "validate") {
+    if (result.passed && record) {
       const imageDigest = await getImageDigest(target.image, entry.tag);
       const record = {
         provider: config.name,
@@ -157,14 +154,13 @@ export async function createRunner(meta: ImportMeta, config: RunnerConfig): Prom
         imageDigest,
         softwareVersion: entry.softwareVersion,
         testedAt: new Date().toISOString(),
-        result: "pass" as const,
         log: result.output,
       };
       mkdirSync(compatDir, { recursive: true });
       writeFileSync(join(compatDir, `${entry.softwareVersion}.json`), JSON.stringify(record, null, 2) + "\n");
       console.log(`PASS  ${config.name}@${entry.softwareVersion} → recorded`);
-    } else if (!result.passed && command === "validate") {
-      console.error(`FAIL  ${config.name}@${entry.softwareVersion} — not recorded`);
+    } else if (!result.passed) {
+      console.error(`FAIL  ${config.name}@${entry.softwareVersion}`);
     }
   }
 

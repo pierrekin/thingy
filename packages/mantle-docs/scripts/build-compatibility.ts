@@ -1,23 +1,34 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { join, dirname } from "path";
+import { join } from "path";
 
 const PACKAGES_DIR = join(import.meta.dirname, "../..");
-const OUT_DIR = join(import.meta.dirname, "../compatibility");
+const PROVIDERS_OUT_DIR = join(import.meta.dirname, "../dist/compatibility/providers");
 
-mkdirSync(OUT_DIR, { recursive: true });
+mkdirSync(PROVIDERS_OUT_DIR, { recursive: true });
 
-type VersionRecord = {
+type CompatRecord = {
   provider: string;
-  version: string;
+  providerVersion: string | null;
   image: string;
+  imageTag: string;
+  imageDigest: string | null;
+  softwareVersion: string;
   testedAt: string;
-  result: "pass";
+  log: string | null;
 };
 
-type CompatOutput = {
-  provider: string;
+type TargetJson = {
   image: string;
-  versions: VersionRecord[];
+  imageSource: string;
+  softwareSource: string;
+};
+
+type ProviderCompat = {
+  name: string;
+  image: string;
+  imageSource: string;
+  softwareSource: string;
+  versions: CompatRecord[];
 };
 
 for (const pkgEntry of readdirSync(PACKAGES_DIR, { withFileTypes: true })) {
@@ -31,20 +42,22 @@ for (const pkgEntry of readdirSync(PACKAGES_DIR, { withFileTypes: true })) {
     const targetPath = join(appDir, "target.json");
     if (!existsSync(targetPath)) continue;
 
-    const target = JSON.parse(readFileSync(targetPath, "utf8")) as { image: string; versions: string[] };
+    const target = JSON.parse(readFileSync(targetPath, "utf8")) as TargetJson;
 
-    const versions: VersionRecord[] = readdirSync(appDir)
+    const versions: CompatRecord[] = readdirSync(appDir)
       .filter((f) => f.endsWith(".json") && f !== "target.json")
-      .map((f) => JSON.parse(readFileSync(join(appDir, f), "utf8")) as VersionRecord)
+      .map((f) => JSON.parse(readFileSync(join(appDir, f), "utf8")) as CompatRecord)
       .sort((a, b) => a.testedAt.localeCompare(b.testedAt));
 
-    const output: CompatOutput = {
-      provider: appEntry.name,
+    const output: ProviderCompat = {
+      name: appEntry.name,
       image: target.image,
+      imageSource: target.imageSource,
+      softwareSource: target.softwareSource,
       versions,
     };
 
-    const outFile = join(OUT_DIR, `${appEntry.name}.json`);
+    const outFile = join(PROVIDERS_OUT_DIR, `${appEntry.name}.json`);
     writeFileSync(outFile, JSON.stringify(output, null, 2) + "\n");
     console.log(`  ${appEntry.name} → ${versions.length} version(s)`);
   }

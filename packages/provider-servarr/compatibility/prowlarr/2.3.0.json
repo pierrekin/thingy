@@ -6,6 +6,5 @@
   "imageDigest": "sha256:e50f3b188a7d1771b61f395c4203e35476bd3047683508740305e830e15bacf7",
   "softwareVersion": "2.3.0",
   "testedAt": "2026-04-14T15:45:11.833Z",
-  "result": "pass",
   "log": " Network prowlarr_default Creating \n Network prowlarr_default Created \n Container prowlarr-prowlarr-1 Creating \n Container prowlarr-prowlarr-1 Created \n Container prowlarr-prowlarr-1 Starting \n Container prowlarr-prowlarr-1 Started \n Container prowlarr-prowlarr-1 Waiting \n Container prowlarr-prowlarr-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/prowlarr/prowlarr.test.ts:\n(pass) smoke: api > ping is reachable without auth [16.90ms]\n(pass) smoke: api > system/status returns a version string [40.27ms]\n(pass) smoke: api > health returns an array of items with expected shape [12.19ms]\n(pass) smoke: api > indexer returns an array [36.41ms]\n(pass) provider: checks > health.errors returns a non-negative count [2.41ms]\n(pass) provider: checks > health.warnings returns a non-negative count [1.34ms]\n\n 6 pass\n 0 fail\n 13 expect() calls\nRan 6 tests across 1 file. [162.00ms]\n Container prowlarr-prowlarr-1 Stopping \n Container prowlarr-prowlarr-1 Stopped \n Container prowlarr-prowlarr-1 Removing \n Container prowlarr-prowlarr-1 Removed \n Network prowlarr_default Removing \n Network prowlarr_default Removed"
 }

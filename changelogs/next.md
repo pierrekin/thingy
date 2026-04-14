@@ -9,3 +9,4 @@
 - add mylarr provider
 - add provider end to end tests
 - add bazarr provider
+- add jellyfin provider

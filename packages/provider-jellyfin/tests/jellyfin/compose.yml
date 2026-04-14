@@ -1,0 +1,28 @@
+services:
+  jellyfin:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    environment:
+      JELLYFIN_DATA_DIR: /config/data
+      JELLYFIN_LOG_DIR: /config/log
+      JELLYFIN_CACHE_DIR: /config/cache
+    ports:
+      - "8096:8096"
+    healthcheck:
+      test: curl -sf http://localhost:8096/System/Ping
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  init:
+    image: curlimages/curl:latest
+    depends_on:
+      jellyfin:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - "until curl -sf http://jellyfin:8096/Startup/User > /dev/null; do sleep 1; done && curl -sf -X POST http://jellyfin:8096/Startup/User -H 'Content-Type: application/json' -d '{\"Name\":\"admin\",\"Password\":\"e2etestpassword123\"}' && curl -sf -X POST http://jellyfin:8096/Startup/Complete && until curl -sf -X POST http://jellyfin:8096/Users/AuthenticateByName -H 'Content-Type: application/json' -H 'Authorization: MediaBrowser Client=\"mantle-e2e\", Device=\"init\", DeviceId=\"mantle-e2e-init\", Version=\"1.0.0\"' -d '{\"Username\":\"admin\",\"Pw\":\"e2etestpassword123\"}' > /dev/null; do sleep 1; done"
+
+volumes:
+  jellyfin_config:

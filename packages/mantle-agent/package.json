@@ -11,6 +11,7 @@
     "provider-shell": "workspace:*",
     "provider-servarr": "workspace:*",
     "provider-mylarr": "workspace:*",
-    "provider-bazarr": "workspace:*"
+    "provider-bazarr": "workspace:*",
+    "provider-jellyfin": "workspace:*"
   }
 }

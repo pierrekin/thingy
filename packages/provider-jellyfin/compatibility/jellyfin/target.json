@@ -1,0 +1,12 @@
+{
+  "image": "jellyfin/jellyfin",
+  "imageSource": "https://github.com/jellyfin/jellyfin",
+  "softwareSource": "https://github.com/jellyfin/jellyfin",
+  "versions": [
+    { "tag": "10.10.5", "softwareVersion": "10.10.5" },
+    { "tag": "10.10.6", "softwareVersion": "10.10.6" },
+    { "tag": "10.11.6", "softwareVersion": "10.11.6" },
+    { "tag": "10.11.7", "softwareVersion": "10.11.7" },
+    { "tag": "10.11.8", "softwareVersion": "10.11.8" }
+  ]
+}

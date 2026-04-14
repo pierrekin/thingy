@@ -79,6 +79,7 @@
       "dependencies": {
         "mantle-framework": "workspace:*",
         "provider-bazarr": "workspace:*",
+        "provider-jellyfin": "workspace:*",
         "provider-mylarr": "workspace:*",
         "provider-proxmox": "workspace:*",
         "provider-restic": "workspace:*",
@@ -179,6 +180,14 @@
     "packages/provider-e2e": {
       "name": "provider-e2e",
       "version": "0.0.1",
+    },
+    "packages/provider-jellyfin": {
+      "name": "provider-jellyfin",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "zod": "^4.3.6",
+      },
     },
     "packages/provider-mylarr": {
       "name": "provider-mylarr",
@@ -1015,6 +1024,8 @@
     "provider-bazarr": ["provider-bazarr@workspace:packages/provider-bazarr"],
 
     "provider-e2e": ["provider-e2e@workspace:packages/provider-e2e"],
+
+    "provider-jellyfin": ["provider-jellyfin@workspace:packages/provider-jellyfin"],
 
     "provider-mylarr": ["provider-mylarr@workspace:packages/provider-mylarr"],
 

@@ -1,0 +1,10 @@
+{
+  "provider": "jellyfin",
+  "providerVersion": "0.0.1",
+  "image": "jellyfin/jellyfin",
+  "imageTag": "10.11.8",
+  "imageDigest": "sha256:1694ff069f0c9dafb283c36765175606866769f5d72f2ed56b6a0f1be922fc37",
+  "softwareVersion": "10.11.8",
+  "testedAt": "2026-04-14T21:26:04.796Z",
+  "log": " Network jellyfin_default Creating \n Network jellyfin_default Created \n Container jellyfin-jellyfin-1 Creating \n Container jellyfin-jellyfin-1 Created \n Container jellyfin-init-1 Creating \n Container jellyfin-init-1 Created \n Container jellyfin-jellyfin-1 Starting \n Container jellyfin-jellyfin-1 Started \n Container jellyfin-jellyfin-1 Waiting \n Container jellyfin-jellyfin-1 Healthy \n Container jellyfin-init-1 Starting \n Container jellyfin-init-1 Started \n Container jellyfin-init-1 Waiting \n Container jellyfin-jellyfin-1 Waiting \n Container jellyfin-init-1 Healthy \n Container jellyfin-jellyfin-1 Healthy\nbun test v1.3.12 (700fc117)\n\n 3 pass\n 0 fail\n 3 expect() calls\nRan 3 tests across 1 file. [3.11s]\n Container jellyfin-init-1 Stopping \n Container jellyfin-init-1 Stopped \n Container jellyfin-init-1 Removing \n Container jellyfin-init-1 Removed \n Container jellyfin-jellyfin-1 Stopping \n Container jellyfin-jellyfin-1 Stopped \n Container jellyfin-jellyfin-1 Removing \n Container jellyfin-jellyfin-1 Removed \n Network jellyfin_default Removing \n Network jellyfin_default Removed"
+}

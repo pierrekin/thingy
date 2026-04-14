@@ -1,0 +1,25 @@
+name: Compatibility Lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/provider-**/compatibility/**"
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Lint compatibility records
+        run: bun run lint:compatibility

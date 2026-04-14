@@ -18,7 +18,7 @@ services:
     volumes:
       - whisparr-v2-config:/config
     ports:
-      - "6969:6969"
+      - "6970:6969"
     healthcheck:
       test: curl -sf http://localhost:6969/ping
       interval: 5s

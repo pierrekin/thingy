@@ -20,7 +20,8 @@
     "manifest:publish": "bun run scripts/publish-manifest.ts",
     "test:e2e": "bun run packages/provider-e2e/run.ts test all",
     "record:missing": "bun run packages/provider-e2e/run.ts test --record missing",
-    "record:all": "bun run packages/provider-e2e/run.ts test --record all"
+    "record:all": "bun run packages/provider-e2e/run.ts test --record all",
+    "lint:compatibility": "bun run packages/provider-e2e/run.ts lint"
   },
   "devDependencies": {
     "@types/bun": "^1.3.11"

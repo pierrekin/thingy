@@ -106,7 +106,22 @@ export async function createRunner(meta: ImportMeta, config: RunnerConfig): Prom
   const command = positional[0];
   const target_arg = positional[1];
 
-  if (command !== "test" || !target_arg) {
+  if (command !== "test" && command !== "lint") {
+    console.error(`Usage: bun run run.ts <test [--record] <latest|all|missing|<version>>|lint>`);
+    process.exit(1);
+  }
+
+  if (command === "lint") {
+    const missing = target.versions.filter(v => !existsSync(join(compatDir, `${v.softwareVersion}.json`)));
+    for (const v of missing) {
+      console.error(`MISSING  ${config.name}@${v.softwareVersion}`);
+    }
+    if (missing.length > 0) process.exit(1);
+    console.log(`OK  ${config.name}`);
+    return;
+  }
+
+  if (!target_arg) {
     console.error(`Usage: bun run run.ts test [--record] <latest|all|missing|<version>>`);
     process.exit(1);
   }

@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
-const WHISPARR_URL = process.env.WHISPARR_URL ?? "http://localhost:6969";
+const WHISPARR_URL = process.env.WHISPARR_URL ?? "http://localhost:6970";
 const WHISPARR_API_KEY = process.env.WHISPARR_API_KEY ?? "e2etestapikeyfortesting12345678";
 
 async function whisparrGet<T>(path: string): Promise<T> {

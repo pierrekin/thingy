@@ -5,17 +5,23 @@ const record = rawArgs.includes("--record");
 const positional = rawArgs.filter(a => !a.startsWith("-"));
 const [command, target] = positional;
 
-if (command !== "test" || !target) {
+if (command !== "test" && command !== "lint") {
+  console.error("Usage: bun run run.ts <test [--record] <latest|all|missing|<version>>|lint>");
+  process.exit(1);
+}
+
+if (command === "test" && !target) {
   console.error("Usage: bun run run.ts test [--record] <latest|all|missing|<version>>");
   process.exit(1);
 }
 
-if (target === "missing" && !record) {
+if (command === "test" && target === "missing" && !record) {
   console.error("'missing' is only valid with --record");
   process.exit(1);
 }
 
-console.log(`Running e2e (test${record ? " --record" : ""} ${target}) for: ${providers.map((p) => p.name).join(", ")}`);
+const description = command === "lint" ? "lint" : `test${record ? " --record" : ""} ${target}`;
+console.log(`Running e2e (${description}) for: ${providers.map((p) => p.name).join(", ")}`);
 
 async function drain(readable: ReadableStream<Uint8Array> | null): Promise<void> {
   if (!readable) return;

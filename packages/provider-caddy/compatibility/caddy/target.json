@@ -1,0 +1,12 @@
+{
+  "image": "caddy",
+  "imageSource": "https://hub.docker.com/_/caddy",
+  "softwareSource": "https://github.com/caddyserver/caddy",
+  "versions": [
+    { "tag": "2.9.1", "softwareVersion": "2.9.1" },
+    { "tag": "2.10.0", "softwareVersion": "2.10.0" },
+    { "tag": "2.10.2", "softwareVersion": "2.10.2" },
+    { "tag": "2.11.1", "softwareVersion": "2.11.1" },
+    { "tag": "2.11.2", "softwareVersion": "2.11.2" }
+  ]
+}

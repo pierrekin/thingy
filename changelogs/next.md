@@ -12,3 +12,4 @@
 - add jellyfin provider
 - add tautulli provider
 - add nzbhydra2 provider
+- add caddy provider

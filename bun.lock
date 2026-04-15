@@ -79,6 +79,7 @@
       "dependencies": {
         "mantle-framework": "workspace:*",
         "provider-bazarr": "workspace:*",
+        "provider-caddy": "workspace:*",
         "provider-jellyfin": "workspace:*",
         "provider-mylarr": "workspace:*",
         "provider-nzbhydra2": "workspace:*",
@@ -173,6 +174,14 @@
     },
     "packages/provider-bazarr": {
       "name": "provider-bazarr",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
+    "packages/provider-caddy": {
+      "name": "provider-caddy",
       "version": "0.0.1",
       "dependencies": {
         "mantle-framework": "workspace:*",
@@ -1040,6 +1049,8 @@
     "pretty-bytes": ["pretty-bytes@6.1.1", "", {}, "sha512-mQUvGU6aUFQ+rNvTIAcZuWGRT9a6f6Yrg9bHs4ImKF+HZCEK+plBvnAZYSIQztknZF2qnzNtr6F8s0+IuptdlQ=="],
 
     "provider-bazarr": ["provider-bazarr@workspace:packages/provider-bazarr"],
+
+    "provider-caddy": ["provider-caddy@workspace:packages/provider-caddy"],
 
     "provider-e2e": ["provider-e2e@workspace:packages/provider-e2e"],
 

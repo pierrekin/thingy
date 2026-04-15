@@ -1,0 +1,85 @@
+services:
+  init:
+    image: busybox
+    command:
+      - sh
+      - -c
+      - |
+        cat > /etc/caddy/Caddyfile << 'EOF'
+        {
+            admin 0.0.0.0:2019
+        }
+
+        :8080 {
+            reverse_proxy upstream:80
+        }
+
+        :8081 {
+            reverse_proxy 127.0.0.1:9999 {
+                fail_duration 30s
+            }
+        }
+
+        :8082 {
+            reverse_proxy slow-upstream:80
+        }
+        EOF
+    volumes:
+      - caddy_config:/etc/caddy
+
+  upstream:
+    image: nginx:alpine
+    healthcheck:
+      test: wget -qO- http://localhost:80/
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  slow-upstream:
+    image: python:alpine
+    command:
+      - python3
+      - -c
+      - |
+        import http.server, time
+        class H(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+            time.sleep(3)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'ok')
+          def log_message(self, *a): pass
+        http.server.HTTPServer(('', 80), H).serve_forever()
+    healthcheck:
+      test: python3 -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('localhost',80)); s.close()"
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: ${TARGET_IMAGE}:${TARGET_VERSION}
+    volumes:
+      - caddy_config:/etc/caddy
+    ports:
+      - "2019:2019"
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      upstream:
+        condition: service_healthy
+      slow-upstream:
+        condition: service_healthy
+    healthcheck:
+      test: >-
+        sh -c "caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile --force &&
+        wget -qO- http://localhost:2019/metrics | grep -q caddy_config_last_reload_successful"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  caddy_config:

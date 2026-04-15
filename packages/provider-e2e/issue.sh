@@ -29,6 +29,7 @@ for version in "${missing[@]}"; do
   echo "Creating issue for $provider@$version"
 
   gh issue create \
+    --label "compatibility-failure" --label "claude-triage" \
     --title "Compatibility failure: $provider $version" \
     --body "$(cat <<EOF
 $provider $version failed compatibility testing.

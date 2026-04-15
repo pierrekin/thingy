@@ -64,7 +64,7 @@ try {
 } catch (err) {
   log(err instanceof Error ? err.message : String(err));
 } finally {
-  const down = Bun.spawn(["docker", "compose", "down", "--volumes"], {
+  const down = Bun.spawn(["docker", "compose", "down", "--volumes", "--rmi", "all"], {
     cwd: provider.testDir,
     stdout: "pipe",
     stderr: "pipe",

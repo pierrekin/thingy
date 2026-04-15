@@ -3,10 +3,25 @@
   "imageSource": "https://github.com/Tautulli/Tautulli-Docker",
   "softwareSource": "https://github.com/Tautulli/Tautulli",
   "versions": [
-    { "tag": "v2.15.2", "softwareVersion": "2.15.2" },
-    { "tag": "v2.15.3", "softwareVersion": "2.15.3" },
-    { "tag": "v2.16.0", "softwareVersion": "2.16.0" },
-    { "tag": "v2.16.1", "softwareVersion": "2.16.1" },
-    { "tag": "v2.17.0", "softwareVersion": "2.17.0" }
+    {
+      "tag": "v2.15.2",
+      "softwareVersion": "2.15.2"
+    },
+    {
+      "tag": "v2.15.3",
+      "softwareVersion": "2.15.3"
+    },
+    {
+      "tag": "v2.16.0",
+      "softwareVersion": "2.16.0"
+    },
+    {
+      "tag": "v2.16.1",
+      "softwareVersion": "2.16.1"
+    },
+    {
+      "tag": "v2.17.0",
+      "softwareVersion": "2.17.0"
+    }
   ]
 }

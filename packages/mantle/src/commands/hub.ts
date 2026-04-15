@@ -17,6 +17,7 @@ export const hub = defineCommand({
 			{ outcomeStore: stores.channelOutcomeStore, eventStore: stores.channelEventStore, bucketStore: stores.channelBucketStore },
 			{ outcomeStore: stores.agentOutcomeStore, eventStore: stores.agentEventStore, bucketStore: stores.agentBucketStore },
 			stores.channelOutboxStore,
+			stores.sinkOutboxStore,
 		);
 	}),
 });

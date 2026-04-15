@@ -56,6 +56,7 @@ const configSchema = z
 			.optional(),
 		providers: z.record(z.string(), z.unknown()).optional(),
 		channels: z.record(z.string(), z.unknown()).optional(),
+		sinks: z.record(z.string(), z.unknown()).optional(),
 		agent: agentSchema.optional(),
 		agents: z.record(z.string(), agentSchema).optional(),
 	})

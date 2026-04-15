@@ -13,3 +13,5 @@
 - add tautulli provider
 - add nzbhydra2 provider
 - add caddy provider
+- add remote channels
+- add sinks

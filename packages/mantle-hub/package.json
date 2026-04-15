@@ -13,6 +13,7 @@
     "channel-discord": "workspace:*",
     "channel-telegram": "workspace:*",
     "channel-email": "workspace:*",
+    "sink-jsonl": "workspace:*",
     "hono": "^4.12.9"
   }
 }

@@ -6,6 +6,7 @@ import { createAgentApp } from "./agent.ts";
 import { createFetchHandler, createWebSocketHandler } from "./server.ts";
 import { HubService } from "./service.ts";
 import { ChannelSessionManager } from "./channel-session.ts";
+import { SinkSessionManager } from "./sink-session.ts";
 import { DEFAULT_BUCKET_CONFIG } from "./buckets.ts";
 import { WebService } from "./web-service.ts";
 import {
@@ -47,6 +48,7 @@ export async function startHub(
 	channelStores: ChannelStores,
 	agentStores: AgentStores,
 	channelOutbox: OutboxStore,
+	sinkOutbox: OutboxStore,
 ) {
 	const bucketPublishers = {
 		provider: new ProviderBucketPublisher(),
@@ -81,6 +83,7 @@ export async function startHub(
 		agentStatusPublisher,
 		DEFAULT_BUCKET_CONFIG,
 		channelOutbox,
+		sinkOutbox,
 	);
 	const webService = new WebService(
 		bucketStore, eventStore, metricsStore, outcomeStore,
@@ -97,6 +100,7 @@ export async function startHub(
 	await hubService.init();
 
 	const channelSessionManager = new ChannelSessionManager(channelOutbox);
+	const sinkSessionManager = new SinkSessionManager(sinkOutbox);
 
 	const app = new Hono();
 	app.route("/agent-api", createAgentApp());
@@ -108,7 +112,7 @@ export async function startHub(
 		hostname: ip,
 		port,
 		fetch: createFetchHandler(app),
-		websocket: createWebSocketHandler(hubService, webService, channelSessionManager),
+		websocket: createWebSocketHandler(hubService, webService, channelSessionManager, sinkSessionManager),
 	});
 
 	console.log(`Hub listening on ${ip}:${port}`);

@@ -16,6 +16,7 @@ import type {
 	AgentStatusPublisher,
 } from "./pubsub.ts";
 import { getBucketBounds, DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
+import type { SinkOutboxPayload } from "./sink-outbox.ts";
 
 type BucketPublishers = {
 	provider: ProviderBucketPublisher;
@@ -48,6 +49,7 @@ export class HubService {
 	private agentStores: AgentStores;
 	private agentPublishers: AgentPublishers;
 	private agentStatusPublisher: AgentStatusPublisher;
+	private sinkOutbox: OutboxStore;
 
 	constructor(
 		private outcomeStore: OutcomeStore,
@@ -63,6 +65,7 @@ export class HubService {
 		agentStatusPublisher: AgentStatusPublisher,
 		bucketConfig: BucketConfig,
 		channelOutbox: OutboxStore,
+		sinkOutbox: OutboxStore,
 	) {
 		this.bucketPublishers = bucketPublishers;
 		this.outcomePublisher = outcomePublisher;
@@ -71,6 +74,7 @@ export class HubService {
 		this.agentStores = agentStores;
 		this.agentPublishers = agentPublishers;
 		this.agentStatusPublisher = agentStatusPublisher;
+		this.sinkOutbox = sinkOutbox;
 		this.events = new EventTracker(eventStore, eventPublishers, channelOutbox);
 		this.bucketConfig = bucketConfig;
 	}
@@ -288,6 +292,18 @@ export class HubService {
 
 	private publishOutcome(provider: string, target: string, check: string, eventId: number | undefined, outcome: { time: number; success: boolean; error: string | null; value: number | null; violation: string | null }): void {
 		this.outcomePublisher.publish({ ...outcome, id: 0, eventId, provider, target, check });
+
+		const sinkPayload: SinkOutboxPayload = {
+			time: outcome.time,
+			provider,
+			target,
+			check,
+			success: outcome.success,
+			value: outcome.value,
+			error: outcome.error,
+			violation: outcome.violation,
+		};
+		void this.sinkOutbox.append(JSON.stringify(sinkPayload));
 	}
 
 	private mergeStatus(existing: BucketStatus | undefined, incoming: BucketStatus): BucketStatus {

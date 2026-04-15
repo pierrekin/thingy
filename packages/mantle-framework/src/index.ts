@@ -49,6 +49,7 @@ export type { CheckResultPayload, AgentMessage, HubMessage } from "./protocol.ts
 // Provider & channel interfaces
 export type { ProviderInstance, Provider } from "./provider-interface.ts";
 export type { ChannelInstance, Channel } from "./channel.ts";
+export type { SinkInstance, SinkRecord, Sink } from "./sink.ts";
 
 // Config
 export { loadConfig, type Config, type HubConfig, type AgentConfig } from "./config.ts";

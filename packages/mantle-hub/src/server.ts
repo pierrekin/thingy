@@ -4,12 +4,14 @@ import type { AgentMessage } from "mantle-framework";
 import type { HubService } from "./service.ts";
 import type { WebService } from "./web-service.ts";
 import type { ChannelSessionManager } from "./channel-session.ts";
+import type { SinkSessionManager } from "./sink-session.ts";
 import { createMantleSocketHandler, type MantleSocket } from "./mantle-socket.ts";
 
 type WebData = { audience: "web" };
 type AgentData = { audience: "agent"; agentId?: string };
 type ChannelData = { audience: "channel"; channelId?: string };
-type WebSocketData = WebData | AgentData | ChannelData;
+type SinkData = { audience: "sink"; sinkId?: string };
+type WebSocketData = WebData | AgentData | ChannelData | SinkData;
 
 function handleAgentOpen(ms: MantleSocket<AgentData>): void {
 	ms.send(JSON.stringify({ type: "hub_hello" }));
@@ -30,6 +32,16 @@ async function handleChannelMessage(ms: MantleSocket<ChannelData>, message: stri
 		await channelSessionManager.handleHello(ms, msg.channelId);
 	} else if (msg.type === "channel_ack" && msg.cursor !== undefined) {
 		await channelSessionManager.handleAck(ms, msg.cursor);
+	}
+}
+
+async function handleSinkMessage(ms: MantleSocket<SinkData>, message: string, sinkSessionManager: SinkSessionManager): Promise<void> {
+	const msg = JSON.parse(message) as { type: string; sinkId?: string; cursor?: number };
+	if (msg.type === "sink_hello" && msg.sinkId) {
+		ms.data.sinkId = msg.sinkId;
+		await sinkSessionManager.handleHello(ms, msg.sinkId);
+	} else if (msg.type === "sink_ack" && msg.cursor !== undefined) {
+		await sinkSessionManager.handleAck(ms, msg.cursor);
 	}
 }
 
@@ -55,11 +67,22 @@ export function createFetchHandler(app: Hono) {
 			return new Response("WebSocket upgrade failed", { status: 400 });
 		}
 
+		if (url.pathname === "/sink-api/ws") {
+			const upgraded = server.upgrade(req, { data: { audience: "sink" } as SinkData });
+			if (upgraded) return undefined;
+			return new Response("WebSocket upgrade failed", { status: 400 });
+		}
+
 		return app.fetch(req);
 	};
 }
 
-export function createWebSocketHandler(hubService: HubService, webService: WebService, channelSessionManager: ChannelSessionManager) {
+export function createWebSocketHandler(
+	hubService: HubService,
+	webService: WebService,
+	channelSessionManager: ChannelSessionManager,
+	sinkSessionManager: SinkSessionManager,
+) {
 	return createMantleSocketHandler<WebSocketData>({
 		open(ms: MantleSocket<WebSocketData>) {
 			if (ms.data.audience === "agent") {
@@ -74,6 +97,8 @@ export function createWebSocketHandler(hubService: HubService, webService: WebSe
 				await webService.handleMessage(ms, message);
 			} else if (data.audience === "channel") {
 				await handleChannelMessage(ms as MantleSocket<ChannelData>, message, channelSessionManager);
+			} else if (data.audience === "sink") {
+				await handleSinkMessage(ms as MantleSocket<SinkData>, message, sinkSessionManager);
 			}
 		},
 		close(ms: MantleSocket<WebSocketData>) {
@@ -82,6 +107,8 @@ export function createWebSocketHandler(hubService: HubService, webService: WebSe
 				webService.handleDisconnect(ms);
 			} else if (data.audience === "channel") {
 				channelSessionManager.handleDisconnect(ms as MantleSocket<ChannelData>);
+			} else if (data.audience === "sink") {
+				sinkSessionManager.handleDisconnect(ms as MantleSocket<SinkData>);
 			}
 		},
 	});

@@ -9,24 +9,18 @@ const JELLYFIN_PASSWORD = "e2etestpassword123";
 let token: string;
 
 beforeAll(async () => {
-	for (let attempt = 0; attempt < 20; attempt++) {
-		const res = await fetch(`${JELLYFIN_URL}/Users/AuthenticateByName`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"Authorization": 'MediaBrowser Client="mantle-e2e", Device="e2e", DeviceId="mantle-e2e-test", Version="1.0.0"',
-			},
-			body: JSON.stringify({ Username: JELLYFIN_USER, Pw: JELLYFIN_PASSWORD }),
-		});
-		if (res.ok) {
-			const data = await res.json() as { AccessToken: string };
-			token = data.AccessToken;
-			return;
-		}
-		await new Promise((r) => setTimeout(r, 1000));
-	}
-	throw new Error("Failed to authenticate after 20 attempts");
-}, { timeout: 30_000 });
+	const res = await fetch(`${JELLYFIN_URL}/Users/AuthenticateByName`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"Authorization": 'MediaBrowser Client="mantle-e2e", Device="e2e", DeviceId="mantle-e2e-test", Version="1.0.0"',
+		},
+		body: JSON.stringify({ Username: JELLYFIN_USER, Pw: JELLYFIN_PASSWORD }),
+	});
+	if (!res.ok) throw new Error(`Authentication failed: ${res.status}`);
+	const data = await res.json() as { AccessToken: string };
+	token = data.AccessToken;
+});
 
 describe("smoke: api", () => {
 	test("ping is reachable without auth", async () => {

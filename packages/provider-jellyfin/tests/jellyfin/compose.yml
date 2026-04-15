@@ -16,6 +16,8 @@ services:
 
   init:
     image: curlimages/curl:latest
+    labels:
+      - mantle.wait=true
     depends_on:
       jellyfin:
         condition: service_healthy

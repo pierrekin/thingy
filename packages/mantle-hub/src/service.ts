@@ -1,5 +1,5 @@
 import type { BucketStatus } from "mantle-framework";
-import type { OutcomeStore, EventStore, BucketStore, AgentOutcomeStore, AgentBucketStore } from "mantle-store";
+import type { OutcomeStore, EventStore, BucketStore, AgentOutcomeStore, AgentBucketStore, OutboxStore } from "mantle-store";
 import type { AgentMessage } from "mantle-framework";
 import { EventTracker } from "./events.ts";
 import type {
@@ -32,11 +32,11 @@ type EventPublishers = {
 type AgentStores = {
 	outcomeStore: AgentOutcomeStore;
 	bucketStore: AgentBucketStore;
-} | null;
+};
 
 type AgentPublishers = {
 	bucket: AgentBucketPublisher;
-} | null;
+};
 
 export class HubService {
 	private events: EventTracker;
@@ -47,7 +47,7 @@ export class HubService {
 	private targetStatusPublisher: TargetStatusPublisher;
 	private agentStores: AgentStores;
 	private agentPublishers: AgentPublishers;
-	private agentStatusPublisher: AgentStatusPublisher | null;
+	private agentStatusPublisher: AgentStatusPublisher;
 
 	constructor(
 		private outcomeStore: OutcomeStore,
@@ -58,10 +58,11 @@ export class HubService {
 		outcomePublisher: OutcomePublisher,
 		providerStatusPublisher: ProviderStatusPublisher,
 		targetStatusPublisher: TargetStatusPublisher,
-		agentStores: AgentStores = null,
-		agentPublishers: AgentPublishers = null,
-		agentStatusPublisher: AgentStatusPublisher | null = null,
-		bucketConfig: BucketConfig = DEFAULT_BUCKET_CONFIG,
+		agentStores: AgentStores,
+		agentPublishers: AgentPublishers,
+		agentStatusPublisher: AgentStatusPublisher,
+		bucketConfig: BucketConfig,
+		channelOutbox: OutboxStore,
 	) {
 		this.bucketPublishers = bucketPublishers;
 		this.outcomePublisher = outcomePublisher;
@@ -70,7 +71,7 @@ export class HubService {
 		this.agentStores = agentStores;
 		this.agentPublishers = agentPublishers;
 		this.agentStatusPublisher = agentStatusPublisher;
-		this.events = new EventTracker(eventStore, eventPublishers);
+		this.events = new EventTracker(eventStore, eventPublishers, channelOutbox);
 		this.bucketConfig = bucketConfig;
 	}
 
@@ -297,8 +298,6 @@ export class HubService {
 	}
 
 	private async recordAgentOutcome(agentId: string, time: Date): Promise<void> {
-		if (!this.agentStores) return;
-
 		await this.agentStores.outcomeStore.recordAgentOutcome(agentId, time, { success: true });
 
 		const { start, end } = getBucketBounds(time, this.bucketConfig);
@@ -307,7 +306,7 @@ export class HubService {
 
 		if (oldStatus !== newStatus) {
 			await this.agentStores.bucketStore.setAgentBucket(agentId, start, end, newStatus);
-			this.agentPublishers?.bucket.publish({
+			this.agentPublishers.bucket.publish({
 				agent: agentId,
 				bucketStart: start,
 				bucketEnd: end,
@@ -315,10 +314,8 @@ export class HubService {
 			});
 		}
 
-		if (this.agentStatusPublisher) {
-			const status = await this.agentStores.outcomeStore.getLatestAgentStatus(agentId);
-			this.agentStatusPublisher.publish({ agent: agentId, status });
-		}
+		const status = await this.agentStores.outcomeStore.getLatestAgentStatus(agentId);
+		this.agentStatusPublisher.publish({ agent: agentId, status });
 	}
 
 }

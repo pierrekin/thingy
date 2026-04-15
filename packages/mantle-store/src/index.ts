@@ -10,6 +10,7 @@ export type {
   AgentOutcomeStore,
   AgentEventStore,
   AgentBucketStore,
+  OutboxStore,
 
   // Row / view types
   StoredOutcome,
@@ -32,4 +33,5 @@ export type {
   OpenChannelEvent,
   OpenAgentEvent,
   MetricBucket,
+  OutboxEntry,
 } from "./types.ts";

@@ -4,7 +4,7 @@ import { Subscription } from "./base.ts";
 export class MetricsSubscription extends Subscription {
   constructor(
     id: string,
-    ws: MantleSocket<{ audience: "web" | "agent" }>,
+    ws: MantleSocket<unknown>,
     public readonly provider: string,
     public readonly target: string,
     public readonly check: string,

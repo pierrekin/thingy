@@ -427,6 +427,22 @@ export interface AgentBucketStore {
   close(): Promise<void>;
 }
 
+// --- Outbox types ---
+
+export type OutboxEntry = {
+  id: number;
+  payload: string;
+  createdAt: number;
+};
+
+export interface OutboxStore {
+  append(payload: string): Promise<number>;
+  read(fromId: number | null, limit: number): Promise<OutboxEntry[]>;
+  getCursor(workerId: string): Promise<number | null>;
+  advanceCursor(workerId: string, cursor: number): Promise<void>;
+  close(): Promise<void>;
+}
+
 export interface MetricsStore {
   /**
    * Get aggregated metrics for a specific check in a time range.

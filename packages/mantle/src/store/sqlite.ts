@@ -30,6 +30,8 @@ import type {
   OpenAgentEvent,
   MetricBucket,
   StoredOutcome,
+  OutboxStore,
+  OutboxEntry,
 } from "mantle-store";
 
 const SCHEMA = `
@@ -211,6 +213,28 @@ CREATE TABLE IF NOT EXISTS agent_buckets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_buckets_time ON agent_buckets(bucket_start, bucket_end);
+
+CREATE TABLE IF NOT EXISTS channel_outbox (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  payload TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sink_outbox (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  payload TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS outbox_cursors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  outbox TEXT NOT NULL,
+  worker_id TEXT NOT NULL,
+  cursor INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_outbox_cursors_lookup ON outbox_cursors(outbox, worker_id, id);
 `;
 
 export class SqliteOutcomeStore implements OutcomeStore {
@@ -1082,6 +1106,82 @@ export class SqliteAgentBucketStore implements AgentBucketStore {
   }
 }
 
+export class SqliteChannelOutboxStore implements OutboxStore {
+  constructor(private db: Database) {}
+
+  async append(payload: string): Promise<number> {
+    const result = this.db.prepare(
+      `INSERT INTO channel_outbox (payload, created_at) VALUES (?, ?)`
+    ).run(payload, Date.now());
+    return Number(result.lastInsertRowid);
+  }
+
+  async read(fromId: number | null, limit: number): Promise<OutboxEntry[]> {
+    const rows = this.db.prepare(`
+      SELECT id, payload, created_at FROM channel_outbox
+      WHERE id > ? ORDER BY id ASC LIMIT ?
+    `).all(fromId ?? 0, limit) as { id: number; payload: string; created_at: number }[];
+    return rows.map((r) => ({ id: r.id, payload: r.payload, createdAt: r.created_at }));
+  }
+
+  async getCursor(workerId: string): Promise<number | null> {
+    const row = this.db.prepare(`
+      SELECT cursor FROM outbox_cursors
+      WHERE outbox = 'channel' AND worker_id = ?
+      ORDER BY id DESC LIMIT 1
+    `).get(workerId) as { cursor: number } | undefined;
+    return row?.cursor ?? null;
+  }
+
+  async advanceCursor(workerId: string, cursor: number): Promise<void> {
+    this.db.prepare(
+      `INSERT INTO outbox_cursors (outbox, worker_id, cursor, created_at) VALUES ('channel', ?, ?, ?)`
+    ).run(workerId, cursor, Date.now());
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
+export class SqliteSinkOutboxStore implements OutboxStore {
+  constructor(private db: Database) {}
+
+  async append(payload: string): Promise<number> {
+    const result = this.db.prepare(
+      `INSERT INTO sink_outbox (payload, created_at) VALUES (?, ?)`
+    ).run(payload, Date.now());
+    return Number(result.lastInsertRowid);
+  }
+
+  async read(fromId: number | null, limit: number): Promise<OutboxEntry[]> {
+    const rows = this.db.prepare(`
+      SELECT id, payload, created_at FROM sink_outbox
+      WHERE id > ? ORDER BY id ASC LIMIT ?
+    `).all(fromId ?? 0, limit) as { id: number; payload: string; created_at: number }[];
+    return rows.map((r) => ({ id: r.id, payload: r.payload, createdAt: r.created_at }));
+  }
+
+  async getCursor(workerId: string): Promise<number | null> {
+    const row = this.db.prepare(`
+      SELECT cursor FROM outbox_cursors
+      WHERE outbox = 'sink' AND worker_id = ?
+      ORDER BY id DESC LIMIT 1
+    `).get(workerId) as { cursor: number } | undefined;
+    return row?.cursor ?? null;
+  }
+
+  async advanceCursor(workerId: string, cursor: number): Promise<void> {
+    this.db.prepare(
+      `INSERT INTO outbox_cursors (outbox, worker_id, cursor, created_at) VALUES ('sink', ?, ?, ?)`
+    ).run(workerId, cursor, Date.now());
+  }
+
+  async close(): Promise<void> {
+    this.db.close();
+  }
+}
+
 export function createSqliteStores(path: string): {
   outcomeStore: SqliteOutcomeStore;
   eventStore: SqliteEventStore;
@@ -1093,6 +1193,8 @@ export function createSqliteStores(path: string): {
   agentOutcomeStore: SqliteAgentOutcomeStore;
   agentEventStore: SqliteAgentEventStore;
   agentBucketStore: SqliteAgentBucketStore;
+  channelOutboxStore: SqliteChannelOutboxStore;
+  sinkOutboxStore: SqliteSinkOutboxStore;
   close: () => void;
 } {
   const db = new Database(path);
@@ -1108,6 +1210,8 @@ export function createSqliteStores(path: string): {
     agentOutcomeStore: new SqliteAgentOutcomeStore(db),
     agentEventStore: new SqliteAgentEventStore(db),
     agentBucketStore: new SqliteAgentBucketStore(db),
+    channelOutboxStore: new SqliteChannelOutboxStore(db),
+    sinkOutboxStore: new SqliteSinkOutboxStore(db),
     close: () => db.close(),
   };
 }

@@ -47,9 +47,7 @@ import {
 } from "./subscriptions/index.ts";
 import { DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
-type WebSocketData = {
-	audience: "web" | "agent";
-};
+type WebSocketData = unknown;
 
 type BucketPublishers = {
 	provider: ProviderBucketPublisher;

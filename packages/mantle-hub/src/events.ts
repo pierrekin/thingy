@@ -1,5 +1,6 @@
-import type { EventStore, ProviderEventRecord, TargetEventRecord, CheckEventRecord } from "mantle-store";
+import type { EventStore, OutboxStore, ProviderEventRecord, TargetEventRecord, CheckEventRecord } from "mantle-store";
 import type { ProviderEventPublisher, TargetEventPublisher, CheckEventPublisher } from "./pubsub.ts";
+import type { ChannelOutboxPayload } from "./channel-outbox.ts";
 
 type OpenEvent = {
   id: number;
@@ -26,9 +27,19 @@ export class EventTracker {
   // Keys: provider:target:check
   private checkEvents = new Map<string, OpenEvent>();
 
-  constructor(store: EventStore, publishers: EventPublishers) {
+  constructor(
+    store: EventStore,
+    publishers: EventPublishers,
+    private channelOutbox?: OutboxStore,
+  ) {
     this.store = store;
     this.publishers = publishers;
+  }
+
+  private async appendToChannelOutbox(payload: ChannelOutboxPayload): Promise<void> {
+    if (this.channelOutbox) {
+      await this.channelOutbox.append(JSON.stringify(payload));
+    }
   }
 
   getOpenProviderEventId(provider: string): number | undefined {
@@ -109,6 +120,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
+        await this.appendToChannelOutbox({ type: "provider_event_ended", event: closedEvent });
         this.publishers.provider.publish(closedEvent);
       }
       const startTime = time.getTime();
@@ -129,6 +141,7 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
+      await this.appendToChannelOutbox({ type: "provider_event_started", event: openedEvent });
       this.publishers.provider.publish(openedEvent);
       console.log(`[${provider}] EVENT OPENED: ${outcome.code} - ${outcome.title}`);
     } else {
@@ -143,6 +156,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
+        await this.appendToChannelOutbox({ type: "provider_event_ended", event: closedEvent });
         this.publishers.provider.publish(closedEvent);
         this.providerEvents.delete(key);
         console.log(`[${provider}] EVENT CLOSED: ${open.code}`);
@@ -175,6 +189,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
+        await this.appendToChannelOutbox({ type: "target_event_ended", event: closedEvent });
         this.publishers.target.publish(closedEvent);
       }
       const startTime = time.getTime();
@@ -197,6 +212,7 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
+      await this.appendToChannelOutbox({ type: "target_event_started", event: openedEvent });
       this.publishers.target.publish(openedEvent);
       console.log(`[${target}] EVENT OPENED: ${outcome.code} - ${outcome.title}`);
     } else {
@@ -212,6 +228,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
+        await this.appendToChannelOutbox({ type: "target_event_ended", event: closedEvent });
         this.publishers.target.publish(closedEvent);
         this.targetEvents.delete(key);
         console.log(`[${target}] EVENT CLOSED: ${open.code}`);
@@ -246,6 +263,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
+        await this.appendToChannelOutbox({ type: "check_event_ended", event: closedEvent });
         this.publishers.check.publish(closedEvent);
       }
       const startTime = time.getTime();
@@ -271,6 +289,7 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
+      await this.appendToChannelOutbox({ type: "check_event_started", event: openedEvent });
       this.publishers.check.publish(openedEvent);
       console.log(`[${target}] ${check} EVENT OPENED: ${outcome.code} - ${outcome.title}`);
     } else {
@@ -287,6 +306,7 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
+        await this.appendToChannelOutbox({ type: "check_event_ended", event: closedEvent });
         this.publishers.check.publish(closedEvent);
         this.checkEvents.delete(key);
         console.log(`[${target}] ${check} EVENT CLOSED: ${open.code}`);

@@ -1,12 +1,13 @@
 import { Hono } from "hono";
-import type { HubConfig, ChannelInstance } from "mantle-framework";
-import type { OutcomeStore, EventStore, BucketStore, MetricsStore, ChannelOutcomeStore, ChannelEventStore, ChannelBucketStore, AgentOutcomeStore, AgentEventStore, AgentBucketStore } from "mantle-store";
+import type { HubConfig } from "mantle-framework";
+import type { OutcomeStore, EventStore, BucketStore, MetricsStore, ChannelOutcomeStore, ChannelEventStore, ChannelBucketStore, AgentOutcomeStore, AgentEventStore, AgentBucketStore, OutboxStore } from "mantle-store";
 import { createWebApp } from "./web.ts";
 import { createAgentApp } from "./agent.ts";
 import { createFetchHandler, createWebSocketHandler } from "./server.ts";
 import { HubService } from "./service.ts";
+import { ChannelSessionManager } from "./channel-session.ts";
+import { DEFAULT_BUCKET_CONFIG } from "./buckets.ts";
 import { WebService } from "./web-service.ts";
-import { ChannelDispatcher } from "./channel-dispatcher.ts";
 import {
 	ProviderBucketPublisher,
 	TargetBucketPublisher,
@@ -37,20 +38,15 @@ type AgentStores = {
 	bucketStore: AgentBucketStore;
 };
 
-type RegisteredChannel = {
-	name: string;
-	instance: ChannelInstance;
-};
-
 export async function startHub(
 	config: HubConfig,
 	outcomeStore: OutcomeStore,
 	eventStore: EventStore,
 	bucketStore: BucketStore,
 	metricsStore: MetricsStore,
-	channels: RegisteredChannel[] = [],
-	channelStores?: ChannelStores,
-	agentStores?: AgentStores,
+	channelStores: ChannelStores,
+	agentStores: AgentStores,
+	channelOutbox: OutboxStore,
 ) {
 	const bucketPublishers = {
 		provider: new ProviderBucketPublisher(),
@@ -66,54 +62,41 @@ export async function startHub(
 	const providerStatusPublisher = new ProviderStatusPublisher();
 	const targetStatusPublisher = new TargetStatusPublisher();
 
-	let channelPublishers: { bucket: ChannelBucketPublisher; event: ChannelEventPublisher } | null = null;
-	let channelStatusPublisher: ChannelStatusPublisher | null = null;
+	const channelPublishers = {
+		bucket: new ChannelBucketPublisher(),
+		event: new ChannelEventPublisher(),
+	};
+	const channelStatusPublisher = new ChannelStatusPublisher();
 
-	if (channels.length > 0 && channelStores) {
-		channelPublishers = {
-			bucket: new ChannelBucketPublisher(),
-			event: new ChannelEventPublisher(),
-		};
-		channelStatusPublisher = new ChannelStatusPublisher();
-		const dispatcher = new ChannelDispatcher(
-			channelStores.outcomeStore,
-			channelStores.eventStore,
-			channelStores.bucketStore,
-			channelPublishers,
-			channelStatusPublisher,
-		);
-		for (const ch of channels) {
-			dispatcher.addChannel(ch.name, ch.instance);
-		}
-		await dispatcher.init();
-		dispatcher.subscribe(eventPublishers);
-	}
-
-	const agentBucketPublisher = agentStores ? new AgentBucketPublisher() : null;
-	const agentEventPublisher = agentStores ? new AgentEventPublisher() : null;
-	const agentStatusPublisher = agentStores ? new AgentStatusPublisher() : null;
+	const agentBucketPublisher = new AgentBucketPublisher();
+	const agentEventPublisher = new AgentEventPublisher();
+	const agentStatusPublisher = new AgentStatusPublisher();
 
 	const hubService = new HubService(
 		outcomeStore, eventStore, bucketStore,
 		bucketPublishers, eventPublishers, outcomePublisher,
 		providerStatusPublisher, targetStatusPublisher,
-		agentStores ? { outcomeStore: agentStores.outcomeStore, bucketStore: agentStores.bucketStore } : null,
-		agentBucketPublisher ? { bucket: agentBucketPublisher } : null,
+		{ outcomeStore: agentStores.outcomeStore, bucketStore: agentStores.bucketStore },
+		{ bucket: agentBucketPublisher },
 		agentStatusPublisher,
+		DEFAULT_BUCKET_CONFIG,
+		channelOutbox,
 	);
 	const webService = new WebService(
 		bucketStore, eventStore, metricsStore, outcomeStore,
 		bucketPublishers, eventPublishers, outcomePublisher,
 		providerStatusPublisher, targetStatusPublisher,
 		channelPublishers,
-		channelStores ? { bucketStore: channelStores.bucketStore, eventStore: channelStores.eventStore, outcomeStore: channelStores.outcomeStore } : null,
+		{ bucketStore: channelStores.bucketStore, eventStore: channelStores.eventStore, outcomeStore: channelStores.outcomeStore },
 		channelStatusPublisher,
-		agentBucketPublisher && agentEventPublisher ? { bucket: agentBucketPublisher, event: agentEventPublisher } : null,
-		agentStores ? { bucketStore: agentStores.bucketStore, eventStore: agentStores.eventStore, outcomeStore: agentStores.outcomeStore } : null,
+		{ bucket: agentBucketPublisher, event: agentEventPublisher },
+		{ bucketStore: agentStores.bucketStore, eventStore: agentStores.eventStore, outcomeStore: agentStores.outcomeStore },
 		agentStatusPublisher,
 	);
 
 	await hubService.init();
+
+	const channelSessionManager = new ChannelSessionManager(channelOutbox);
 
 	const app = new Hono();
 	app.route("/agent-api", createAgentApp());
@@ -125,7 +108,7 @@ export async function startHub(
 		hostname: ip,
 		port,
 		fetch: createFetchHandler(app),
-		websocket: createWebSocketHandler(hubService, webService),
+		websocket: createWebSocketHandler(hubService, webService, channelSessionManager),
 	});
 
 	console.log(`Hub listening on ${ip}:${port}`);

@@ -1,6 +1,11 @@
 {
 	// Visit https://aka.ms/tsconfig to read more about this file
-	"exclude": ["packages/mantle/web"],
+	"exclude": [
+		"packages/mantle-dashboard",
+		"packages/*/compatibility",
+		"packages/mantle-docs/scripts",
+		"scripts"
+	],
 	"compilerOptions": {
 		// File Layout
 		// "rootDir": "./src",

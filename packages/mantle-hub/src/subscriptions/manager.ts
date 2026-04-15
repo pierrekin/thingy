@@ -7,7 +7,7 @@ import type { Subscription } from "./base.ts";
  */
 export class SubscriptionManager {
 	private subscriptions = new Map<string, Subscription>();
-	private subscriptionsByWs = new Map<MantleSocket<{ audience: "web" | "agent" }>, Set<string>>();
+	private subscriptionsByWs = new Map<MantleSocket<unknown>, Set<string>>();
 
 	/**
 	 * Register a new subscription
@@ -54,7 +54,7 @@ export class SubscriptionManager {
 	/**
 	 * Remove all subscriptions for a WebSocket (e.g., when client disconnects)
 	 */
-	removeAllForWebSocket(ws: MantleSocket<{ audience: "web" | "agent" }>): void {
+	removeAllForWebSocket(ws: MantleSocket<unknown>): void {
 		const wsSubscriptions = this.subscriptionsByWs.get(ws);
 		if (!wsSubscriptions) {
 			return;
@@ -75,7 +75,7 @@ export class SubscriptionManager {
 	/**
 	 * Get all subscription IDs for a WebSocket
 	 */
-	getSubscriptionIdsForWebSocket(ws: MantleSocket<{ audience: "web" | "agent" }>): string[] {
+	getSubscriptionIdsForWebSocket(ws: MantleSocket<unknown>): string[] {
 		const wsSubscriptions = this.subscriptionsByWs.get(ws);
 		return wsSubscriptions ? Array.from(wsSubscriptions) : [];
 	}

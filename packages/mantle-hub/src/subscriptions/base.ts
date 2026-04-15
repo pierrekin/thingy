@@ -9,7 +9,7 @@ export abstract class Subscription {
 
 	constructor(
 		public readonly id: string,
-		public readonly ws: MantleSocket<{ audience: "web" | "agent" }>,
+		public readonly ws: MantleSocket<unknown>,
 	) {}
 
 	/**

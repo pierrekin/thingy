@@ -12,7 +12,7 @@ import type { MantleSocket } from "../mantle-socket.ts";
 export class StateSubscription extends Subscription {
 	constructor(
 		id: string,
-		ws: MantleSocket<{ audience: "web" | "agent" }>,
+		ws: MantleSocket<unknown>,
 		public readonly start: number,
 		public readonly end: number | null,
 		public readonly bucketDurationMs: number,

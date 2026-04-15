@@ -1,25 +1,41 @@
 import { join } from "path";
 import { providers } from "./providers.ts";
 
+import { basename } from "path";
+
 const rawArgs = Bun.argv.slice(2);
 const record = rawArgs.includes("--record");
 const dirty = rawArgs.includes("--dirty");
+const packagesArg = rawArgs.find(a => a.startsWith("--packages="))?.split("=")[1];
 const positional = rawArgs.filter(a => !a.startsWith("-"));
 const [command, ...rest] = positional;
+
+const FRAMEWORK_PACKAGE = "mantle-framework";
 
 async function isDirty(dir: string): Promise<boolean> {
   const proc = Bun.spawn(["git", "diff", "--quiet", "--", dir], { stdout: "ignore", stderr: "ignore" });
   return (await proc.exited) !== 0;
 }
 
+function filterByPackages(packages: string[]): typeof providers {
+  if (packages.includes(FRAMEWORK_PACKAGE)) return providers;
+  return providers.filter(p => packages.includes(basename(p.packageDir)));
+}
+
 async function filterProviders() {
-  if (!dirty) return providers;
-  const filtered = [];
-  for (const p of providers) {
-    const dir = join(p.packageDir, "compatibility", p.name);
-    if (await isDirty(dir)) filtered.push(p);
+  let selected = providers;
+  if (packagesArg) {
+    selected = filterByPackages(packagesArg.split(","));
   }
-  return filtered;
+  if (dirty) {
+    const filtered = [];
+    for (const p of selected) {
+      const dir = join(p.packageDir, "compatibility", p.name);
+      if (await isDirty(dir)) filtered.push(p);
+    }
+    return filtered;
+  }
+  return selected;
 }
 
 if (command !== "test" && command !== "lint" && command !== "discover" && command !== "pr" && command !== "issue") {

@@ -1,0 +1,10 @@
+{
+  "provider": "jellyfin",
+  "providerVersion": "0.0.1",
+  "image": "jellyfin/jellyfin",
+  "imageTag": "10.11.5",
+  "imageDigest": "sha256:6d819e9ab067efcf712993b23455cc100ee5585919bb297ea5a109ac00cb626e",
+  "softwareVersion": "10.11.5",
+  "testedAt": "2026-04-15T18:51:08.777Z",
+  "log": " Network jellyfin_default Creating \n Network jellyfin_default Created \n Container jellyfin-jellyfin-1 Creating \n Container jellyfin-jellyfin-1 Created \n Container jellyfin-init-1 Creating \n Container jellyfin-init-1 Created \n Container jellyfin-jellyfin-1 Starting \n Container jellyfin-jellyfin-1 Started \n Container jellyfin-jellyfin-1 Waiting \n Container jellyfin-jellyfin-1 Healthy \n Container jellyfin-init-1 Starting \n Container jellyfin-init-1 Started \n Container jellyfin-init-1 Waiting \n Container jellyfin-jellyfin-1 Waiting \n Container jellyfin-init-1 Healthy \n Container jellyfin-jellyfin-1 Healthy\nbun test v1.3.12 (700fc117)\n\ntests/jellyfin/jellyfin.test.ts:\n(pass) smoke: api > ping is reachable without auth [1.48ms]\n(pass) smoke: api > system info is reachable with token [4.86ms]\n(pass) provider: checks > health.sessions returns a non-negative count [7.96ms]\n\n 3 pass\n 0 fail\n 3 expect() calls\nRan 3 tests across 1 file. [4.16s]\n Container jellyfin-init-1 Stopping \n Container jellyfin-init-1 Stopped \n Container jellyfin-init-1 Removing \n Container jellyfin-init-1 Removed \n Container jellyfin-jellyfin-1 Stopping \n Container jellyfin-jellyfin-1 Stopped \n Container jellyfin-jellyfin-1 Removing \n Container jellyfin-jellyfin-1 Removed \n Network jellyfin_default Removing \n Network jellyfin_default Removed"
+}

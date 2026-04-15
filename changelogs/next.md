@@ -1,17 +1,1 @@
-- add docs package
-- namespace providers and channels
-- add rotation and format to the log channel
-- add webhook channel
-- add discord channel
-- add telegram channel
-- add email channel
-- add servarr providers
-- add mylarr provider
-- add provider end to end tests
-- add bazarr provider
-- add jellyfin provider
-- add tautulli provider
-- add nzbhydra2 provider
-- add caddy provider
-- add remote channels
-- add sinks
+placeholder

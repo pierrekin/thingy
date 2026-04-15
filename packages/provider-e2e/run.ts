@@ -10,7 +10,7 @@ const packagesArg = rawArgs.find(a => a.startsWith("--packages="))?.split("=")[1
 const positional = rawArgs.filter(a => !a.startsWith("-"));
 const [command, ...rest] = positional;
 
-const FRAMEWORK_PACKAGE = "mantle-framework";
+const ALL_PACKAGES = ["mantle-framework", "provider-e2e"];
 
 async function isDirty(dir: string): Promise<boolean> {
   const proc = Bun.spawn(["git", "diff", "--quiet", "--", dir], { stdout: "ignore", stderr: "ignore" });
@@ -18,7 +18,7 @@ async function isDirty(dir: string): Promise<boolean> {
 }
 
 function filterByPackages(packages: string[]): typeof providers {
-  if (packages.includes(FRAMEWORK_PACKAGE)) return providers;
+  if (packages.some(p => ALL_PACKAGES.includes(p))) return providers;
   return providers.filter(p => packages.includes(basename(p.packageDir)));
 }
 

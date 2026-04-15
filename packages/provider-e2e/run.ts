@@ -161,6 +161,7 @@ if (command === "pr") {
 
   console.log(`Checking PRs for: ${providers.map((p) => p.name).join(", ")}`);
 
+  let failed = false;
   for (const provider of providers) {
     const dir = join(provider.packageDir, "compatibility", provider.name);
     console.log(`START  ${provider.name}`);
@@ -172,12 +173,15 @@ if (command === "pr") {
 
     const [stdout, stderr] = await Promise.all([collect(proc.stdout), collect(proc.stderr)]);
     const passed = (await proc.exited) === 0;
+    if (!passed) failed = true;
 
     const label = passed ? "PASS" : "FAIL";
     console.log(`${label}   ${provider.name}`);
     if (stdout.trim()) console.log(stdout.trimEnd());
     if (stderr.trim()) console.error(stderr.trimEnd());
   }
+
+  if (failed) process.exit(1);
 }
 
 if (command === "issue") {
@@ -190,6 +194,7 @@ if (command === "issue") {
 
   console.log(`Checking issues for: ${providers.map((p) => p.name).join(", ")}`);
 
+  let failed = false;
   for (const provider of providers) {
     const dir = join(provider.packageDir, "compatibility", provider.name);
     console.log(`START  ${provider.name}`);
@@ -201,10 +206,13 @@ if (command === "issue") {
 
     const [stdout, stderr] = await Promise.all([collect(proc.stdout), collect(proc.stderr)]);
     const passed = (await proc.exited) === 0;
+    if (!passed) failed = true;
 
     const label = passed ? "PASS" : "FAIL";
     console.log(`${label}   ${provider.name}`);
     if (stdout.trim()) console.log(stdout.trimEnd());
     if (stderr.trim()) console.error(stderr.trimEnd());
   }
+
+  if (failed) process.exit(1);
 }

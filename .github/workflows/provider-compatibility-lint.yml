@@ -1,4 +1,4 @@
-name: Compatibility Lint
+name: Provider Compatibility Lint
 
 on:
   push:

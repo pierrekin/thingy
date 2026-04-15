@@ -26,7 +26,7 @@ beforeAll(async () => {
 		await new Promise((r) => setTimeout(r, 1000));
 	}
 	throw new Error("Failed to authenticate after 20 attempts");
-});
+}, { timeout: 30_000 });
 
 describe("smoke: api", () => {
 	test("ping is reachable without auth", async () => {

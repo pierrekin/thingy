@@ -74,6 +74,25 @@ async function runVersion(
     log(await collect(up));
     if ((await up.exited) !== 0) throw new Error("compose up failed");
 
+    // Wait for any one-shot containers labeled mantle.wait=true
+    const ps = Bun.spawn(
+      ["docker", "compose", "ps", "-a", "--format", "json"],
+      { cwd: composeDir, stdout: "pipe", stderr: "pipe", env },
+    );
+    const psOut = await new Response(ps.stdout).text();
+    await ps.exited;
+    const containers = psOut.trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
+    for (const c of containers) {
+      if (c.Labels && c.Labels.includes("mantle.wait=true")) {
+        const wait = Bun.spawn(["docker", "wait", c.Name], {
+          stdout: "pipe", stderr: "pipe",
+        });
+        const code = (await new Response(wait.stdout).text()).trim();
+        await wait.exited;
+        if (code !== "0") throw new Error(`${c.Service} exited with code ${code}`);
+      }
+    }
+
     const test = Bun.spawn(["bun", "test", testFile], {
       cwd: packageRoot, stdout: "pipe", stderr: "pipe", env,
     });

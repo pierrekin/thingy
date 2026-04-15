@@ -22,6 +22,14 @@
     {
       "tag": "10.11.8",
       "softwareVersion": "10.11.8"
+    },
+    {
+      "tag": "10.11.4",
+      "softwareVersion": "10.11.4"
+    },
+    {
+      "tag": "10.11.5",
+      "softwareVersion": "10.11.5"
     }
   ]
 }

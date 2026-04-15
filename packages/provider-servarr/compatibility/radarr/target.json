@@ -3,11 +3,29 @@
   "imageSource": "https://github.com/linuxserver/docker-radarr",
   "softwareSource": "https://github.com/Radarr/Radarr",
   "versions": [
-    { "tag": "5.25.0", "softwareVersion": "5.25.0" },
-    { "tag": "5.26.2", "softwareVersion": "5.26.2" },
-    { "tag": "5.27.5", "softwareVersion": "5.27.5" },
-    { "tag": "5.28.0", "softwareVersion": "5.28.0" },
-    { "tag": "6.0.4",  "softwareVersion": "6.0.4"  },
-    { "tag": "6.1.1",  "softwareVersion": "6.1.1"  }
+    {
+      "tag": "5.25.0",
+      "softwareVersion": "5.25.0"
+    },
+    {
+      "tag": "5.26.2",
+      "softwareVersion": "5.26.2"
+    },
+    {
+      "tag": "5.27.5",
+      "softwareVersion": "5.27.5"
+    },
+    {
+      "tag": "5.28.0",
+      "softwareVersion": "5.28.0"
+    },
+    {
+      "tag": "6.0.4",
+      "softwareVersion": "6.0.4"
+    },
+    {
+      "tag": "6.1.1",
+      "softwareVersion": "6.1.1"
+    }
   ]
 }

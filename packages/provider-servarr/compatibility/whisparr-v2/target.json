@@ -3,7 +3,13 @@
   "imageSource": "https://github.com/hotio/whisparr",
   "softwareSource": "https://github.com/Whisparr/Whisparr",
   "versions": [
-    { "tag": "v2-v2.1.0", "softwareVersion": "2.1.0" },
-    { "tag": "v2-v2.2.0", "softwareVersion": "2.2.0" }
+    {
+      "tag": "v2-v2.1.0",
+      "softwareVersion": "2.1.0"
+    },
+    {
+      "tag": "v2-v2.2.0",
+      "softwareVersion": "2.2.0"
+    }
   ]
 }

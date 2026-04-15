@@ -1,8 +1,8 @@
 import { defineCommand } from "citty";
-import { loadConfig, handleOperationalErrors } from "mantle-framework";
-import { startHub } from "mantle-hub";
+import { loadConfig, handleOperationalErrors, resolvePlacements } from "mantle-framework";
+import { startHub, createChannelInstances, startChannelWorker, createSinkInstances, startSinkWorker } from "mantle-hub";
 import { createSqliteStores } from "../store/sqlite.ts";
-import { configArg, getHubConfig } from "./shared.ts";
+import { configArg, getHubConfig, getHubUrl } from "./shared.ts";
 
 export const hub = defineCommand({
 	meta: { name: "hub", description: "Run hub" },
@@ -19,5 +19,17 @@ export const hub = defineCommand({
 			stores.channelOutboxStore,
 			stores.sinkOutboxStore,
 		);
+
+		const hubUrl = getHubUrl(hubConfig);
+		const channelConfigs = resolvePlacements(hubConfig.channels, config.channels);
+		const sinkConfigs = resolvePlacements(hubConfig.sinks, config.sinks);
+
+		for (const ch of createChannelInstances(channelConfigs)) {
+			void startChannelWorker(hubUrl, ch.name, ch.instance);
+		}
+
+		for (const s of createSinkInstances(sinkConfigs)) {
+			void startSinkWorker(hubUrl, s.name, s.instance);
+		}
 	}),
 });

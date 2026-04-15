@@ -40,20 +40,31 @@ const targetSchema = z
 	})
 	.passthrough();
 
+const placementRefSchema = z.union([
+	z.string(),
+	z.record(z.string(), z.unknown()),
+]);
+
+type PlacementRef = z.infer<typeof placementRefSchema>;
+
 const agentSchema = z.object({
 	name: z.string(),
 	interval: z.string().optional(),
 	targets: z.array(targetSchema),
+	channels: z.array(placementRefSchema).optional(),
+	sinks: z.array(placementRefSchema).optional(),
+});
+
+const hubSchema = z.object({
+	name: z.string(),
+	listen: listenSchema,
+	channels: z.array(placementRefSchema).optional(),
+	sinks: z.array(placementRefSchema).optional(),
 });
 
 const configSchema = z
 	.object({
-		hub: z
-			.object({
-				name: z.string(),
-				listen: listenSchema,
-			})
-			.optional(),
+		hub: hubSchema.optional(),
 		providers: z.record(z.string(), z.unknown()).optional(),
 		channels: z.record(z.string(), z.unknown()).optional(),
 		sinks: z.record(z.string(), z.unknown()).optional(),
@@ -63,11 +74,6 @@ const configSchema = z
 	.refine((data) => !(data.agent && data.agents), {
 		message: "Cannot specify both 'agent' and 'agents'",
 	});
-
-const hubSchema = z.object({
-	name: z.string(),
-	listen: listenSchema,
-});
 
 export type Config = z.infer<typeof configSchema>;
 export type HubConfig = z.infer<typeof hubSchema>;
@@ -98,4 +104,29 @@ export async function loadConfig(configPath: string): Promise<Config> {
 	}
 
 	return result.data;
+}
+
+export function resolvePlacements(
+	placements: PlacementRef[] | undefined,
+	definitions: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+	if (!placements) return {};
+	const result: Record<string, unknown> = {};
+	for (const ref of placements) {
+		if (typeof ref === "string") {
+			const def = definitions?.[ref];
+			if (def === undefined) {
+				throw new OperationalError(`Referenced '${ref}' but no definition found in config`);
+			}
+			result[ref] = def;
+		} else {
+			const keys = Object.keys(ref);
+			if (keys.length !== 1) {
+				throw new OperationalError("Inline placement must have exactly one key");
+			}
+			const name = keys[0]!;
+			result[name] = ref[name];
+		}
+	}
+	return result;
 }

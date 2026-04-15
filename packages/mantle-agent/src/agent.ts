@@ -147,7 +147,7 @@ function getProviderDefinition(providerType: string) {
 	return provider?.definition;
 }
 
-export function startAgent(
+export function startTargets(
 	agentId: string,
 	agentConfig: AgentConfig,
 	providerConfigs: ProviderConfigs,

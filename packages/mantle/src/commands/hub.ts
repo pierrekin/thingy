@@ -1,6 +1,5 @@
 import { defineCommand } from "citty";
 import { loadConfig, handleOperationalErrors } from "mantle-framework";
-import { validateAgentConfig } from "mantle-agent";
 import { startHub, createChannelInstances, startChannelWorker, createSinkInstances, startSinkWorker, AgentConfigRegistry, type ResolvedAgentPayload } from "mantle-hub";
 import { createSqliteStores } from "../store/sqlite.ts";
 import { configArg, getHubConfig, getHubUrl } from "./shared.ts";
@@ -24,9 +23,6 @@ export const hub = defineCommand({
 					providerConfigs[name] = allProviderConfigs[name];
 				}
 			}
-
-			// validateAgentConfig may mutate providerConfigs to add implicit {} entries
-			validateAgentConfig(agentConfig, providerConfigs);
 
 			agentPayloads.set(agentId, { agentConfig, providerConfigs });
 		}

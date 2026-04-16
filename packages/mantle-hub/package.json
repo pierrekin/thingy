@@ -7,6 +7,7 @@
   "dependencies": {
     "@mantle-team/client": "workspace:*",
     "mantle-framework": "workspace:*",
+    "mantle-providers": "workspace:*",
     "mantle-store": "workspace:*",
     "channel-log": "workspace:*",
     "channel-webhook": "workspace:*",

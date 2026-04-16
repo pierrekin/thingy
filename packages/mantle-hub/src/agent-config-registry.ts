@@ -1,4 +1,5 @@
 import type { AgentConfig } from "mantle-framework";
+import { validateAgentConfig } from "mantle-providers";
 
 export type ResolvedAgentPayload = {
 	agentConfig: AgentConfig;
@@ -6,7 +7,14 @@ export type ResolvedAgentPayload = {
 };
 
 export class AgentConfigRegistry {
-	constructor(private byId: Map<string, ResolvedAgentPayload>) {}
+	private byId: Map<string, ResolvedAgentPayload>;
+
+	constructor(payloads: Map<string, ResolvedAgentPayload>) {
+		for (const { agentConfig, providerConfigs } of payloads.values()) {
+			validateAgentConfig(agentConfig, providerConfigs);
+		}
+		this.byId = payloads;
+	}
 
 	get(agentId: string): ResolvedAgentPayload | undefined {
 		return this.byId.get(agentId);

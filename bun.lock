@@ -63,7 +63,7 @@
     },
     "packages/mantle": {
       "name": "mantle",
-      "version": "0.0.12",
+      "version": "0.0.13",
       "dependencies": {
         "@mantle-team/client": "workspace:*",
         "citty": "^0.2.1",
@@ -78,16 +78,7 @@
       "version": "0.0.1",
       "dependencies": {
         "mantle-framework": "workspace:*",
-        "provider-bazarr": "workspace:*",
-        "provider-caddy": "workspace:*",
-        "provider-jellyfin": "workspace:*",
-        "provider-mylarr": "workspace:*",
-        "provider-nzbhydra2": "workspace:*",
-        "provider-proxmox": "workspace:*",
-        "provider-restic": "workspace:*",
-        "provider-servarr": "workspace:*",
-        "provider-shell": "workspace:*",
-        "provider-tautulli": "workspace:*",
+        "mantle-providers": "workspace:*",
       },
     },
     "packages/mantle-brand": {
@@ -135,7 +126,7 @@
     },
     "packages/mantle-docs": {
       "name": "@mantle-team/mantle-docs",
-      "version": "0.0.1",
+      "version": "0.0.3",
       "devDependencies": {
         "provider-mylarr": "workspace:*",
         "provider-servarr": "workspace:*",
@@ -162,8 +153,26 @@
         "channel-webhook": "workspace:*",
         "hono": "^4.12.9",
         "mantle-framework": "workspace:*",
+        "mantle-providers": "workspace:*",
         "mantle-store": "workspace:*",
         "sink-jsonl": "workspace:*",
+      },
+    },
+    "packages/mantle-providers": {
+      "name": "mantle-providers",
+      "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+        "provider-bazarr": "workspace:*",
+        "provider-caddy": "workspace:*",
+        "provider-jellyfin": "workspace:*",
+        "provider-mylarr": "workspace:*",
+        "provider-nzbhydra2": "workspace:*",
+        "provider-proxmox": "workspace:*",
+        "provider-restic": "workspace:*",
+        "provider-servarr": "workspace:*",
+        "provider-shell": "workspace:*",
+        "provider-tautulli": "workspace:*",
       },
     },
     "packages/mantle-store": {
@@ -1000,6 +1009,8 @@
     "mantle-framework": ["mantle-framework@workspace:packages/mantle-framework"],
 
     "mantle-hub": ["mantle-hub@workspace:packages/mantle-hub"],
+
+    "mantle-providers": ["mantle-providers@workspace:packages/mantle-providers"],
 
     "mantle-store": ["mantle-store@workspace:packages/mantle-store"],
 

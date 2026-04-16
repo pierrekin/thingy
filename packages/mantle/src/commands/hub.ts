@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
-import { loadConfig, handleOperationalErrors, resolvePlacements } from "mantle-framework";
-import { startHub, createChannelInstances, startChannelWorker, createSinkInstances, startSinkWorker } from "mantle-hub";
+import { loadConfig, handleOperationalErrors } from "mantle-framework";
+import { startHub, createChannelInstances, startChannelWorker, createSinkInstances, startSinkWorker, AgentConfigRegistry, type ResolvedAgentPayload } from "mantle-hub";
 import { createSqliteStores } from "../store/sqlite.ts";
 import { configArg, getHubConfig, getHubUrl } from "./shared.ts";
 
@@ -10,6 +10,25 @@ export const hub = defineCommand({
 	run: handleOperationalErrors(async ({ args }) => {
 		const config = await loadConfig(args.config);
 		const hubConfig = getHubConfig(config);
+
+		const allProviderConfigs = config.providers;
+		const agentPayloads = new Map<string, ResolvedAgentPayload>();
+
+		for (const [agentId, agentConfig] of Object.entries(config.agents)) {
+			// Build a per-agent provider config containing only referenced providers
+			const providerConfigs: Record<string, unknown> = {};
+			for (const target of agentConfig.targets) {
+				const name = target.provider;
+				if (name in allProviderConfigs) {
+					providerConfigs[name] = allProviderConfigs[name];
+				}
+			}
+
+			agentPayloads.set(agentId, { agentConfig, providerConfigs });
+		}
+
+		const agentConfigRegistry = new AgentConfigRegistry(agentPayloads);
+
 		const stores = createSqliteStores("mantle.db");
 		await startHub(
 			hubConfig,
@@ -18,17 +37,16 @@ export const hub = defineCommand({
 			{ outcomeStore: stores.agentOutcomeStore, eventStore: stores.agentEventStore, bucketStore: stores.agentBucketStore },
 			stores.channelOutboxStore,
 			stores.sinkOutboxStore,
+			agentConfigRegistry,
 		);
 
 		const hubUrl = getHubUrl(hubConfig);
-		const channelConfigs = resolvePlacements(hubConfig.channels, config.channels);
-		const sinkConfigs = resolvePlacements(hubConfig.sinks, config.sinks);
 
-		for (const ch of createChannelInstances(channelConfigs)) {
+		for (const ch of createChannelInstances(hubConfig.channels)) {
 			void startChannelWorker(hubUrl, ch.name, ch.instance);
 		}
 
-		for (const s of createSinkInstances(sinkConfigs)) {
+		for (const s of createSinkInstances(hubConfig.sinks)) {
 			void startSinkWorker(hubUrl, s.name, s.instance);
 		}
 	}),

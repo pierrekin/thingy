@@ -4,6 +4,7 @@ export { startChannelWorker } from "./channel-worker.ts";
 export { startSinkWorker } from "./sink-worker.ts";
 export { createSinkInstances, type RegisteredSink } from "./create-sinks.ts";
 export { Pipeline, Batch, type OutboxConsumer } from "./outbox-consumer.ts";
+export { AgentConfigRegistry, type ResolvedAgentPayload } from "./agent-config-registry.ts";
 
 // Subscription protocol types (used by hub clients)
 export type {

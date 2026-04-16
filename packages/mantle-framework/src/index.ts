@@ -52,7 +52,7 @@ export type { ChannelInstance, Channel } from "./channel.ts";
 export type { SinkInstance, SinkRecord, Sink } from "./sink.ts";
 
 // Config
-export { loadConfig, resolvePlacements, type Config, type HubConfig, type AgentConfig } from "./config.ts";
+export { loadConfig, type Config, type HubConfig, type AgentConfig, type TargetConfig } from "./config.ts";
 
 // Errors
 export { OperationalError, handleOperationalErrors } from "./errors.ts";

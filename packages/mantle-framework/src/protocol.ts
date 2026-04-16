@@ -1,3 +1,4 @@
+import type { AgentConfig } from "./config.ts";
 import type { OutcomeError, Violation } from "./types.ts";
 
 export type CheckResultPayload =
@@ -23,6 +24,13 @@ export type HubMessage =
       type: "hub_hello";
       instanceId: string;
       role: "leader" | "standby";
+      agentConfig: AgentConfig;
+      providerConfigs: Record<string, unknown>;
+    }
+  | {
+      type: "agent_reject";
+      reason: string;
+      code: "unknown_agent";
     }
   | {
       type: "agent_promote";

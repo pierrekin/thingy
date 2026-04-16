@@ -1,151 +1,15 @@
 import type { AgentConfig, ProviderInstance } from "mantle-framework";
-import { OperationalError } from "mantle-framework";
-import { getProvider } from "./providers.ts";
-import { IntervalScheduler } from "./scheduler/index.ts";
 import {
-  resolveAgentConfig,
-  isCheckError,
-  evaluate,
-  type ResolvedCheck,
+	resolveAgentConfig,
+	isCheckError,
+	evaluate,
+	type ResolvedCheck,
 } from "mantle-framework";
+import { getProvider, getProviderDefinition, getProviderType } from "mantle-providers";
+import { IntervalScheduler } from "./scheduler/index.ts";
 import type { CheckReporter } from "./hub-client.ts";
 
 type ProviderConfigs = Record<string, unknown>;
-
-function getProviderType(
-	instanceName: string,
-	instanceConfig: unknown,
-): string {
-	if (
-		instanceConfig &&
-		typeof instanceConfig === "object" &&
-		"type" in instanceConfig &&
-		typeof instanceConfig.type === "string"
-	) {
-		return instanceConfig.type;
-	}
-	return instanceName;
-}
-
-function formatProviderName(instanceName: string, providerType: string): string {
-	if (instanceName === providerType) {
-		return instanceName;
-	}
-	return `${instanceName} (${providerType})`;
-}
-
-function validateProviderConfig(
-	instanceName: string,
-	instanceConfig: unknown,
-) {
-	const providerType = getProviderType(instanceName, instanceConfig);
-	const displayName = formatProviderName(instanceName, providerType);
-	const provider = getProvider(providerType);
-	if (!provider) {
-		throw new OperationalError(`Unknown provider type '${providerType}' for '${instanceName}'`);
-	}
-
-	if (provider.providerConfigSchema === null) {
-		if (instanceConfig !== undefined) {
-			throw new OperationalError(
-				`Provider '${displayName}' does not accept configuration`,
-			);
-		}
-		return;
-	}
-
-	if (instanceConfig === null || instanceConfig === undefined) {
-		throw new OperationalError(
-			`Provider '${displayName}' has an empty configuration — either provide values or remove it`,
-		);
-	}
-
-	const result = provider.providerConfigSchema.safeParse(instanceConfig);
-	if (!result.success) {
-		const issues = result.error.issues
-			.map((i) => `  ${i.path.join(".")}: ${i.message}`)
-			.join("\n");
-		throw new OperationalError(
-			`Invalid config for provider '${displayName}':\n${issues}`,
-		);
-	}
-}
-
-function validateAgentConfig(
-	agentConfig: AgentConfig,
-	providerConfigs: ProviderConfigs,
-) {
-	// Track which provider instances are used by targets
-	const usedProviderInstances = new Set<string>();
-
-	// Validate target configs and collect used providers
-	for (const target of agentConfig.targets) {
-		const instanceName = target.provider;
-		let instanceConfig = providerConfigs[instanceName];
-
-		// Provider not declared — try to use it implicitly with empty config
-		if (instanceConfig === undefined) {
-			const provider = getProvider(instanceName);
-			if (!provider) {
-				throw new OperationalError(
-					`Unknown provider '${instanceName}' for target '${target.name}'`,
-				);
-			}
-
-			// Check if the provider can work without config
-			if (provider.providerConfigSchema !== null) {
-				const result = provider.providerConfigSchema.safeParse({});
-				if (!result.success) {
-					throw new OperationalError(
-						`Provider '${instanceName}' requires configuration`,
-					);
-				}
-			}
-
-			// Register the implicit provider so it gets instantiated later
-			providerConfigs[instanceName] = {};
-			instanceConfig = {};
-		}
-
-		const providerType = getProviderType(instanceName, instanceConfig);
-		const provider = getProvider(providerType);
-		if (!provider) {
-			throw new OperationalError(
-				`Unknown provider type '${providerType}' for target '${target.name}'`,
-			);
-		}
-
-		usedProviderInstances.add(instanceName);
-
-		const result = provider.targetConfigSchema.safeParse(target);
-		if (!result.success) {
-			const issues = result.error.issues
-				.map((i) => `  ${i.path.join(".")}: ${i.message}`)
-				.join("\n");
-			throw new OperationalError(
-				`Invalid config for target '${target.name}':\n${issues}`,
-			);
-		}
-	}
-
-	// Validate provider configs for all used providers
-	for (const instanceName of usedProviderInstances) {
-		const instanceConfig = providerConfigs[instanceName];
-		validateProviderConfig(instanceName, instanceConfig);
-	}
-
-	// Validate any explicitly configured providers not used by targets
-	for (const [name, instanceConfig] of Object.entries(providerConfigs)) {
-		if (!usedProviderInstances.has(name)) {
-			validateProviderConfig(name, instanceConfig);
-		}
-	}
-}
-
-function getProviderDefinition(providerType: string) {
-	const provider = getProvider(providerType);
-	return provider?.definition;
-}
 
 export function startTargets(
 	agentId: string,
@@ -153,8 +17,6 @@ export function startTargets(
 	providerConfigs: ProviderConfigs,
 	checkReporter: CheckReporter,
 ) {
-	validateAgentConfig(agentConfig, providerConfigs);
-
 	console.log(`Starting agent '${agentId}': ${agentConfig.name}`);
 	console.log(`Targets: ${agentConfig.targets.length}`);
 	console.log("");

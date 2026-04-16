@@ -63,6 +63,7 @@ export class MantleSocket<T> {
 			clearTimeout(this.timer);
 			this.timer = null;
 		}
+		this.ws.close();
 	}
 }
 

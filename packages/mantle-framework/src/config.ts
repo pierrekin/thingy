@@ -37,6 +37,9 @@ const targetSchema = z
 	.object({
 		name: z.string(),
 		provider: z.string(),
+		type: z.string().optional(),
+		interval: z.string().optional(),
+		checks: z.record(z.string(), z.unknown()).optional(),
 	})
 	.passthrough();
 
@@ -45,9 +48,7 @@ const placementRefSchema = z.union([
 	z.record(z.string(), z.unknown()),
 ]);
 
-type PlacementRef = z.infer<typeof placementRefSchema>;
-
-const agentSchema = z.object({
+const rawAgentSchema = z.object({
 	name: z.string(),
 	interval: z.string().optional(),
 	targets: z.array(targetSchema),
@@ -55,29 +56,83 @@ const agentSchema = z.object({
 	sinks: z.array(placementRefSchema).optional(),
 });
 
-const hubSchema = z.object({
+const rawHubSchema = z.object({
 	name: z.string(),
 	listen: listenSchema,
 	channels: z.array(placementRefSchema).optional(),
 	sinks: z.array(placementRefSchema).optional(),
 });
 
-const configSchema = z
+const rawConfigSchema = z
 	.object({
-		hub: hubSchema.optional(),
+		hub: rawHubSchema.optional(),
 		providers: z.record(z.string(), z.unknown()).optional(),
 		channels: z.record(z.string(), z.unknown()).optional(),
 		sinks: z.record(z.string(), z.unknown()).optional(),
-		agent: agentSchema.optional(),
-		agents: z.record(z.string(), agentSchema).optional(),
+		agent: rawAgentSchema.optional(),
+		agents: z.record(z.string(), rawAgentSchema).optional(),
 	})
 	.refine((data) => !(data.agent && data.agents), {
 		message: "Cannot specify both 'agent' and 'agents'",
 	});
 
-export type Config = z.infer<typeof configSchema>;
-export type HubConfig = z.infer<typeof hubSchema>;
-export type AgentConfig = z.infer<typeof agentSchema>;
+export type TargetConfig = {
+	name: string;
+	provider: string;
+	type?: string;
+	interval?: string;
+	checks?: Record<string, unknown>;
+	[key: string]: unknown;
+};
+
+export type AgentConfig = {
+	name: string;
+	interval?: string;
+	targets: TargetConfig[];
+	channels: Record<string, unknown>;
+	sinks: Record<string, unknown>;
+};
+
+export type HubConfig = {
+	name: string;
+	listen: { ip: string; port: number };
+	channels: Record<string, unknown>;
+	sinks: Record<string, unknown>;
+};
+
+export type Config = {
+	hub?: HubConfig;
+	providers: Record<string, unknown>;
+	agents: Record<string, AgentConfig>;
+};
+
+type PlacementRef = string | Record<string, unknown>;
+
+function resolvePlacements(
+	placements: PlacementRef[] | undefined,
+	definitions: Record<string, unknown> | undefined,
+	kind: "channel" | "sink",
+): Record<string, unknown> {
+	if (!placements) return {};
+	const result: Record<string, unknown> = {};
+	for (const ref of placements) {
+		if (typeof ref === "string") {
+			const def = definitions?.[ref];
+			if (def === undefined) {
+				throw new OperationalError(`Referenced ${kind} '${ref}' but no definition found in config`);
+			}
+			result[ref] = def;
+		} else {
+			const keys = Object.keys(ref);
+			if (keys.length !== 1) {
+				throw new OperationalError(`Inline ${kind} placement must have exactly one key`);
+			}
+			const name = keys[0]!;
+			result[name] = ref[name];
+		}
+	}
+	return result;
+}
 
 export async function loadConfig(configPath: string): Promise<Config> {
 	let content: string;
@@ -94,7 +149,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
 	}
 
 	const parsed = parseYaml(content);
-	const result = configSchema.safeParse(parsed);
+	const result = rawConfigSchema.safeParse(parsed);
 
 	if (!result.success) {
 		const issues = result.error.issues
@@ -103,30 +158,40 @@ export async function loadConfig(configPath: string): Promise<Config> {
 		throw new OperationalError(`Invalid config:\n${issues}`);
 	}
 
-	return result.data;
-}
+	const raw = result.data;
+	const channelDefs = raw.channels;
+	const sinkDefs = raw.sinks;
 
-export function resolvePlacements(
-	placements: PlacementRef[] | undefined,
-	definitions: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-	if (!placements) return {};
-	const result: Record<string, unknown> = {};
-	for (const ref of placements) {
-		if (typeof ref === "string") {
-			const def = definitions?.[ref];
-			if (def === undefined) {
-				throw new OperationalError(`Referenced '${ref}' but no definition found in config`);
-			}
-			result[ref] = def;
-		} else {
-			const keys = Object.keys(ref);
-			if (keys.length !== 1) {
-				throw new OperationalError("Inline placement must have exactly one key");
-			}
-			const name = keys[0]!;
-			result[name] = ref[name];
+	const resolveAgent = (agent: z.infer<typeof rawAgentSchema>): AgentConfig => ({
+		name: agent.name,
+		...(agent.interval !== undefined ? { interval: agent.interval } : {}),
+		targets: agent.targets as TargetConfig[],
+		channels: resolvePlacements(agent.channels, channelDefs, "channel"),
+		sinks: resolvePlacements(agent.sinks, sinkDefs, "sink"),
+	});
+
+	const agents: Record<string, AgentConfig> = {};
+	if (raw.agent) {
+		agents["default"] = resolveAgent(raw.agent);
+	}
+	if (raw.agents) {
+		for (const [id, agent] of Object.entries(raw.agents)) {
+			agents[id] = resolveAgent(agent);
 		}
 	}
-	return result;
+
+	const hub: HubConfig | undefined = raw.hub
+		? {
+				name: raw.hub.name,
+				listen: raw.hub.listen,
+				channels: resolvePlacements(raw.hub.channels, channelDefs, "channel"),
+				sinks: resolvePlacements(raw.hub.sinks, sinkDefs, "sink"),
+			}
+		: undefined;
+
+	return {
+		...(hub ? { hub } : {}),
+		providers: raw.providers ?? {},
+		agents,
+	};
 }

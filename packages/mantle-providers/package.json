@@ -1,0 +1,20 @@
+{
+  "name": "mantle-providers",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "mantle-framework": "workspace:*",
+    "provider-proxmox": "workspace:*",
+    "provider-restic": "workspace:*",
+    "provider-shell": "workspace:*",
+    "provider-servarr": "workspace:*",
+    "provider-mylarr": "workspace:*",
+    "provider-bazarr": "workspace:*",
+    "provider-jellyfin": "workspace:*",
+    "provider-tautulli": "workspace:*",
+    "provider-nzbhydra2": "workspace:*",
+    "provider-caddy": "workspace:*"
+  }
+}

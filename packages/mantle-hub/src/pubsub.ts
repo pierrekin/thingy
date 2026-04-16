@@ -196,6 +196,33 @@ export class AgentStatusPublisher {
 	}
 }
 
+export type AgentInstanceInfo = {
+	instanceId: string;
+	role: "leader" | "standby";
+	connectedAt: number;
+};
+
+export type AgentInstancesUpdate = {
+	agent: string;
+	instances: AgentInstanceInfo[];
+};
+export type AgentInstancesSubscriber = (update: AgentInstancesUpdate) => void;
+
+export class AgentInstancesPublisher {
+	private subscribers = new Set<AgentInstancesSubscriber>();
+
+	subscribe(fn: AgentInstancesSubscriber): () => void {
+		this.subscribers.add(fn);
+		return () => this.subscribers.delete(fn);
+	}
+
+	publish(update: AgentInstancesUpdate): void {
+		for (const fn of this.subscribers) {
+			fn(update);
+		}
+	}
+}
+
 export type ChannelBucketSubscriber = (bucket: ChannelBucket) => void;
 
 export class ChannelBucketPublisher {

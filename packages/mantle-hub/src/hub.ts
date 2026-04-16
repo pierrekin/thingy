@@ -26,6 +26,7 @@ import {
 	TargetStatusPublisher,
 	ChannelStatusPublisher,
 	AgentStatusPublisher,
+	AgentInstancesPublisher,
 } from "./pubsub.ts";
 
 type ChannelStores = {
@@ -74,6 +75,7 @@ export async function startHub(
 	const agentBucketPublisher = new AgentBucketPublisher();
 	const agentEventPublisher = new AgentEventPublisher();
 	const agentStatusPublisher = new AgentStatusPublisher();
+	const agentInstancesPublisher = new AgentInstancesPublisher();
 
 	const hubService = new HubService(
 		outcomeStore, eventStore, bucketStore,
@@ -86,6 +88,12 @@ export async function startHub(
 		channelOutbox,
 		sinkOutbox,
 	);
+	await hubService.init();
+
+	const channelSessionManager = new ChannelSessionManager(channelOutbox);
+	const sinkSessionManager = new SinkSessionManager(sinkOutbox);
+	const agentRegistry = new AgentRegistry(agentInstancesPublisher);
+
 	const webService = new WebService(
 		bucketStore, eventStore, metricsStore, outcomeStore,
 		bucketPublishers, eventPublishers, outcomePublisher,
@@ -96,13 +104,9 @@ export async function startHub(
 		{ bucket: agentBucketPublisher, event: agentEventPublisher },
 		{ bucketStore: agentStores.bucketStore, eventStore: agentStores.eventStore, outcomeStore: agentStores.outcomeStore },
 		agentStatusPublisher,
+		agentInstancesPublisher,
+		agentRegistry,
 	);
-
-	await hubService.init();
-
-	const channelSessionManager = new ChannelSessionManager(channelOutbox);
-	const sinkSessionManager = new SinkSessionManager(sinkOutbox);
-	const agentRegistry = new AgentRegistry();
 
 	const app = new Hono();
 	app.route("/agent-api", createAgentApp());

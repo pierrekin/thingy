@@ -68,6 +68,9 @@ export function useStateSubscription(params: StateSubscriptionParams): string | 
 					case "agent_status":
 						store.setAgentStatus(msg);
 						break;
+					case "agent_instances":
+						store.setAgentInstances(msg);
+						break;
 				}
 			},
 		});

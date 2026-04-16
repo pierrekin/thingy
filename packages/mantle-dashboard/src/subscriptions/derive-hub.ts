@@ -1,4 +1,4 @@
-import type { Hub, Provider, Channel, Agent, Target, Check, Event, StatusSlot } from "../types";
+import type { Hub, Provider, Channel, Agent, AgentInstance, Target, Check, Event, StatusSlot } from "../types";
 import { useDataStore } from "./data-store";
 import type { StateSubscriptionParams } from "./types";
 
@@ -224,8 +224,13 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 			};
 		});
 
-	// Build agents
-	const agents: Agent[] = Array.from(agentBucketsMap.keys())
+	// Build agents — include agents that have buckets OR live instances
+	const agentNames = new Set<string>(agentBucketsMap.keys());
+	for (const name of state.agentInstances.keys()) {
+		agentNames.add(name);
+	}
+
+	const agents: Agent[] = Array.from(agentNames)
 		.sort()
 		.map((name) => {
 			const events: Event[] = [];
@@ -241,11 +246,22 @@ export function deriveHub(subscriptionId: string, params: StateSubscriptionParam
 			const visibleSlots = filterSlotsInWindow(slots, window);
 			const latestStatus = state.agentStatuses.get(name) ?? null;
 
+			const rawInstances = state.agentInstances.get(name) ?? [];
+			const instances: AgentInstance[] = rawInstances.map((i) => ({
+				instanceId: i.instanceId,
+				role: i.role,
+				connectedAt: new Date(i.connectedAt),
+			}));
+			// Placeholder badge count until we define "notable" instances
+			const badgeCount = instances.length > 1 ? instances.length - 1 : 0;
+
 			return {
 				name,
 				statusSlots: visibleSlots,
 				latestStatus,
 				events,
+				instances,
+				badgeCount,
 			};
 		});
 

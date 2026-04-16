@@ -11,6 +11,7 @@ import type {
 	CheckEventMessage,
 	ChannelEventMessage,
 	AgentEventMessage,
+	AgentInstanceInfo,
 } from "@mantle-team/client";
 
 /**
@@ -114,6 +115,9 @@ interface DataStoreState {
 	channelStatuses: Map<string, "green" | "red" | "grey" | null>;
 	agentStatuses: Map<string, "green" | "red" | "grey" | null>;
 
+	// Agent instances (live connection state, agentId -> instances)
+	agentInstances: Map<string, AgentInstanceInfo[]>;
+
 	// Event subscription data
 	eventInfo: Map<string, { title: string; code: string; startTime: number; endTime: number | null }>;
 	eventOutcomes: Map<string, Array<{ id: number; time: number; error: string | null; violation: string | null }>>;
@@ -134,6 +138,7 @@ interface DataStoreState {
 	setTargetStatus: (msg: { provider: string; target: string; status: "green" | "red" | "grey" | null }) => void;
 	setChannelStatus: (msg: { channel: string; status: "green" | "red" | "grey" | null }) => void;
 	setAgentStatus: (msg: { agent: string; status: "green" | "red" | "grey" | null }) => void;
+	setAgentInstances: (msg: { agent: string; instances: AgentInstanceInfo[] }) => void;
 	setEventInfo: (msg: { subscriptionId: string; title: string; code: string; startTime: number; endTime: number | null }) => void;
 	addEventOutcome: (msg: { subscriptionId: string; id: number; time: number; error: string | null; violation: string | null }) => void;
 	clearSubscription: (subscriptionId: string) => void;
@@ -163,6 +168,7 @@ export const useDataStore = create<DataStoreState>((set) => ({
 	targetStatuses: new Map(),
 	channelStatuses: new Map(),
 	agentStatuses: new Map(),
+	agentInstances: new Map(),
 	eventInfo: new Map(),
 	eventOutcomes: new Map(),
 
@@ -405,6 +411,18 @@ export const useDataStore = create<DataStoreState>((set) => ({
 			const agentStatuses = new Map(state.agentStatuses);
 			agentStatuses.set(msg.agent, msg.status);
 			return { agentStatuses };
+		});
+	},
+
+	setAgentInstances: (msg) => {
+		set((state) => {
+			const agentInstances = new Map(state.agentInstances);
+			if (msg.instances.length === 0) {
+				agentInstances.delete(msg.agent);
+			} else {
+				agentInstances.set(msg.agent, msg.instances);
+			}
+			return { agentInstances };
 		});
 	},
 

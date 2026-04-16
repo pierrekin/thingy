@@ -66,7 +66,8 @@ export type ServerMessage =
 	| ProviderStatusMessage
 	| TargetStatusMessage
 	| ChannelStatusMessage
-	| AgentStatusMessage;
+	| AgentStatusMessage
+	| AgentInstancesMessage;
 
 export type SnapshotCompleteMessage = {
 	type: "snapshot_complete";
@@ -211,6 +212,19 @@ export type AgentStatusMessage = {
 	subscriptionId: string;
 	agent: string;
 	status: "green" | "red" | "grey" | null;
+};
+
+export type AgentInstanceInfo = {
+	instanceId: string;
+	role: "leader" | "standby";
+	connectedAt: number;
+};
+
+export type AgentInstancesMessage = {
+	type: "agent_instances";
+	subscriptionId: string;
+	agent: string;
+	instances: AgentInstanceInfo[];
 };
 
 export type ChannelBucketMessage = {

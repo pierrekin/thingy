@@ -1,5 +1,6 @@
 import type { Hub } from "../types";
 import { EntitySection } from "../components/EntitySection";
+import { AgentSection } from "../components/AgentSection";
 
 type Props = {
 	hub: Hub;
@@ -50,14 +51,7 @@ export function InfrastructurePage({ hub }: Props) {
 						Agents
 					</h2>
 					{hub.agents.map((agent) => (
-						<EntitySection
-							key={agent.name}
-							name={agent.name}
-							statusSlots={agent.statusSlots}
-							latestStatus={agent.latestStatus}
-							events={agent.events}
-							eventLevel="provider"
-						/>
+						<AgentSection key={agent.name} agent={agent} />
 					))}
 				</section>
 			)}

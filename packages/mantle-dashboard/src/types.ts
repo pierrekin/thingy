@@ -45,11 +45,19 @@ export type Channel = {
 	events: Event[];
 };
 
+export type AgentInstance = {
+	instanceId: string;
+	role: "leader" | "standby";
+	connectedAt: Date;
+};
+
 export type Agent = {
 	name: string;
 	statusSlots: StatusSlot[];
 	latestStatus: SlotStatus;
 	events: Event[];
+	instances: AgentInstance[];
+	badgeCount: number;
 };
 
 export type Hub = {

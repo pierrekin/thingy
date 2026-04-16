@@ -16,7 +16,9 @@ import type {
 	TargetStatusPublisher,
 	ChannelStatusPublisher,
 	AgentStatusPublisher,
+	AgentInstancesPublisher,
 } from "./pubsub.ts";
+import type { AgentRegistry } from "./agent-registry.ts";
 import {
 	SubscriptionManager,
 	StateSubscription,
@@ -44,6 +46,7 @@ import {
 	type TargetStatusMessage,
 	type ChannelStatusMessage,
 	type AgentStatusMessage,
+	type AgentInstancesMessage,
 } from "./subscriptions/index.ts";
 import { DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
 
@@ -107,6 +110,8 @@ export class WebService {
 		private agentPublishers: AgentPublishers = null,
 		private agentStores: AgentStoresForWeb = null,
 		private agentStatusPublisher: AgentStatusPublisher | null = null,
+		private agentInstancesPublisher: AgentInstancesPublisher | null = null,
+		private agentRegistry: AgentRegistry | null = null,
 	) {}
 
 	/**
@@ -515,6 +520,18 @@ export class WebService {
 				subscription.ws.send(JSON.stringify(msg));
 			}
 		}
+
+		if (this.agentRegistry) {
+			for (const entry of this.agentRegistry.snapshot()) {
+				const msg: AgentInstancesMessage = {
+					type: "agent_instances",
+					subscriptionId: subscription.id,
+					agent: entry.agent,
+					instances: entry.instances,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			}
+		}
 	}
 
 	/**
@@ -705,6 +722,18 @@ export class WebService {
 				subscription.ws.send(JSON.stringify(msg));
 			});
 			subscription.addUnsubscriber(unsubAgentStatus);
+		}
+
+		if (this.agentInstancesPublisher) {
+			const unsubAgentInstances = this.agentInstancesPublisher.subscribe((update) => {
+				const msg: AgentInstancesMessage = {
+					type: "agent_instances",
+					subscriptionId: subscription.id,
+					...update,
+				};
+				subscription.ws.send(JSON.stringify(msg));
+			});
+			subscription.addUnsubscriber(unsubAgentInstances);
 		}
 	}
 

@@ -1,4 +1,5 @@
 import type { MantleSocket } from "./mantle-socket.ts";
+import type { AgentInstanceInfo, AgentInstancesPublisher } from "./pubsub.ts";
 
 type AgentData = { audience: "agent"; agentId?: string; instanceId?: string };
 
@@ -18,11 +19,17 @@ function generateInstanceId(): string {
 	return `${Date.now().toString(36)}-${(counter++).toString(36)}`;
 }
 
+function toInfo(i: AgentInstance): AgentInstanceInfo {
+	return { instanceId: i.instanceId, role: i.role, connectedAt: i.connectedAt };
+}
+
 export class AgentRegistry {
 	/** agentId → instances, ordered newest-first */
 	private agents = new Map<string, AgentInstance[]>();
 	/** instanceId → instance (for fast lookup on disconnect) */
 	private byInstanceId = new Map<string, AgentInstance>();
+
+	constructor(private publisher: AgentInstancesPublisher) {}
 
 	add(agentId: string, socket: MantleSocket<AgentData>): AgentInstance {
 		const instanceId = generateInstanceId();
@@ -45,6 +52,7 @@ export class AgentRegistry {
 		// Tag the socket so we can find the instance on disconnect
 		socket.data.instanceId = instanceId;
 
+		this.publishFor(agentId);
 		return instance;
 	}
 
@@ -56,13 +64,17 @@ export class AgentRegistry {
 		this.byInstanceId.delete(instanceId);
 
 		const instances = this.agents.get(instance.agentId);
-		if (!instances) return null;
+		if (!instances) {
+			this.publisher.publish({ agent: instance.agentId, instances: [] });
+			return null;
+		}
 
 		const idx = instances.indexOf(instance);
 		if (idx !== -1) instances.splice(idx, 1);
 
 		if (instances.length === 0) {
 			this.agents.delete(instance.agentId);
+			this.publisher.publish({ agent: instance.agentId, instances: [] });
 			return null;
 		}
 
@@ -70,9 +82,11 @@ export class AgentRegistry {
 		if (instance.role === "leader") {
 			const next = instances[0]!;
 			next.role = "leader";
+			this.publishFor(instance.agentId);
 			return next;
 		}
 
+		this.publishFor(instance.agentId);
 		return null;
 	}
 
@@ -86,5 +100,18 @@ export class AgentRegistry {
 
 	getLeader(agentId: string): AgentInstance | undefined {
 		return this.getInstances(agentId).find((i) => i.role === "leader");
+	}
+
+	/** Snapshot of all agents and their instances, for new subscribers. */
+	snapshot(): Array<{ agent: string; instances: AgentInstanceInfo[] }> {
+		return Array.from(this.agents.entries()).map(([agent, list]) => ({
+			agent,
+			instances: list.map(toInfo),
+		}));
+	}
+
+	private publishFor(agentId: string): void {
+		const list = this.agents.get(agentId) ?? [];
+		this.publisher.publish({ agent: agentId, instances: list.map(toInfo) });
 	}
 }

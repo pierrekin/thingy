@@ -21,6 +21,12 @@ export type AgentMessage =
 export type HubMessage =
   | {
       type: "hub_hello";
+      instanceId: string;
+      role: "leader" | "standby";
+    }
+  | {
+      type: "agent_promote";
+      instanceId: string;
     }
   | {
       type: "ack";

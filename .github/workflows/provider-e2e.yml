@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - "packages/provider-**"
-      - "packages/mantle-framework/**"
   workflow_dispatch:
 
 jobs:

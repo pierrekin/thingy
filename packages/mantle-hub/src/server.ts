@@ -5,24 +5,37 @@ import type { HubService } from "./service.ts";
 import type { WebService } from "./web-service.ts";
 import type { ChannelSessionManager } from "./channel-session.ts";
 import type { SinkSessionManager } from "./sink-session.ts";
+import type { AgentRegistry } from "./agent-registry.ts";
 import { createMantleSocketHandler, type MantleSocket } from "./mantle-socket.ts";
 
 type WebData = { audience: "web" };
-type AgentData = { audience: "agent"; agentId?: string };
+type AgentData = { audience: "agent"; agentId?: string; instanceId?: string };
 type ChannelData = { audience: "channel"; channelId?: string };
 type SinkData = { audience: "sink"; sinkId?: string };
 type WebSocketData = WebData | AgentData | ChannelData | SinkData;
 
-function handleAgentOpen(ms: MantleSocket<AgentData>): void {
-	ms.send(JSON.stringify({ type: "hub_hello" }));
-}
-
-async function handleAgentMessage(ms: MantleSocket<AgentData>, message: string, hubService: HubService): Promise<void> {
+async function handleAgentMessage(ms: MantleSocket<AgentData>, message: string, hubService: HubService, agentRegistry: AgentRegistry): Promise<void> {
 	const msg = JSON.parse(message) as AgentMessage;
 	if (msg.type === "agent_hello") {
 		ms.data.agentId = msg.agentId;
+		const instance = agentRegistry.add(msg.agentId, ms);
+		ms.send(JSON.stringify({ type: "hub_hello", instanceId: instance.instanceId, role: instance.role }));
+		console.log(`Agent '${msg.agentId}' connected as ${instance.role} (instance: ${instance.instanceId})`);
 	}
 	await hubService.handleAgentMessage(msg, ms.data.agentId);
+}
+
+function handleAgentClose(ms: MantleSocket<AgentData>, agentRegistry: AgentRegistry): void {
+	const { instanceId, agentId } = ms.data;
+	if (!instanceId) return;
+
+	const promoted = agentRegistry.remove(instanceId);
+	console.log(`Agent '${agentId}' disconnected (instance: ${instanceId})`);
+
+	if (promoted) {
+		console.log(`Agent '${promoted.agentId}' promoted instance ${promoted.instanceId} to leader`);
+		promoted.socket.send(JSON.stringify({ type: "agent_promote", instanceId: promoted.instanceId }));
+	}
 }
 
 async function handleChannelMessage(ms: MantleSocket<ChannelData>, message: string, channelSessionManager: ChannelSessionManager): Promise<void> {
@@ -82,17 +95,13 @@ export function createWebSocketHandler(
 	webService: WebService,
 	channelSessionManager: ChannelSessionManager,
 	sinkSessionManager: SinkSessionManager,
+	agentRegistry: AgentRegistry,
 ) {
 	return createMantleSocketHandler<WebSocketData>({
-		open(ms: MantleSocket<WebSocketData>) {
-			if (ms.data.audience === "agent") {
-				handleAgentOpen(ms as MantleSocket<AgentData>);
-			}
-		},
 		async message(ms: MantleSocket<WebSocketData>, message: string) {
 			const { data } = ms;
 			if (data.audience === "agent") {
-				await handleAgentMessage(ms as MantleSocket<AgentData>, message, hubService);
+				await handleAgentMessage(ms as MantleSocket<AgentData>, message, hubService, agentRegistry);
 			} else if (data.audience === "web") {
 				await webService.handleMessage(ms, message);
 			} else if (data.audience === "channel") {
@@ -103,7 +112,9 @@ export function createWebSocketHandler(
 		},
 		close(ms: MantleSocket<WebSocketData>) {
 			const { data } = ms;
-			if (data.audience === "web") {
+			if (data.audience === "agent") {
+				handleAgentClose(ms as MantleSocket<AgentData>, agentRegistry);
+			} else if (data.audience === "web") {
 				webService.handleDisconnect(ms);
 			} else if (data.audience === "channel") {
 				channelSessionManager.handleDisconnect(ms as MantleSocket<ChannelData>);

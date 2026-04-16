@@ -1,4 +1,4 @@
-import type { AgentMessage, CheckResultPayload, HubMessage, ResolvedAgentConfig } from "mantle-framework";
+import type { AgentConfig, AgentMessage, CheckResultPayload, HubMessage } from "mantle-framework";
 
 const RECONNECT_MS = 2000;
 
@@ -9,7 +9,7 @@ export type HelloResult =
 			type: "ok";
 			instanceId: string;
 			role: AgentRole;
-			agentConfig: ResolvedAgentConfig;
+			agentConfig: AgentConfig;
 			providerConfigs: Record<string, unknown>;
 	  }
 	| {

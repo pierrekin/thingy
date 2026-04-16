@@ -44,7 +44,7 @@ export { resolveAgentConfig, type ResolvedTarget, type ResolvedCheck } from "./r
 export { type CheckResult, isCheckError, isCheckSuccess } from "./result.ts";
 
 // Protocol (agent <-> hub messages)
-export type { CheckResultPayload, AgentMessage, HubMessage, ResolvedAgentConfig } from "./protocol.ts";
+export type { CheckResultPayload, AgentMessage, HubMessage } from "./protocol.ts";
 
 // Provider & channel interfaces
 export type { ProviderInstance, Provider } from "./provider-interface.ts";
@@ -52,7 +52,7 @@ export type { ChannelInstance, Channel } from "./channel.ts";
 export type { SinkInstance, SinkRecord, Sink } from "./sink.ts";
 
 // Config
-export { loadConfig, resolvePlacements, type Config, type HubConfig, type AgentConfig } from "./config.ts";
+export { loadConfig, type Config, type HubConfig, type AgentConfig, type TargetConfig } from "./config.ts";
 
 // Errors
 export { OperationalError, handleOperationalErrors } from "./errors.ts";

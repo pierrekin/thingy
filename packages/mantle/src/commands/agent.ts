@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { handleOperationalErrors, OperationalError, type AgentConfig } from "mantle-framework";
+import { handleOperationalErrors, OperationalError } from "mantle-framework";
 import { startTargets, createHubConnection } from "mantle-agent";
 import { createChannelInstances, startChannelWorker, createSinkInstances, startSinkWorker } from "mantle-hub";
 
@@ -39,12 +39,8 @@ export const agent = defineCommand({
 		const { instanceId, role, agentConfig, providerConfigs } = hello;
 		console.log(`Assigned instance ${instanceId}, role: ${role}`);
 
-		// The wire shape of agentConfig is ResolvedAgentConfig; startTargets accepts AgentConfig.
-		// The shapes are compatible for runtime use (targets, channels, sinks are pass-through).
-		const runnableConfig = agentConfig as unknown as AgentConfig;
-
 		function startWork() {
-			startTargets(agentId, runnableConfig, providerConfigs, connection.checkReporter);
+			startTargets(agentId, agentConfig, providerConfigs, connection.checkReporter);
 
 			for (const ch of createChannelInstances(agentConfig.channels)) {
 				void startChannelWorker(hubUrl, ch.name, ch.instance);

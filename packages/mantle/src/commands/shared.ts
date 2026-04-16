@@ -17,15 +17,14 @@ export function getAgentConfig(
 	config: Config,
 	agent?: string,
 ): { id: string; config: AgentConfig } {
-	const agents = getAllAgentConfigs(config);
-	const availableIds = Object.keys(agents);
+	const availableIds = Object.keys(config.agents);
 
 	if (availableIds.length === 0) {
 		throw new OperationalError("No agent defined in config");
 	}
 
 	const id = agent ?? availableIds[0]!;
-	const agentConfig = agents[id];
+	const agentConfig = config.agents[id];
 
 	if (!agentConfig) {
 		throw new OperationalError(
@@ -34,17 +33,6 @@ export function getAgentConfig(
 	}
 
 	return { id, config: agentConfig };
-}
-
-export function getAllAgentConfigs(config: Config): Record<string, AgentConfig> {
-	const agents: Record<string, AgentConfig> = {};
-	if (config.agent) {
-		agents["default"] = config.agent;
-	}
-	if (config.agents) {
-		Object.assign(agents, config.agents);
-	}
-	return agents;
 }
 
 export const configArg = {

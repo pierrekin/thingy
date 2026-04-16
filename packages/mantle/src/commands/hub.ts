@@ -1,9 +1,9 @@
 import { defineCommand } from "citty";
-import { loadConfig, handleOperationalErrors, resolvePlacements, type ResolvedAgentConfig } from "mantle-framework";
+import { loadConfig, handleOperationalErrors } from "mantle-framework";
 import { validateAgentConfig } from "mantle-agent";
 import { startHub, createChannelInstances, startChannelWorker, createSinkInstances, startSinkWorker, AgentConfigRegistry, type ResolvedAgentPayload } from "mantle-hub";
 import { createSqliteStores } from "../store/sqlite.ts";
-import { configArg, getHubConfig, getHubUrl, getAllAgentConfigs } from "./shared.ts";
+import { configArg, getHubConfig, getHubUrl } from "./shared.ts";
 
 export const hub = defineCommand({
 	meta: { name: "hub", description: "Run hub" },
@@ -12,10 +12,10 @@ export const hub = defineCommand({
 		const config = await loadConfig(args.config);
 		const hubConfig = getHubConfig(config);
 
-		const allProviderConfigs = config.providers ?? {};
+		const allProviderConfigs = config.providers;
 		const agentPayloads = new Map<string, ResolvedAgentPayload>();
 
-		for (const [agentId, agentConfig] of Object.entries(getAllAgentConfigs(config))) {
+		for (const [agentId, agentConfig] of Object.entries(config.agents)) {
 			// Build a per-agent provider config containing only referenced providers
 			const providerConfigs: Record<string, unknown> = {};
 			for (const target of agentConfig.targets) {
@@ -28,21 +28,7 @@ export const hub = defineCommand({
 			// validateAgentConfig may mutate providerConfigs to add implicit {} entries
 			validateAgentConfig(agentConfig, providerConfigs);
 
-			const resolvedChannels = resolvePlacements(agentConfig.channels, config.channels);
-			const resolvedSinks = resolvePlacements(agentConfig.sinks, config.sinks);
-
-			const resolvedAgentConfig: ResolvedAgentConfig = {
-				name: agentConfig.name,
-				...(agentConfig.interval !== undefined ? { interval: agentConfig.interval } : {}),
-				targets: agentConfig.targets,
-				channels: resolvedChannels,
-				sinks: resolvedSinks,
-			};
-
-			agentPayloads.set(agentId, {
-				agentConfig: resolvedAgentConfig,
-				providerConfigs,
-			});
+			agentPayloads.set(agentId, { agentConfig, providerConfigs });
 		}
 
 		const agentConfigRegistry = new AgentConfigRegistry(agentPayloads);
@@ -59,14 +45,12 @@ export const hub = defineCommand({
 		);
 
 		const hubUrl = getHubUrl(hubConfig);
-		const channelConfigs = resolvePlacements(hubConfig.channels, config.channels);
-		const sinkConfigs = resolvePlacements(hubConfig.sinks, config.sinks);
 
-		for (const ch of createChannelInstances(channelConfigs)) {
+		for (const ch of createChannelInstances(hubConfig.channels)) {
 			void startChannelWorker(hubUrl, ch.name, ch.instance);
 		}
 
-		for (const s of createSinkInstances(sinkConfigs)) {
+		for (const s of createSinkInstances(hubConfig.sinks)) {
 			void startSinkWorker(hubUrl, s.name, s.instance);
 		}
 	}),

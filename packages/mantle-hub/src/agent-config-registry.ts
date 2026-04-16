@@ -1,7 +1,7 @@
-import type { ResolvedAgentConfig } from "mantle-framework";
+import type { AgentConfig } from "mantle-framework";
 
 export type ResolvedAgentPayload = {
-	agentConfig: ResolvedAgentConfig;
+	agentConfig: AgentConfig;
 	providerConfigs: Record<string, unknown>;
 };
 

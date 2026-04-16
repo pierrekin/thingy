@@ -40,7 +40,7 @@ export function resolveAgentConfig(
       continue; // validation should catch this earlier
     }
 
-    const targetType = (target as { type?: string }).type;
+    const targetType = target.type;
     if (!targetType) {
       continue;
     }
@@ -50,13 +50,11 @@ export function resolveAgentConfig(
       continue;
     }
 
-    // Resolve interval
-    const targetInterval = (target as { interval?: string }).interval;
     const providerIntervals = providerConfig?.intervals as Record<string, string> | undefined;
     const providerInterval = providerConfig?.interval as string | undefined;
 
     const intervalStr =
-      targetInterval ??
+      target.interval ??
       providerIntervals?.[targetType] ??
       providerInterval ??
       agentConfig.interval ??
@@ -64,15 +62,13 @@ export function resolveAgentConfig(
       providerDef.defaultInterval ??
       "30s";
 
-    // Resolve checks
-    const targetChecks = (target as { checks?: Record<string, unknown> }).checks;
     const providerChecks = providerConfig?.checks as Record<string, Record<string, unknown>> | undefined;
     const providerTypeChecks = providerChecks?.[targetType];
 
     const resolvedChecks: ResolvedCheck[] = [];
 
     for (const [checkName, binding] of Object.entries(targetTypeDef.checks)) {
-      const targetCheckConfig = targetChecks?.[checkName];
+      const targetCheckConfig = target.checks?.[checkName];
       const providerCheckConfig = providerTypeChecks?.[checkName];
       const defaultConfig = binding.defaults ?? binding.check.defaults;
       const enabledByDefault = binding.enabled !== false;

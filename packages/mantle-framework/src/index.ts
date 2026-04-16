@@ -44,7 +44,7 @@ export { resolveAgentConfig, type ResolvedTarget, type ResolvedCheck } from "./r
 export { type CheckResult, isCheckError, isCheckSuccess } from "./result.ts";
 
 // Protocol (agent <-> hub messages)
-export type { CheckResultPayload, AgentMessage, HubMessage } from "./protocol.ts";
+export type { CheckResultPayload, AgentMessage, HubMessage, ResolvedAgentConfig } from "./protocol.ts";
 
 // Provider & channel interfaces
 export type { ProviderInstance, Provider } from "./provider-interface.ts";

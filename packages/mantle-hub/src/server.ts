@@ -6,6 +6,7 @@ import type { WebService } from "./web-service.ts";
 import type { ChannelSessionManager } from "./channel-session.ts";
 import type { SinkSessionManager } from "./sink-session.ts";
 import type { AgentRegistry } from "./agent-registry.ts";
+import type { AgentConfigRegistry } from "./agent-config-registry.ts";
 import { createMantleSocketHandler, type MantleSocket } from "./mantle-socket.ts";
 
 type WebData = { audience: "web" };
@@ -14,12 +15,36 @@ type ChannelData = { audience: "channel"; channelId?: string };
 type SinkData = { audience: "sink"; sinkId?: string };
 type WebSocketData = WebData | AgentData | ChannelData | SinkData;
 
-async function handleAgentMessage(ms: MantleSocket<AgentData>, message: string, hubService: HubService, agentRegistry: AgentRegistry): Promise<void> {
+async function handleAgentMessage(
+	ms: MantleSocket<AgentData>,
+	message: string,
+	hubService: HubService,
+	agentRegistry: AgentRegistry,
+	agentConfigRegistry: AgentConfigRegistry,
+): Promise<void> {
 	const msg = JSON.parse(message) as AgentMessage;
 	if (msg.type === "agent_hello") {
 		ms.data.agentId = msg.agentId;
+		const payload = agentConfigRegistry.get(msg.agentId);
+		if (!payload) {
+			const known = agentConfigRegistry.knownIds().join(", ") || "(none)";
+			ms.send(JSON.stringify({
+				type: "agent_reject",
+				reason: `Unknown agent '${msg.agentId}'. Expected one of: ${known}`,
+				code: "unknown_agent",
+			}));
+			ms.close();
+			console.log(`Rejected agent_hello from unknown agent '${msg.agentId}'`);
+			return;
+		}
 		const instance = agentRegistry.add(msg.agentId, ms);
-		ms.send(JSON.stringify({ type: "hub_hello", instanceId: instance.instanceId, role: instance.role }));
+		ms.send(JSON.stringify({
+			type: "hub_hello",
+			instanceId: instance.instanceId,
+			role: instance.role,
+			agentConfig: payload.agentConfig,
+			providerConfigs: payload.providerConfigs,
+		}));
 		console.log(`Agent '${msg.agentId}' connected as ${instance.role} (instance: ${instance.instanceId})`);
 	}
 	await hubService.handleAgentMessage(msg, ms.data.agentId);
@@ -96,12 +121,13 @@ export function createWebSocketHandler(
 	channelSessionManager: ChannelSessionManager,
 	sinkSessionManager: SinkSessionManager,
 	agentRegistry: AgentRegistry,
+	agentConfigRegistry: AgentConfigRegistry,
 ) {
 	return createMantleSocketHandler<WebSocketData>({
 		async message(ms: MantleSocket<WebSocketData>, message: string) {
 			const { data } = ms;
 			if (data.audience === "agent") {
-				await handleAgentMessage(ms as MantleSocket<AgentData>, message, hubService, agentRegistry);
+				await handleAgentMessage(ms as MantleSocket<AgentData>, message, hubService, agentRegistry, agentConfigRegistry);
 			} else if (data.audience === "web") {
 				await webService.handleMessage(ms, message);
 			} else if (data.audience === "channel") {

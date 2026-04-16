@@ -18,11 +18,26 @@ export type AgentMessage =
       agentId: string;
     };
 
+export type ResolvedAgentConfig = {
+  name: string;
+  interval?: string;
+  targets: Array<Record<string, unknown>>;
+  channels: Record<string, unknown>;
+  sinks: Record<string, unknown>;
+};
+
 export type HubMessage =
   | {
       type: "hub_hello";
       instanceId: string;
       role: "leader" | "standby";
+      agentConfig: ResolvedAgentConfig;
+      providerConfigs: Record<string, unknown>;
+    }
+  | {
+      type: "agent_reject";
+      reason: string;
+      code: "unknown_agent";
     }
   | {
       type: "agent_promote";

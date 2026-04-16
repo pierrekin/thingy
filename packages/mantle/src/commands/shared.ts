@@ -17,16 +17,7 @@ export function getAgentConfig(
 	config: Config,
 	agent?: string,
 ): { id: string; config: AgentConfig } {
-	const agents: Record<string, AgentConfig> = {};
-
-	if (config.agent) {
-		agents["default"] = config.agent;
-	}
-
-	if (config.agents) {
-		Object.assign(agents, config.agents);
-	}
-
+	const agents = getAllAgentConfigs(config);
 	const availableIds = Object.keys(agents);
 
 	if (availableIds.length === 0) {
@@ -43,6 +34,17 @@ export function getAgentConfig(
 	}
 
 	return { id, config: agentConfig };
+}
+
+export function getAllAgentConfigs(config: Config): Record<string, AgentConfig> {
+	const agents: Record<string, AgentConfig> = {};
+	if (config.agent) {
+		agents["default"] = config.agent;
+	}
+	if (config.agents) {
+		Object.assign(agents, config.agents);
+	}
+	return agents;
 }
 
 export const configArg = {

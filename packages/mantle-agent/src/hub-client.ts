@@ -1,8 +1,22 @@
-import type { AgentMessage, CheckResultPayload, HubMessage } from "mantle-framework";
+import type { AgentMessage, CheckResultPayload, HubMessage, ResolvedAgentConfig } from "mantle-framework";
 
 const RECONNECT_MS = 2000;
 
 export type AgentRole = "leader" | "standby";
+
+export type HelloResult =
+	| {
+			type: "ok";
+			instanceId: string;
+			role: AgentRole;
+			agentConfig: ResolvedAgentConfig;
+			providerConfigs: Record<string, unknown>;
+	  }
+	| {
+			type: "rejected";
+			reason: string;
+			code: "unknown_agent";
+	  };
 
 export interface CheckReporter {
 	sendCheckResult(
@@ -17,7 +31,7 @@ export interface CheckReporter {
 export interface HubConnection {
 	checkReporter: CheckReporter;
 	onPromote: (callback: () => void) => void;
-	waitForHello: () => Promise<{ instanceId: string; role: AgentRole }>;
+	waitForHello: () => Promise<HelloResult>;
 	close: () => void;
 }
 
@@ -30,7 +44,8 @@ export function createHubConnection(
 	let ws: WebSocket | null = null;
 	let closed = false;
 	let promoteCallback: (() => void) | null = null;
-	let helloResolve: ((value: { instanceId: string; role: AgentRole }) => void) | null = null;
+	let pendingPromote = false;
+	let helloResolve: ((value: HelloResult) => void) | null = null;
 
 	function send(msg: AgentMessage): void {
 		if (ws?.readyState === WebSocket.OPEN) {
@@ -50,11 +65,30 @@ export function createHubConnection(
 
 			socket.onmessage = (event) => {
 				const msg = JSON.parse(event.data as string) as HubMessage;
-				if (msg.type === "hub_hello" && helloResolve) {
-					helloResolve({ instanceId: msg.instanceId, role: msg.role });
-					helloResolve = null;
+				if (msg.type === "hub_hello") {
+					if (helloResolve) {
+						helloResolve({
+							type: "ok",
+							instanceId: msg.instanceId,
+							role: msg.role,
+							agentConfig: msg.agentConfig,
+							providerConfigs: msg.providerConfigs,
+						});
+						helloResolve = null;
+					}
+				} else if (msg.type === "agent_reject") {
+					closed = true;
+					if (helloResolve) {
+						helloResolve({ type: "rejected", reason: msg.reason, code: msg.code });
+						helloResolve = null;
+					}
+					ws?.close();
 				} else if (msg.type === "agent_promote") {
-					promoteCallback?.();
+					if (promoteCallback) {
+						promoteCallback();
+					} else {
+						pendingPromote = true;
+					}
 				}
 			};
 
@@ -68,9 +102,7 @@ export function createHubConnection(
 					console.log(`Disconnected from hub, reconnecting in ${RECONNECT_MS}ms...`);
 					setTimeout(() => {
 						if (!closed) {
-							connect().then(() => {
-								send({ type: "agent_hello", agentId });
-							});
+							connect();
 						}
 					}, RECONNECT_MS);
 				}
@@ -78,7 +110,7 @@ export function createHubConnection(
 		});
 	}
 
-	const connectPromise = connect();
+	void connect();
 
 	const checkReporter: CheckReporter = {
 		sendCheckResult(provider, target, check, time, result) {
@@ -90,6 +122,10 @@ export function createHubConnection(
 		checkReporter,
 		onPromote(callback) {
 			promoteCallback = callback;
+			if (pendingPromote) {
+				pendingPromote = false;
+				callback();
+			}
 		},
 		waitForHello() {
 			return new Promise((resolve) => {

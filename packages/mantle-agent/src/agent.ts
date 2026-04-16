@@ -71,7 +71,7 @@ function validateProviderConfig(
 	}
 }
 
-function validateAgentConfig(
+export function validateAgentConfig(
 	agentConfig: AgentConfig,
 	providerConfigs: ProviderConfigs,
 ) {

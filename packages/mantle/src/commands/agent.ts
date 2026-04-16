@@ -1,38 +1,56 @@
 import { defineCommand } from "citty";
-import { loadConfig, handleOperationalErrors, resolvePlacements, OperationalError } from "mantle-framework";
+import { handleOperationalErrors, OperationalError, type AgentConfig } from "mantle-framework";
 import { startTargets, createHubConnection } from "mantle-agent";
 import { createChannelInstances, startChannelWorker, createSinkInstances, startSinkWorker } from "mantle-hub";
-import { configArg, agentArg, getAgentConfig } from "./shared.ts";
 
 export const agent = defineCommand({
 	meta: { name: "agent", description: "Run agent" },
-	args: { config: configArg, agent: agentArg, hub: { type: "string", description: "Hub URL" } },
+	args: {
+		agent: {
+			type: "string",
+			description: "Agent ID (must match an agent defined in the hub's config)",
+			required: true,
+		},
+		hub: {
+			type: "string",
+			description: "Hub URL",
+			required: true,
+		},
+	},
 	run: handleOperationalErrors(async ({ args }) => {
-		const config = await loadConfig(args.config);
-		const { id, config: agentConfig } = getAgentConfig(config, args.agent);
-
-		if (!args.hub) {
-			throw new OperationalError("Hub URL required (--hub)");
-		}
+		const agentId = args.agent;
 		const hubUrl = args.hub;
 
-		const connection = createHubConnection(id, hubUrl);
-		const { instanceId, role } = await connection.waitForHello();
+		if (!agentId) {
+			throw new OperationalError("--agent <id> required");
+		}
+		if (!hubUrl) {
+			throw new OperationalError("--hub <url> required");
+		}
 
+		const connection = createHubConnection(agentId, hubUrl);
+		const hello = await connection.waitForHello();
+
+		if (hello.type === "rejected") {
+			console.error(`Hub rejected agent: ${hello.reason}`);
+			process.exit(1);
+		}
+
+		const { instanceId, role, agentConfig, providerConfigs } = hello;
 		console.log(`Assigned instance ${instanceId}, role: ${role}`);
 
-		const channelConfigs = resolvePlacements(agentConfig.channels, config.channels);
-		const sinkConfigs = resolvePlacements(agentConfig.sinks, config.sinks);
+		// The wire shape of agentConfig is ResolvedAgentConfig; startTargets accepts AgentConfig.
+		// The shapes are compatible for runtime use (targets, channels, sinks are pass-through).
+		const runnableConfig = agentConfig as unknown as AgentConfig;
 
 		function startWork() {
-			console.log("Starting as leader...");
-			startTargets(id, agentConfig, config.providers ?? {}, connection.checkReporter);
+			startTargets(agentId, runnableConfig, providerConfigs, connection.checkReporter);
 
-			for (const ch of createChannelInstances(channelConfigs)) {
+			for (const ch of createChannelInstances(agentConfig.channels)) {
 				void startChannelWorker(hubUrl, ch.name, ch.instance);
 			}
 
-			for (const s of createSinkInstances(sinkConfigs)) {
+			for (const s of createSinkInstances(agentConfig.sinks)) {
 				void startSinkWorker(hubUrl, s.name, s.instance);
 			}
 		}

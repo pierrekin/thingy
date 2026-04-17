@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import type { Event } from "../types";
-import type { ConnectionStatus } from "../hooks/useWebSocket";
+import type { ConnectionStatus } from "../ws-store";
 import type { MantleClient } from "@mantle-team/client";
 import { useEventSubscription } from "../hooks/useEventSubscription";
 import { useDataStore } from "../subscriptions/data-store";

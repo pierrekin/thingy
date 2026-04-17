@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDataStore } from "../subscriptions/data-store";
-import type { ConnectionStatus } from "./useWebSocket";
+import type { ConnectionStatus } from "../ws-store";
 import type { MetricsSubscriptionParams } from "../subscriptions/types";
 import type { MantleClient, ServerMessage } from "@mantle-team/client";
 

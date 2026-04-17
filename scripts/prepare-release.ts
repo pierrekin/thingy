@@ -112,11 +112,7 @@ if (
   fail("git push failed");
 }
 
-const technical = isPrerelease
-  ? `Bump \`packages/mantle/package.json\` to \`${semver}\`.`
-  : `Bump \`packages/mantle/package.json\` to \`${semver}\`. Move \`changelogs/next.md\` to \`changelogs/${semver}.md\`.`;
-
-const prBody = `${changelogContent}\n\n${technical}`;
+const prBody = `${changelogContent}`;
 
 const pr = Bun.spawnSync(
   [

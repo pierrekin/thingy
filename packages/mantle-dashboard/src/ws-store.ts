@@ -65,12 +65,15 @@ async function connect(): Promise<void> {
 		if (getAuthToken) {
 			const token = await getAuthToken();
 			if (!token) throw new Error("getAuthToken returned null");
-			client.authenticate(token);
+			await client.authenticate(token);
 		}
 		if (activeClient !== client) return;
 		setState({ client, status: "connected" });
-	} catch {
-		// onDisconnect schedules the reconnect.
+	} catch (err) {
+		console.warn("ws connect failed:", err);
+		if (activeClient === client) {
+			client.disconnect();
+		}
 	}
 }
 

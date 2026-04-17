@@ -24,6 +24,7 @@ import {
 	StateSubscription,
 	MetricsSubscription,
 	EventDetailSubscription,
+	type AuthenticateRequest,
 	type ClientMessage,
 	type StateSubscriptionRequest,
 	type MetricsSubscriptionRequest,
@@ -49,6 +50,7 @@ import {
 	type AgentInstancesMessage,
 } from "./subscriptions/index.ts";
 import { DEFAULT_BUCKET_CONFIG, type BucketConfig } from "./buckets.ts";
+import { validateAuthToken } from "./auth.ts";
 
 type WebSocketData = unknown;
 
@@ -127,6 +129,9 @@ export class WebService {
 		}
 
 		switch (msg.type) {
+			case "authenticate":
+				await this.handleAuthenticate(ws, msg);
+				break;
 			case "subscribe_state":
 				await this.handleStateSubscription(ws, msg);
 				break;
@@ -142,6 +147,19 @@ export class WebService {
 			default:
 				this.sendError(ws, undefined, `Unknown message type: ${(msg as { type: string }).type}`);
 		}
+	}
+
+	private async handleAuthenticate(
+		ws: MantleSocket<WebSocketData>,
+		msg: AuthenticateRequest,
+	): Promise<void> {
+		const result = await validateAuthToken(msg.token);
+		if (result.ok) {
+			ws.send(JSON.stringify({ type: "authenticated" }));
+			return;
+		}
+		ws.send(JSON.stringify({ type: "authentication_error", error: result.reason }));
+		ws.close();
 	}
 
 	/**

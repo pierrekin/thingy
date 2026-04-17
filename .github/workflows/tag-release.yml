@@ -1,0 +1,46 @@
+name: Tag Release
+
+on:
+  push:
+    branches: [main]
+    paths: [packages/mantle/package.json]
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+          ssh-key: ${{ secrets.TAG_RELEASE_DEPLOY_KEY }}
+
+      - id: detect
+        name: Detect version bump
+        run: |
+          NEW=$(jq -r .version packages/mantle/package.json)
+          OLD=$(git show HEAD^:packages/mantle/package.json | jq -r .version)
+          echo "old version: $OLD"
+          echo "new version: $NEW"
+          if [ "$NEW" = "$OLD" ]; then
+            echo "versions match; no tag created"
+            exit 0
+          fi
+          TAG="v$NEW"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::tag $TAG already exists"
+            exit 1
+          fi
+          echo "versions differ; tagging $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - if: steps.detect.outputs.tag
+        name: Create and push tag
+        run: |
+          git config user.email "ci@getmantle.sh"
+          git config user.name "Mantle CI"
+          git tag "${{ steps.detect.outputs.tag }}"
+          git push origin "${{ steps.detect.outputs.tag }}"

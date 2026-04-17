@@ -11,11 +11,12 @@ permissions:
 jobs:
   tag:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 2
-          token: ${{ secrets.RELEASE_TAG_PAT }}
+          ssh-key: ${{ secrets.TAG_RELEASE_DEPLOY_KEY }}
 
       - id: detect
         name: Detect version bump

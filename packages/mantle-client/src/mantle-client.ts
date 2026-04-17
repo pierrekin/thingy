@@ -165,9 +165,9 @@ export class MantleClient {
 	private send(message: string): void {
 		if (!this.socket) return;
 		// A send on a non-OPEN socket means the connection is dying but our
-		// onclose hasn't fired yet. Force the close so disconnect callbacks run,
-		// status flips, and consumers re-derive via their reconnect effects —
-		// rather than silently losing the message.
+		// onclose hasn't fired yet. Force the close so disconnect callbacks
+		// run and consumers re-derive via their reconnect effects, rather
+		// than silently losing the message.
 		if (this.socket.readyState !== WebSocket.OPEN) {
 			this.disconnect();
 			return;

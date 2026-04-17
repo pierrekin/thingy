@@ -1,5 +1,5 @@
-import { createContext, useContext, type ReactNode } from "react";
-import { useWebSocket, type ConnectionStatus, type GetAuthToken } from "../hooks/useWebSocket";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { wsStore, type ConnectionStatus, type GetAuthToken } from "../ws-store";
 import type { MantleClient } from "@mantle-team/client";
 
 type WebSocketContextValue = {
@@ -12,22 +12,19 @@ type WebSocketProviderProps = {
 	getAuthToken?: GetAuthToken;
 };
 
-const WebSocketContext = createContext<WebSocketContextValue | null>(null);
-
 export function WebSocketProvider({ children, getAuthToken }: WebSocketProviderProps) {
-	const { client, status } = useWebSocket(getAuthToken);
+	useEffect(() => {
+		wsStore.setAuthTokenProvider(getAuthToken ?? null);
+	}, [getAuthToken]);
 
-	return (
-		<WebSocketContext.Provider value={{ client, status }}>
-			{children}
-		</WebSocketContext.Provider>
-	);
+	useEffect(() => {
+		wsStore.acquire();
+		return () => wsStore.release();
+	}, []);
+
+	return <>{children}</>;
 }
 
 export function useWebSocketContext(): WebSocketContextValue {
-	const context = useContext(WebSocketContext);
-	if (!context) {
-		throw new Error("useWebSocketContext must be used within WebSocketProvider");
-	}
-	return context;
+	return useSyncExternalStore(wsStore.subscribe, wsStore.getSnapshot);
 }

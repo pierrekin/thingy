@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Check } from "../types";
 import { EventTable } from "./EventTable";
 import { StatusBar } from "./StatusBar";
-import type { ConnectionStatus } from "../hooks/useWebSocket";
+import type { ConnectionStatus } from "../ws-store";
 import { useMetricsSubscription } from "../hooks/useMetricsSubscription";
 import { useMetricsData } from "../hooks/useMetricsData";
 import { SparkChart } from "./SparkChart";

@@ -46,7 +46,18 @@ export type UnsubscribeRequest = {
 // SERVER → CLIENT MESSAGES
 // ============================================================================
 
+export type AuthenticatedMessage = {
+	type: "authenticated";
+};
+
+export type AuthenticationErrorMessage = {
+	type: "authentication_error";
+	error: string;
+};
+
 export type ServerMessage =
+	| AuthenticatedMessage
+	| AuthenticationErrorMessage
 	| SubscriptionAckMessage
 	| SubscriptionErrorMessage
 	| SnapshotCompleteMessage

@@ -44,11 +44,15 @@ function generateId(): string {
 	return `sub-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
+const AUTH_TIMEOUT_MS = 5000;
+
 export class MantleClient {
 	private socket: MantleSocket | null = null;
 	private subscriptions = new Map<string, SubscriptionEntry>();
 	private disconnectCallbacks = new Set<() => void>();
 	private url: string;
+	private pendingAuth: { resolve: () => void; reject: (e: Error) => void } | null = null;
+	private authTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(url: string) {
 		this.url = url;
@@ -63,6 +67,7 @@ export class MantleClient {
 				onerror: () => reject(new Error("WebSocket connection failed")),
 				onclose: () => {
 					this.socket = null;
+					this.rejectPendingAuth(new Error("socket closed during auth"));
 					for (const cb of this.disconnectCallbacks) {
 						cb();
 					}
@@ -87,8 +92,45 @@ export class MantleClient {
 		return () => this.disconnectCallbacks.delete(cb);
 	}
 
-	authenticate(token: string): void {
-		this.send(JSON.stringify({ type: "authenticate", token }));
+	authenticate(token: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if (this.pendingAuth) {
+				reject(new Error("authentication already in progress"));
+				return;
+			}
+			this.pendingAuth = { resolve, reject };
+			this.authTimer = setTimeout(() => {
+				if (!this.pendingAuth) return;
+				const { reject: r } = this.pendingAuth;
+				this.pendingAuth = null;
+				this.authTimer = null;
+				r(new Error("authentication timed out"));
+				this.disconnect();
+			}, AUTH_TIMEOUT_MS);
+			this.send(JSON.stringify({ type: "authenticate", token }));
+		});
+	}
+
+	private resolvePendingAuth(): void {
+		if (!this.pendingAuth) return;
+		const { resolve } = this.pendingAuth;
+		this.pendingAuth = null;
+		if (this.authTimer !== null) {
+			clearTimeout(this.authTimer);
+			this.authTimer = null;
+		}
+		resolve();
+	}
+
+	private rejectPendingAuth(err: Error): void {
+		if (!this.pendingAuth) return;
+		const { reject } = this.pendingAuth;
+		this.pendingAuth = null;
+		if (this.authTimer !== null) {
+			clearTimeout(this.authTimer);
+			this.authTimer = null;
+		}
+		reject(err);
 	}
 
 	subscribe(type: "state", filters: StateFilters, callbacks: SubscriptionCallbacks): SubscriptionHandle;
@@ -180,6 +222,16 @@ export class MantleClient {
 		try {
 			msg = JSON.parse(data) as ServerMessage;
 		} catch {
+			return;
+		}
+
+		if (msg.type === "authenticated") {
+			this.resolvePendingAuth();
+			return;
+		}
+
+		if (msg.type === "authentication_error") {
+			this.rejectPendingAuth(new Error(msg.error));
 			return;
 		}
 

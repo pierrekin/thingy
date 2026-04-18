@@ -88,6 +88,26 @@ async function collect(
   return [out, err].filter(Boolean).join("\n");
 }
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  attempts: number,
+  baseDelayMs: number,
+  onRetry: (attempt: number, err: unknown) => void,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i === attempts) break;
+      onRetry(i, err);
+      await Bun.sleep(baseDelayMs * 4 ** (i - 1));
+    }
+  }
+  throw lastErr;
+}
+
 async function resolveDigest(image: string, tag: string): Promise<string> {
   const ref = `${image}:${tag}`;
   const proc = spawn(
@@ -128,15 +148,23 @@ async function runVersion(
 ): Promise<VersionResult> {
   const composeDir = resolve(baseDir, dirname(config.compose));
   const testFile = resolve(baseDir, config.tests);
-  const digest = await resolveDigest(target.image, entry.tag);
+  const dockerLines: string[] = [];
+  const logDocker = (s: string) => {
+    if (s) dockerLines.push(s);
+  };
+  const digest = await withRetry(
+    () => resolveDigest(target.image, entry.tag),
+    3,
+    2000,
+    (attempt, err) =>
+      logDocker(
+        `resolveDigest attempt ${attempt} failed: ${err instanceof Error ? err.message : String(err)}`,
+      ),
+  );
   const env = {
     ...process.env,
     TARGET_IMAGE: target.image,
     TARGET_VERSION: `${entry.tag}@${digest}`,
-  };
-  const dockerLines: string[] = [];
-  const logDocker = (s: string) => {
-    if (s) dockerLines.push(s);
   };
   let testOutput = "";
   let passed = false;
@@ -145,6 +173,20 @@ async function runVersion(
   activeComposeDirs.add(composeDir);
 
   try {
+    await withRetry(
+      async () => {
+        const pull = spawn(
+          ["docker", "compose", "--progress=plain", "pull"],
+          { cwd: composeDir, stdout: "pipe", stderr: "pipe", env },
+        );
+        logDocker(await collect(pull));
+        if ((await pull.exited) !== 0) throw new Error("compose pull failed");
+      },
+      3,
+      2000,
+      (attempt) => logDocker(`compose pull attempt ${attempt} failed, retrying`),
+    );
+
     const up = spawn(
       [
         "docker",
@@ -153,7 +195,7 @@ async function runVersion(
         "up",
         "-d",
         "--wait",
-        "--quiet-pull",
+        "--pull=never",
       ],
       {
         cwd: composeDir,

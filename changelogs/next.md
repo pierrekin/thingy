@@ -2,4 +2,5 @@
 - surface connected agent instances on the infrastructure page
 - move agent configuration to the hub
 - dashboard only reports connected after the server authenticates the session
+- macos binaries are now signed and notarized by apple, so they run without security warnings
 

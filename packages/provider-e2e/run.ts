@@ -104,19 +104,75 @@ if (command === "test" || command === "lint") {
     process.exit(0);
   }
 
-  const description =
-    command === "lint" ? "lint" : `test${record ? " --record" : ""} ${rest[0]}`;
+  // Forward args without --dirty (subprocesses don't need it)
+  const forwardArgs = rawArgs.filter((a) => a !== "--dirty");
+
+  if (command === "lint") {
+    async function lintOne(
+      provider: (typeof providers)[number],
+    ): Promise<{ name: string; passed: boolean; output: string }> {
+      const proc = Bun.spawn(["bun", "run", provider.script, ...forwardArgs], {
+        cwd: provider.packageDir,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const [stdout, stderr] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+      ]);
+      const passed = (await proc.exited) === 0;
+      return {
+        name: provider.name,
+        passed,
+        output: `${stdout}${stderr}`,
+      };
+    }
+
+    const start = performance.now();
+    const results: { name: string; passed: boolean; output: string }[] = [];
+    await pool(
+      selected,
+      async (p) => results.push(await lintOne(p)),
+      CONCURRENCY,
+    );
+    const elapsed = Math.round(performance.now() - start);
+
+    const failures = results.filter((r) => !r.passed);
+    if (failures.length === 0) {
+      console.log(`Checked ${results.length} providers in ${elapsed}ms.`);
+      process.exit(0);
+    }
+
+    for (const { name, output } of failures) {
+      console.log(`FAIL  ${name}`);
+      if (output.trim()) console.log(output.trimEnd());
+    }
+    console.log(
+      `Checked ${results.length} providers in ${elapsed}ms. ${failures.length} failed.`,
+    );
+    process.exit(1);
+  }
+
+  const description = `test${record ? " --record" : ""} ${rest[0]}`;
   console.log(
     `Running e2e (${description}) for: ${selected.map((p) => p.name).join(", ")}`,
   );
 
-  // Forward args without --dirty (subprocesses don't need it)
-  const forwardArgs = rawArgs.filter((a) => a !== "--dirty");
+  // Keep the outer alive on SIGINT/SIGTERM so in-flight inner processes (which
+  // receive the same signal from the terminal's process group) can finish their
+  // own compose teardown. No new providers are started once interrupted.
+  let interrupted = false;
+  const onSignal = () => {
+    interrupted = true;
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
 
   async function run(
     provider: (typeof providers)[number],
   ): Promise<{ name: string; passed: boolean }> {
-    console.log(`START ${provider.name}`);
+    if (interrupted) return { name: provider.name, passed: false };
+    const start = performance.now();
     const proc = Bun.spawn(["bun", "run", provider.script, ...forwardArgs], {
       cwd: provider.packageDir,
       stdout: "pipe",
@@ -124,16 +180,14 @@ if (command === "test" || command === "lint") {
     });
     await Promise.all([drain(proc.stdout), drain(proc.stderr)]);
     const passed = (await proc.exited) === 0;
+    const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+    console.log(`${passed ? "PASS" : "FAIL"} ${provider.name} (${elapsed}s)`);
     return { name: provider.name, passed };
   }
 
   const results: { name: string; passed: boolean }[] = [];
   await pool(selected, async (p) => results.push(await run(p)), CONCURRENCY);
 
-  console.log("\n=== Results ===");
-  for (const { name, passed } of results) {
-    console.log(`${passed ? "PASS" : "FAIL"}  ${name}`);
-  }
   if (results.some((r) => !r.passed)) process.exit(1);
 }
 

@@ -11,7 +11,7 @@ permissions:
 jobs:
   tag:
     runs-on: ubuntu-latest
-    environment: production
+    environment: tag-release
     steps:
       - uses: actions/checkout@v6
         with:

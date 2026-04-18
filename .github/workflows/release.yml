@@ -188,7 +188,7 @@ jobs:
   publish-r2-release:
     needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
-    environment: production
+    environment: binary-distribution
     steps:
       - uses: actions/checkout@v6
 
@@ -240,7 +240,7 @@ jobs:
   publish-homebrew-tap:
     needs: publish-github-release
     runs-on: ubuntu-latest
-    environment: production
+    environment: homebrew-distribution
     if: ${{ !contains(github.ref_name, '-') }}
     steps:
       - name: Download checksums

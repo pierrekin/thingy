@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Usage: ./pr.sh <provider> <compatibility-dir>
 #
-# If the provider has uncommitted changes, creates a branch off main
-# with just those changes, commits, pushes, and opens a PR.
+# If the provider has uncommitted changes, creates a branch off main with
+# just those changes and opens a PR.
 
 provider="${1:?"Usage: pr.sh <provider> <compatibility-dir>"}"
 dir="${2:?"Usage: pr.sh <provider> <compatibility-dir>"}"
@@ -42,16 +42,52 @@ if [[ -n "${DRY_RUN:-}" ]]; then
   echo "  title: $title"
   echo "  body:"
   echo "$body" | sed 's/^/    /'
+  echo "  files:"
+  echo "$changed" | sed 's/^/    /'
   exit 0
 fi
 
 echo "Creating PR for $provider: $latest_version"
 
-git checkout -b "$branch_name" main
-git add $changed
-git commit -m "$title"
-git push -u origin "$branch_name"
+repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+main_sha=$(gh api "/repos/$repo/git/refs/heads/main" --jq .object.sha)
 
-gh pr create --title "$title" --body "$body"
+gh api -X POST "/repos/$repo/git/refs" \
+  -f "ref=refs/heads/$branch_name" \
+  -f "sha=$main_sha" >/dev/null
 
-git checkout -
+additions="[]"
+deletions="[]"
+while IFS= read -r path; do
+  [[ -z "$path" ]] && continue
+  if [[ -f "$path" ]]; then
+    contents=$(base64 < "$path" | tr -d '\n')
+    additions=$(jq --arg p "$path" --arg c "$contents" \
+      '. + [{path: $p, contents: $c}]' <<<"$additions")
+  else
+    deletions=$(jq --arg p "$path" '. + [{path: $p}]' <<<"$deletions")
+  fi
+done <<<"$changed"
+
+payload=$(jq -n \
+  --arg repo "$repo" \
+  --arg branch "$branch_name" \
+  --arg headline "$title" \
+  --arg oid "$main_sha" \
+  --argjson additions "$additions" \
+  --argjson deletions "$deletions" \
+  '{
+    query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
+    variables: {
+      input: {
+        branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+        message: {headline: $headline},
+        fileChanges: {additions: $additions, deletions: $deletions},
+        expectedHeadOid: $oid
+      }
+    }
+  }')
+
+echo "$payload" | gh api graphql --input - >/dev/null
+
+gh pr create --title "$title" --body "$body" --head "$branch_name" --base main

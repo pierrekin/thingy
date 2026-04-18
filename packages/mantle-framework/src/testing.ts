@@ -17,7 +17,32 @@ type Target = {
   softwareSource: string;
   versions: VersionEntry[];
 };
-type VersionResult = { entry: VersionEntry; passed: boolean; output: string };
+type VersionResult = {
+  entry: VersionEntry;
+  passed: boolean;
+  output: string;
+  dockerOutput: string;
+};
+
+const activeComposeDirs = new Set<string>();
+let signalHandlerInstalled = false;
+
+function installSignalHandler(): void {
+  if (signalHandlerInstalled) return;
+  signalHandlerInstalled = true;
+  const handler = (signal: NodeJS.Signals) => {
+    for (const dir of activeComposeDirs) {
+      Bun.spawnSync(
+        ["docker", "compose", "--progress=plain", "down", "--volumes"],
+        { cwd: dir, stdout: "ignore", stderr: "ignore" },
+      );
+    }
+    activeComposeDirs.clear();
+    process.exit(signal === "SIGINT" ? 130 : 143);
+  };
+  process.on("SIGINT", handler);
+  process.on("SIGTERM", handler);
+}
 
 function findPackageRoot(startDir: string): string {
   let dir = startDir;
@@ -30,27 +55,54 @@ function findPackageRoot(startDir: string): string {
   }
 }
 
-async function drain(readable: ReadableStream<Uint8Array>): Promise<string> {
+async function drain(
+  readable: ReadableStream<Uint8Array>,
+  live = false,
+  prefix = "",
+): Promise<string> {
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   const reader = readable.getReader();
+  let pending = "";
+  const flushLines = (force: boolean) => {
+    while (true) {
+      const idx = pending.indexOf("\n");
+      if (idx < 0) break;
+      process.stdout.write(`${prefix}${pending.slice(0, idx + 1)}`);
+      pending = pending.slice(idx + 1);
+    }
+    if (force && pending) {
+      process.stdout.write(`${prefix}${pending}\n`);
+      pending = "";
+    }
+  };
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    if (done) {
+      if (live) flushLines(true);
+      break;
+    }
     const text = decoder.decode(value);
-    if (process.stdout.isTTY) process.stdout.write(text);
     chunks.push(text);
+    if (live) {
+      pending += text;
+      flushLines(false);
+    }
   }
   return chunks.join("").trimEnd();
 }
 
-async function collect(proc: {
-  stdout: ReadableStream<Uint8Array>;
-  stderr: ReadableStream<Uint8Array>;
-}): Promise<string> {
+async function collect(
+  proc: {
+    stdout: ReadableStream<Uint8Array>;
+    stderr: ReadableStream<Uint8Array>;
+  },
+  live = false,
+  prefix = "",
+): Promise<string> {
   const [out, err] = await Promise.all([
-    drain(proc.stdout),
-    drain(proc.stderr),
+    drain(proc.stdout, live, prefix),
+    drain(proc.stderr, live, prefix),
   ]);
   return [out, err].filter(Boolean).join("\n");
 }
@@ -92,20 +144,24 @@ async function runVersion(
     TARGET_IMAGE: target.image,
     TARGET_VERSION: entry.tag,
   };
-  const lines: string[] = [];
-  const log = (s: string) => {
-    if (s) lines.push(s);
+  const dockerLines: string[] = [];
+  const logDocker = (s: string) => {
+    if (s) dockerLines.push(s);
   };
+  let testOutput = "";
   let passed = false;
 
+  installSignalHandler();
+  activeComposeDirs.add(composeDir);
+
   try {
-    const up = spawn(["docker", "compose", "up", "-d", "--wait"], {
+    const up = spawn(["docker", "compose", "--progress=plain", "up", "-d", "--wait", "--quiet-pull"], {
       cwd: composeDir,
       stdout: "pipe",
       stderr: "pipe",
       env,
     });
-    log(await collect(up));
+    logDocker(await collect(up));
     if ((await up.exited) !== 0) throw new Error("compose up failed");
 
     // Wait for any one-shot containers labeled mantle.wait=true
@@ -141,22 +197,26 @@ async function runVersion(
       stderr: "pipe",
       env,
     });
-    log(await collect(test));
+    const prefix = `${config.name}@${entry.softwareVersion}  `;
+    testOutput = await collect(test, true, prefix);
     passed = (await test.exited) === 0;
   } catch (err) {
-    log(err instanceof Error ? err.message : String(err));
+    logDocker(err instanceof Error ? err.message : String(err));
   } finally {
-    const down = spawn(["docker", "compose", "down", "--volumes"], {
+    const down = spawn(["docker", "compose", "--progress=plain", "down", "--volumes"], {
       cwd: composeDir,
       stdout: "pipe",
       stderr: "pipe",
       env,
     });
-    log(await collect(down));
+    logDocker(await collect(down));
     await down.exited;
+    activeComposeDirs.delete(composeDir);
   }
 
-  return { entry, passed, output: lines.join("\n") };
+  const dockerOutput = dockerLines.join("\n");
+  const output = [dockerOutput, testOutput].filter(Boolean).join("\n");
+  return { entry, passed, output, dockerOutput };
 }
 
 export async function createRunner(
@@ -253,14 +313,8 @@ export async function createRunner(
       target,
       entry,
     );
-    if (process.stdout.isTTY) {
-      console.log(
-        `\n--- ${config.name}@${entry.softwareVersion} (${entry.tag}) ---`,
-      );
-    } else {
-      console.log(
-        `\n--- ${config.name}@${entry.softwareVersion} (${entry.tag}) ---\n${result.output}`,
-      );
+    if (!result.passed && result.dockerOutput) {
+      console.log(result.dockerOutput);
     }
     results.push(result);
 

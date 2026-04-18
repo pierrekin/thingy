@@ -158,10 +158,21 @@ if (command === "test" || command === "lint") {
     `Running e2e (${description}) for: ${selected.map((p) => p.name).join(", ")}`,
   );
 
+  // Keep the outer alive on SIGINT/SIGTERM so in-flight inner processes (which
+  // receive the same signal from the terminal's process group) can finish their
+  // own compose teardown. No new providers are started once interrupted.
+  let interrupted = false;
+  const onSignal = () => {
+    interrupted = true;
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+
   async function run(
     provider: (typeof providers)[number],
   ): Promise<{ name: string; passed: boolean }> {
-    console.log(`START ${provider.name}`);
+    if (interrupted) return { name: provider.name, passed: false };
+    const start = performance.now();
     const proc = Bun.spawn(["bun", "run", provider.script, ...forwardArgs], {
       cwd: provider.packageDir,
       stdout: "pipe",
@@ -169,16 +180,14 @@ if (command === "test" || command === "lint") {
     });
     await Promise.all([drain(proc.stdout), drain(proc.stderr)]);
     const passed = (await proc.exited) === 0;
+    const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+    console.log(`${passed ? "PASS" : "FAIL"} ${provider.name} (${elapsed}s)`);
     return { name: provider.name, passed };
   }
 
   const results: { name: string; passed: boolean }[] = [];
   await pool(selected, async (p) => results.push(await run(p)), CONCURRENCY);
 
-  console.log("\n=== Results ===");
-  for (const { name, passed } of results) {
-    console.log(`${passed ? "PASS" : "FAIL"}  ${name}`);
-  }
   if (results.some((r) => !r.passed)) process.exit(1);
 }
 

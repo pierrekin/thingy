@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { invariant } from "./errors.ts";
-import { spawn } from "./process.ts";
+import { invariant, spawn } from "mantle-framework";
 
 export type RunnerConfig = {
   name: string;

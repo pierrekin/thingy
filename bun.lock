@@ -66,10 +66,13 @@
     "packages/e2e-providers": {
       "name": "e2e-providers",
       "version": "0.0.1",
+      "dependencies": {
+        "mantle-framework": "workspace:*",
+      },
     },
     "packages/mantle": {
       "name": "mantle",
-      "version": "0.0.13",
+      "version": "0.0.14-rc1",
       "dependencies": {
         "@mantle-team/client": "workspace:*",
         "citty": "^0.2.1",
@@ -190,6 +193,9 @@
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
+      "devDependencies": {
+        "e2e-providers": "workspace:*",
+      },
     },
     "packages/provider-caddy": {
       "name": "provider-caddy",
@@ -197,6 +203,9 @@
       "dependencies": {
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
+      },
+      "devDependencies": {
+        "e2e-providers": "workspace:*",
       },
     },
     "packages/provider-jellyfin": {
@@ -206,6 +215,9 @@
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
+      "devDependencies": {
+        "e2e-providers": "workspace:*",
+      },
     },
     "packages/provider-mylarr": {
       "name": "provider-mylarr",
@@ -214,6 +226,9 @@
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
+      "devDependencies": {
+        "e2e-providers": "workspace:*",
+      },
     },
     "packages/provider-nzbhydra2": {
       "name": "provider-nzbhydra2",
@@ -221,6 +236,9 @@
       "dependencies": {
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
+      },
+      "devDependencies": {
+        "e2e-providers": "workspace:*",
       },
     },
     "packages/provider-proxmox": {
@@ -246,6 +264,9 @@
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
+      "devDependencies": {
+        "e2e-providers": "workspace:*",
+      },
     },
     "packages/provider-shell": {
       "name": "provider-shell",
@@ -261,6 +282,9 @@
       "dependencies": {
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
+      },
+      "devDependencies": {
+        "e2e-providers": "workspace:*",
       },
     },
     "packages/sink-jsonl": {

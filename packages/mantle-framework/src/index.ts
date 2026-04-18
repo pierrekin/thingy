@@ -25,6 +25,8 @@ export {
 export { duration, parseDuration } from "./duration.ts";
 // Errors
 export { InvariantError, invariant, OperationalError } from "./errors.ts";
+// Process
+export { spawn } from "./process.ts";
 // Protocol (agent <-> hub messages)
 export type {
   AgentMessage,

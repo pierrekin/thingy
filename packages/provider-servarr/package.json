@@ -26,5 +26,8 @@
   "dependencies": {
     "mantle-framework": "workspace:*",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "e2e-providers": "workspace:*"
   }
 }

@@ -1,4 +1,4 @@
-import { createRunner } from "mantle-framework/testing";
+import { createRunner } from "e2e-providers/testing";
 
 await createRunner(import.meta, {
   name: "jellyfin",

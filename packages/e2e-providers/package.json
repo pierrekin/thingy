@@ -3,8 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "exports": {
+    "./testing": "./testing.ts"
+  },
   "scripts": {
     "check:latest": "bun run run.ts check latest",
     "check:all": "bun run run.ts check all"
+  },
+  "dependencies": {
+    "mantle-framework": "workspace:*"
   }
 }

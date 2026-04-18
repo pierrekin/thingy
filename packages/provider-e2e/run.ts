@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { basename, join } from "node:path";
 import { providers } from "./providers.ts";
 
@@ -79,7 +80,13 @@ async function drain(
   }
 }
 
-const CONCURRENCY = 4;
+const concurrencyEnv = process.env.MANTLE_E2E_CONCURRENCY;
+const parsedEnvConcurrency = concurrencyEnv
+  ? Number.parseInt(concurrencyEnv, 10)
+  : Number.NaN;
+const CONCURRENCY = Number.isFinite(parsedEnvConcurrency)
+  ? Math.max(1, parsedEnvConcurrency)
+  : availableParallelism() * 2;
 
 async function pool<T>(
   items: T[],
@@ -155,7 +162,7 @@ if (command === "test" || command === "lint") {
 
   const description = `test${record ? " --record" : ""} ${rest[0]}`;
   console.log(
-    `Running e2e (${description}) for: ${selected.map((p) => p.name).join(", ")}`,
+    `Running e2e (${description}, concurrency=${CONCURRENCY}) for: ${selected.map((p) => p.name).join(", ")}`,
   );
 
   // Keep the outer alive on SIGINT/SIGTERM so in-flight inner processes (which

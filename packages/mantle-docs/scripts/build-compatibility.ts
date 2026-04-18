@@ -1,8 +1,17 @@
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { join } from "path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 
 const PACKAGES_DIR = join(import.meta.dirname, "../..");
-const PROVIDERS_OUT_DIR = join(import.meta.dirname, "../dist/compatibility/providers");
+const PROVIDERS_OUT_DIR = join(
+  import.meta.dirname,
+  "../dist/compatibility/providers",
+);
 
 mkdirSync(PROVIDERS_OUT_DIR, { recursive: true });
 
@@ -46,7 +55,10 @@ for (const pkgEntry of readdirSync(PACKAGES_DIR, { withFileTypes: true })) {
 
     const versions: CompatRecord[] = readdirSync(appDir)
       .filter((f) => f.endsWith(".json") && f !== "target.json")
-      .map((f) => JSON.parse(readFileSync(join(appDir, f), "utf8")) as CompatRecord)
+      .map(
+        (f) =>
+          JSON.parse(readFileSync(join(appDir, f), "utf8")) as CompatRecord,
+      )
       .sort((a, b) => a.testedAt.localeCompare(b.testedAt));
 
     const output: ProviderCompat = {
@@ -58,7 +70,7 @@ for (const pkgEntry of readdirSync(PACKAGES_DIR, { withFileTypes: true })) {
     };
 
     const outFile = join(PROVIDERS_OUT_DIR, `${appEntry.name}.json`);
-    writeFileSync(outFile, JSON.stringify(output, null, 2) + "\n");
+    writeFileSync(outFile, `${JSON.stringify(output, null, 2)}\n`);
     console.log(`  ${appEntry.name} → ${versions.length} version(s)`);
   }
 }

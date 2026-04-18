@@ -1,37 +1,44 @@
 import { Database } from "bun:sqlite";
-import type { ProviderOutcome, TargetOutcome, CheckOutcome, ChannelOutcome, AgentOutcome, BucketStatus } from "mantle-framework";
 import type {
-  OutcomeStore,
-  EventStore,
-  BucketStore,
-  MetricsStore,
-  ChannelOutcomeStore,
-  ChannelEventStore,
-  ChannelBucketStore,
-  AgentOutcomeStore,
-  AgentEventStore,
-  AgentBucketStore,
-  ChannelBucket,
+  AgentOutcome,
+  BucketStatus,
+  ChannelOutcome,
+  CheckOutcome,
+  ProviderOutcome,
+  TargetOutcome,
+} from "mantle-framework";
+import type {
   AgentBucket,
-  ChannelEventRecord,
+  AgentBucketStore,
   AgentEventRecord,
-  ProviderBucket,
-  TargetBucket,
+  AgentEventStore,
+  AgentOutcomeStore,
+  BucketStore,
+  ChannelBucket,
+  ChannelBucketStore,
+  ChannelEventRecord,
+  ChannelEventStore,
+  ChannelOutcomeStore,
   CheckBucket,
-  StoredBuckets,
-  ProviderEventRecord,
-  TargetEventRecord,
   CheckEventRecord,
-  StoredEvents,
+  EventStore,
+  MetricBucket,
+  MetricsStore,
+  OpenAgentEvent,
+  OpenChannelEvent,
+  OpenCheckEvent,
   OpenProviderEvent,
   OpenTargetEvent,
-  OpenCheckEvent,
-  OpenChannelEvent,
-  OpenAgentEvent,
-  MetricBucket,
-  StoredOutcome,
-  OutboxStore,
   OutboxEntry,
+  OutboxStore,
+  OutcomeStore,
+  ProviderBucket,
+  ProviderEventRecord,
+  StoredBuckets,
+  StoredEvents,
+  StoredOutcome,
+  TargetBucket,
+  TargetEventRecord,
 } from "mantle-store";
 
 const SCHEMA = `
@@ -255,7 +262,7 @@ export class SqliteOutcomeStore implements OutcomeStore {
       eventId ?? null,
       time.getTime(),
       outcome.success ? 1 : 0,
-      outcome.success ? null : JSON.stringify(outcome.error)
+      outcome.success ? null : JSON.stringify(outcome.error),
     );
   }
 
@@ -276,7 +283,7 @@ export class SqliteOutcomeStore implements OutcomeStore {
       eventId ?? null,
       time.getTime(),
       outcome.success ? 1 : 0,
-      outcome.success ? null : JSON.stringify(outcome.error)
+      outcome.success ? null : JSON.stringify(outcome.error),
     );
   }
 
@@ -298,10 +305,10 @@ export class SqliteOutcomeStore implements OutcomeStore {
       check,
       eventId ?? null,
       time.getTime(),
-      outcome.success ? 1 : 0,
-      outcome.success ? outcome.value : null,
-      outcome.success && outcome.violation ? JSON.stringify(outcome.violation) : null,
-      outcome.success ? null : JSON.stringify(outcome.error)
+      outcome.status === "error" ? 0 : 1,
+      outcome.status === "error" ? null : outcome.value,
+      outcome.status === "violation" ? JSON.stringify(outcome.violation) : null,
+      outcome.status === "error" ? JSON.stringify(outcome.error) : null,
     );
   }
 
@@ -311,18 +318,26 @@ export class SqliteOutcomeStore implements OutcomeStore {
     limit: number = 100,
     offset: number = 0,
   ): Promise<StoredOutcome[]> {
-    const table = level === "provider" ? "provider_outcomes" : level === "target" ? "target_outcomes" : "check_outcomes";
-    const columns = level === "check"
-      ? "id, time, success, error, value, violation"
-      : "id, time, success, error";
+    const table =
+      level === "provider"
+        ? "provider_outcomes"
+        : level === "target"
+          ? "target_outcomes"
+          : "check_outcomes";
+    const columns =
+      level === "check"
+        ? "id, time, success, error, value, violation"
+        : "id, time, success, error";
 
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(`
       SELECT ${columns}
       FROM ${table}
       WHERE event_id = ?
       ORDER BY time ASC
       LIMIT ? OFFSET ?
-    `).all(eventId, limit, offset) as Array<Record<string, unknown>>;
+    `)
+      .all(eventId, limit, offset) as Array<Record<string, unknown>>;
 
     return rows.map((r) => ({
       id: r.id as number,
@@ -334,43 +349,52 @@ export class SqliteOutcomeStore implements OutcomeStore {
     }));
   }
 
-  async getLatestProviderStatuses(): Promise<Array<{
-    provider: string;
-    status: BucketStatus;
-  }>> {
-    const rows = this.db.prepare(`
+  async getLatestProviderStatuses(): Promise<
+    Array<{
+      provider: string;
+      status: BucketStatus;
+    }>
+  > {
+    const rows = this.db
+      .prepare(`
       SELECT provider, success
       FROM provider_outcomes
       WHERE id IN (
         SELECT MAX(id) FROM provider_outcomes GROUP BY provider
       )
-    `).all() as Array<{ provider: string; success: number }>;
+    `)
+      .all() as Array<{ provider: string; success: number }>;
 
     return rows.map((r) => ({
       provider: r.provider,
-      status: r.success === 1 ? "green" as const : "red" as const,
+      status: r.success === 1 ? ("green" as const) : ("red" as const),
     }));
   }
 
   async getLatestProviderStatus(provider: string): Promise<BucketStatus> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT success
       FROM provider_outcomes
       WHERE provider = ?
       ORDER BY id DESC
       LIMIT 1
-    `).get(provider) as { success: number } | undefined;
+    `)
+      .get(provider) as { success: number } | undefined;
 
     if (!row) return null;
     return row.success === 1 ? "green" : "red";
   }
 
-  async getLatestTargetStatuses(): Promise<Array<{
-    provider: string;
-    target: string;
-    status: BucketStatus;
-  }>> {
-    const rows = this.db.prepare(`
+  async getLatestTargetStatuses(): Promise<
+    Array<{
+      provider: string;
+      target: string;
+      status: BucketStatus;
+    }>
+  > {
+    const rows = this.db
+      .prepare(`
       SELECT provider, target,
         MIN(CASE
           WHEN success = 0 THEN 0
@@ -382,17 +406,22 @@ export class SqliteOutcomeStore implements OutcomeStore {
         SELECT MAX(id) FROM check_outcomes GROUP BY provider, target, check_name
       )
       GROUP BY provider, target
-    `).all() as Array<{ provider: string; target: string; all_green: number }>;
+    `)
+      .all() as Array<{ provider: string; target: string; all_green: number }>;
 
     return rows.map((r) => ({
       provider: r.provider,
       target: r.target,
-      status: r.all_green === 1 ? "green" as const : "red" as const,
+      status: r.all_green === 1 ? ("green" as const) : ("red" as const),
     }));
   }
 
-  async getLatestTargetStatus(provider: string, target: string): Promise<BucketStatus> {
-    const row = this.db.prepare(`
+  async getLatestTargetStatus(
+    provider: string,
+    target: string,
+  ): Promise<BucketStatus> {
+    const row = this.db
+      .prepare(`
       SELECT MIN(CASE
         WHEN success = 0 THEN 0
         WHEN violation IS NOT NULL THEN 0
@@ -404,7 +433,8 @@ export class SqliteOutcomeStore implements OutcomeStore {
         WHERE provider = ? AND target = ?
         GROUP BY check_name
       )
-    `).get(provider, target) as { all_green: number } | undefined;
+    `)
+      .get(provider, target) as { all_green: number } | undefined;
 
     if (!row || row.all_green === null) return null;
     return row.all_green === 1 ? "green" : "red";
@@ -444,7 +474,7 @@ export class SqliteEventStore implements EventStore {
     code: string,
     title: string,
     time: Date,
-    message: string
+    message: string,
   ): Promise<number> {
     const stmt = this.db.prepare(`
       INSERT INTO provider_events (provider, code, title, start_time, message)
@@ -467,13 +497,20 @@ export class SqliteEventStore implements EventStore {
     code: string,
     title: string,
     time: Date,
-    message: string
+    message: string,
   ): Promise<number> {
     const stmt = this.db.prepare(`
       INSERT INTO target_events (provider, target, code, title, start_time, message)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(provider, target, code, title, time.getTime(), message);
+    const result = stmt.run(
+      provider,
+      target,
+      code,
+      title,
+      time.getTime(),
+      message,
+    );
     return Number(result.lastInsertRowid);
   }
 
@@ -492,13 +529,22 @@ export class SqliteEventStore implements EventStore {
     title: string,
     kind: "error" | "violation",
     time: Date,
-    message: string
+    message: string,
   ): Promise<number> {
     const stmt = this.db.prepare(`
       INSERT INTO check_events (provider, target, check_name, code, title, start_time, kind, message)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(provider, target, check, code, title, time.getTime(), kind, message);
+    const result = stmt.run(
+      provider,
+      target,
+      check,
+      code,
+      title,
+      time.getTime(),
+      kind,
+      message,
+    );
     return Number(result.lastInsertRowid);
   }
 
@@ -509,14 +555,19 @@ export class SqliteEventStore implements EventStore {
     stmt.run(time.getTime(), id);
   }
 
-  async getEventsInRange(startTime: number, endTime: number): Promise<StoredEvents> {
+  async getEventsInRange(
+    startTime: number,
+    endTime: number,
+  ): Promise<StoredEvents> {
     // Events that overlap with the time window:
     // startTime < rangeEnd AND (endTime > rangeStart OR endTime IS NULL)
-    const providerRows = this.db.prepare(`
+    const providerRows = this.db
+      .prepare(`
       SELECT id, provider, code, title, start_time, end_time, message
       FROM provider_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
-    `).all(endTime, startTime) as {
+    `)
+      .all(endTime, startTime) as {
       id: number;
       provider: string;
       code: string;
@@ -526,11 +577,13 @@ export class SqliteEventStore implements EventStore {
       message: string;
     }[];
 
-    const targetRows = this.db.prepare(`
+    const targetRows = this.db
+      .prepare(`
       SELECT id, provider, target, code, title, start_time, end_time, message
       FROM target_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
-    `).all(endTime, startTime) as {
+    `)
+      .all(endTime, startTime) as {
       id: number;
       provider: string;
       target: string;
@@ -541,11 +594,13 @@ export class SqliteEventStore implements EventStore {
       message: string;
     }[];
 
-    const checkRows = this.db.prepare(`
+    const checkRows = this.db
+      .prepare(`
       SELECT id, provider, target, check_name as "check", code, title, start_time, end_time, message
       FROM check_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
-    `).all(endTime, startTime) as {
+    `)
+      .all(endTime, startTime) as {
       id: number;
       provider: string;
       target: string;
@@ -605,9 +660,11 @@ export class SqliteBucketStore implements BucketStore {
     provider: string,
     bucketStart: number,
   ): Promise<BucketStatus | undefined> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT status FROM provider_buckets WHERE provider = ? AND bucket_start = ?
-    `).get(provider, bucketStart) as { status: string | null } | undefined;
+    `)
+      .get(provider, bucketStart) as { status: string | null } | undefined;
     return row?.status as BucketStatus | undefined;
   }
 
@@ -616,9 +673,13 @@ export class SqliteBucketStore implements BucketStore {
     target: string,
     bucketStart: number,
   ): Promise<BucketStatus | undefined> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT status FROM target_buckets WHERE provider = ? AND target = ? AND bucket_start = ?
-    `).get(provider, target, bucketStart) as { status: string | null } | undefined;
+    `)
+      .get(provider, target, bucketStart) as
+      | { status: string | null }
+      | undefined;
     return row?.status as BucketStatus | undefined;
   }
 
@@ -628,9 +689,13 @@ export class SqliteBucketStore implements BucketStore {
     check: string,
     bucketStart: number,
   ): Promise<BucketStatus | undefined> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT status FROM check_buckets WHERE provider = ? AND target = ? AND check_name = ? AND bucket_start = ?
-    `).get(provider, target, check, bucketStart) as { status: string | null } | undefined;
+    `)
+      .get(provider, target, check, bucketStart) as
+      | { status: string | null }
+      | undefined;
     return row?.status as BucketStatus | undefined;
   }
 
@@ -638,14 +703,16 @@ export class SqliteBucketStore implements BucketStore {
     provider: string,
     bucketStart: number,
     bucketEnd: number,
-    status: BucketStatus
+    status: BucketStatus,
   ): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO provider_buckets (provider, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?)
       ON CONFLICT (provider, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
-    `).run(provider, bucketStart, bucketEnd, status);
+    `)
+      .run(provider, bucketStart, bucketEnd, status);
   }
 
   async setTargetBucket(
@@ -653,14 +720,16 @@ export class SqliteBucketStore implements BucketStore {
     target: string,
     bucketStart: number,
     bucketEnd: number,
-    status: BucketStatus
+    status: BucketStatus,
   ): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO target_buckets (provider, target, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT (provider, target, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
-    `).run(provider, target, bucketStart, bucketEnd, status);
+    `)
+      .run(provider, target, bucketStart, bucketEnd, status);
   }
 
   async setCheckBucket(
@@ -669,34 +738,60 @@ export class SqliteBucketStore implements BucketStore {
     check: string,
     bucketStart: number,
     bucketEnd: number,
-    status: BucketStatus
+    status: BucketStatus,
   ): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO check_buckets (provider, target, check_name, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT (provider, target, check_name, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
-    `).run(provider, target, check, bucketStart, bucketEnd, status);
+    `)
+      .run(provider, target, check, bucketStart, bucketEnd, status);
   }
 
   async getBuckets(startTime: number, endTime: number): Promise<StoredBuckets> {
-    const providerRows = this.db.prepare(`
+    const providerRows = this.db
+      .prepare(`
       SELECT provider, bucket_start, bucket_end, status
       FROM provider_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
-    `).all(startTime, endTime) as { provider: string; bucket_start: number; bucket_end: number; status: string | null }[];
+    `)
+      .all(startTime, endTime) as {
+      provider: string;
+      bucket_start: number;
+      bucket_end: number;
+      status: string | null;
+    }[];
 
-    const targetRows = this.db.prepare(`
+    const targetRows = this.db
+      .prepare(`
       SELECT provider, target, bucket_start, bucket_end, status
       FROM target_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
-    `).all(startTime, endTime) as { provider: string; target: string; bucket_start: number; bucket_end: number; status: string | null }[];
+    `)
+      .all(startTime, endTime) as {
+      provider: string;
+      target: string;
+      bucket_start: number;
+      bucket_end: number;
+      status: string | null;
+    }[];
 
-    const checkRows = this.db.prepare(`
+    const checkRows = this.db
+      .prepare(`
       SELECT provider, target, check_name as "check", bucket_start, bucket_end, status
       FROM check_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
-    `).all(startTime, endTime) as { provider: string; target: string; check: string; bucket_start: number; bucket_end: number; status: string | null }[];
+    `)
+      .all(startTime, endTime) as {
+      provider: string;
+      target: string;
+      check: string;
+      bucket_start: number;
+      bucket_end: number;
+      status: string | null;
+    }[];
 
     const providers: ProviderBucket[] = providerRows.map((b) => ({
       provider: b.provider,
@@ -739,7 +834,7 @@ export class SqliteMetricsStore implements MetricsStore {
     check: string,
     startTime: number,
     endTime: number,
-    bucketDurationMs: number
+    bucketDurationMs: number,
   ): Promise<MetricBucket[]> {
     const stmt = this.db.prepare(`
       SELECT
@@ -765,7 +860,7 @@ export class SqliteMetricsStore implements MetricsStore {
       target,
       check,
       startTime,
-      endTime
+      endTime,
     ) as Array<{ bucketStart: number; bucketEnd: number; mean: number | null }>;
 
     return rows;
@@ -785,44 +880,52 @@ export class SqliteChannelOutcomeStore implements ChannelOutcomeStore {
     outcome: ChannelOutcome,
     eventId?: number,
   ): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO channel_outcomes (channel, event_id, time, success, error)
       VALUES (?, ?, ?, ?, ?)
-    `).run(
-      channel,
-      eventId ?? null,
-      time.getTime(),
-      outcome.success ? 1 : 0,
-      outcome.success ? null : outcome.error,
-    );
+    `)
+      .run(
+        channel,
+        eventId ?? null,
+        time.getTime(),
+        outcome.success ? 1 : 0,
+        outcome.success ? null : outcome.error,
+      );
   }
 
-  async getLatestChannelStatuses(): Promise<Array<{
-    channel: string;
-    status: BucketStatus;
-  }>> {
-    const rows = this.db.prepare(`
+  async getLatestChannelStatuses(): Promise<
+    Array<{
+      channel: string;
+      status: BucketStatus;
+    }>
+  > {
+    const rows = this.db
+      .prepare(`
       SELECT channel, success
       FROM channel_outcomes
       WHERE id IN (
         SELECT MAX(id) FROM channel_outcomes GROUP BY channel
       )
-    `).all() as Array<{ channel: string; success: number }>;
+    `)
+      .all() as Array<{ channel: string; success: number }>;
 
     return rows.map((r) => ({
       channel: r.channel,
-      status: r.success === 1 ? "green" as const : "red" as const,
+      status: r.success === 1 ? ("green" as const) : ("red" as const),
     }));
   }
 
   async getLatestChannelStatus(channel: string): Promise<BucketStatus> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT success
       FROM channel_outcomes
       WHERE channel = ?
       ORDER BY id DESC
       LIMIT 1
-    `).get(channel) as { success: number } | undefined;
+    `)
+      .get(channel) as { success: number } | undefined;
 
     if (!row) return null;
     return row.success === 1 ? "green" : "red";
@@ -837,10 +940,12 @@ export class SqliteChannelEventStore implements ChannelEventStore {
   constructor(private db: Database) {}
 
   async getOpenChannelEvents(): Promise<OpenChannelEvent[]> {
-    return this.db.prepare(`
+    return this.db
+      .prepare(`
       SELECT id, channel, code, title, start_time as startTime, message
       FROM channel_events WHERE end_time IS NULL
-    `).all() as OpenChannelEvent[];
+    `)
+      .all() as OpenChannelEvent[];
   }
 
   async openChannelEvent(
@@ -850,25 +955,34 @@ export class SqliteChannelEventStore implements ChannelEventStore {
     time: Date,
     message: string,
   ): Promise<number> {
-    const result = this.db.prepare(`
+    const result = this.db
+      .prepare(`
       INSERT INTO channel_events (channel, code, title, start_time, message)
       VALUES (?, ?, ?, ?, ?)
-    `).run(channel, code, title, time.getTime(), message);
+    `)
+      .run(channel, code, title, time.getTime(), message);
     return Number(result.lastInsertRowid);
   }
 
   async closeChannelEvent(id: number, time: Date): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       UPDATE channel_events SET end_time = ? WHERE id = ?
-    `).run(time.getTime(), id);
+    `)
+      .run(time.getTime(), id);
   }
 
-  async getChannelEventsInRange(startTime: number, endTime: number): Promise<ChannelEventRecord[]> {
-    const rows = this.db.prepare(`
+  async getChannelEventsInRange(
+    startTime: number,
+    endTime: number,
+  ): Promise<ChannelEventRecord[]> {
+    const rows = this.db
+      .prepare(`
       SELECT id, channel, code, title, start_time, end_time, message
       FROM channel_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
-    `).all(endTime, startTime) as {
+    `)
+      .all(endTime, startTime) as {
       id: number;
       channel: string;
       code: string;
@@ -901,9 +1015,11 @@ export class SqliteChannelBucketStore implements ChannelBucketStore {
     channel: string,
     bucketStart: number,
   ): Promise<BucketStatus | undefined> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT status FROM channel_buckets WHERE channel = ? AND bucket_start = ?
-    `).get(channel, bucketStart) as { status: string | null } | undefined;
+    `)
+      .get(channel, bucketStart) as { status: string | null } | undefined;
     return row?.status as BucketStatus | undefined;
   }
 
@@ -913,20 +1029,32 @@ export class SqliteChannelBucketStore implements ChannelBucketStore {
     bucketEnd: number,
     status: BucketStatus,
   ): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO channel_buckets (channel, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?)
       ON CONFLICT (channel, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
-    `).run(channel, bucketStart, bucketEnd, status);
+    `)
+      .run(channel, bucketStart, bucketEnd, status);
   }
 
-  async getChannelBuckets(startTime: number, endTime: number): Promise<ChannelBucket[]> {
-    const rows = this.db.prepare(`
+  async getChannelBuckets(
+    startTime: number,
+    endTime: number,
+  ): Promise<ChannelBucket[]> {
+    const rows = this.db
+      .prepare(`
       SELECT channel, bucket_start, bucket_end, status
       FROM channel_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
-    `).all(startTime, endTime) as { channel: string; bucket_start: number; bucket_end: number; status: string | null }[];
+    `)
+      .all(startTime, endTime) as {
+      channel: string;
+      bucket_start: number;
+      bucket_end: number;
+      status: string | null;
+    }[];
 
     return rows.map((b) => ({
       channel: b.channel,
@@ -950,44 +1078,52 @@ export class SqliteAgentOutcomeStore implements AgentOutcomeStore {
     outcome: AgentOutcome,
     eventId?: number,
   ): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO agent_outcomes (agent, event_id, time, success, error)
       VALUES (?, ?, ?, ?, ?)
-    `).run(
-      agent,
-      eventId ?? null,
-      time.getTime(),
-      outcome.success ? 1 : 0,
-      outcome.success ? null : outcome.error,
-    );
+    `)
+      .run(
+        agent,
+        eventId ?? null,
+        time.getTime(),
+        outcome.success ? 1 : 0,
+        outcome.success ? null : outcome.error,
+      );
   }
 
-  async getLatestAgentStatuses(): Promise<Array<{
-    agent: string;
-    status: BucketStatus;
-  }>> {
-    const rows = this.db.prepare(`
+  async getLatestAgentStatuses(): Promise<
+    Array<{
+      agent: string;
+      status: BucketStatus;
+    }>
+  > {
+    const rows = this.db
+      .prepare(`
       SELECT agent, success
       FROM agent_outcomes
       WHERE id IN (
         SELECT MAX(id) FROM agent_outcomes GROUP BY agent
       )
-    `).all() as Array<{ agent: string; success: number }>;
+    `)
+      .all() as Array<{ agent: string; success: number }>;
 
     return rows.map((r) => ({
       agent: r.agent,
-      status: r.success === 1 ? "green" as const : "red" as const,
+      status: r.success === 1 ? ("green" as const) : ("red" as const),
     }));
   }
 
   async getLatestAgentStatus(agent: string): Promise<BucketStatus> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT success
       FROM agent_outcomes
       WHERE agent = ?
       ORDER BY id DESC
       LIMIT 1
-    `).get(agent) as { success: number } | undefined;
+    `)
+      .get(agent) as { success: number } | undefined;
 
     if (!row) return null;
     return row.success === 1 ? "green" : "red";
@@ -1002,10 +1138,12 @@ export class SqliteAgentEventStore implements AgentEventStore {
   constructor(private db: Database) {}
 
   async getOpenAgentEvents(): Promise<OpenAgentEvent[]> {
-    return this.db.prepare(`
+    return this.db
+      .prepare(`
       SELECT id, agent, code, title, start_time as startTime, message
       FROM agent_events WHERE end_time IS NULL
-    `).all() as OpenAgentEvent[];
+    `)
+      .all() as OpenAgentEvent[];
   }
 
   async openAgentEvent(
@@ -1015,25 +1153,34 @@ export class SqliteAgentEventStore implements AgentEventStore {
     time: Date,
     message: string,
   ): Promise<number> {
-    const result = this.db.prepare(`
+    const result = this.db
+      .prepare(`
       INSERT INTO agent_events (agent, code, title, start_time, message)
       VALUES (?, ?, ?, ?, ?)
-    `).run(agent, code, title, time.getTime(), message);
+    `)
+      .run(agent, code, title, time.getTime(), message);
     return Number(result.lastInsertRowid);
   }
 
   async closeAgentEvent(id: number, time: Date): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       UPDATE agent_events SET end_time = ? WHERE id = ?
-    `).run(time.getTime(), id);
+    `)
+      .run(time.getTime(), id);
   }
 
-  async getAgentEventsInRange(startTime: number, endTime: number): Promise<AgentEventRecord[]> {
-    const rows = this.db.prepare(`
+  async getAgentEventsInRange(
+    startTime: number,
+    endTime: number,
+  ): Promise<AgentEventRecord[]> {
+    const rows = this.db
+      .prepare(`
       SELECT id, agent, code, title, start_time, end_time, message
       FROM agent_events
       WHERE start_time < ? AND (end_time > ? OR end_time IS NULL)
-    `).all(endTime, startTime) as {
+    `)
+      .all(endTime, startTime) as {
       id: number;
       agent: string;
       code: string;
@@ -1066,9 +1213,11 @@ export class SqliteAgentBucketStore implements AgentBucketStore {
     agent: string,
     bucketStart: number,
   ): Promise<BucketStatus | undefined> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT status FROM agent_buckets WHERE agent = ? AND bucket_start = ?
-    `).get(agent, bucketStart) as { status: string | null } | undefined;
+    `)
+      .get(agent, bucketStart) as { status: string | null } | undefined;
     return row?.status as BucketStatus | undefined;
   }
 
@@ -1078,20 +1227,32 @@ export class SqliteAgentBucketStore implements AgentBucketStore {
     bucketEnd: number,
     status: BucketStatus,
   ): Promise<void> {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO agent_buckets (agent, bucket_start, bucket_end, status)
       VALUES (?, ?, ?, ?)
       ON CONFLICT (agent, bucket_start)
       DO UPDATE SET status = excluded.status, bucket_end = excluded.bucket_end
-    `).run(agent, bucketStart, bucketEnd, status);
+    `)
+      .run(agent, bucketStart, bucketEnd, status);
   }
 
-  async getAgentBuckets(startTime: number, endTime: number): Promise<AgentBucket[]> {
-    const rows = this.db.prepare(`
+  async getAgentBuckets(
+    startTime: number,
+    endTime: number,
+  ): Promise<AgentBucket[]> {
+    const rows = this.db
+      .prepare(`
       SELECT agent, bucket_start, bucket_end, status
       FROM agent_buckets
       WHERE bucket_start >= ? AND bucket_start < ?
-    `).all(startTime, endTime) as { agent: string; bucket_start: number; bucket_end: number; status: string | null }[];
+    `)
+      .all(startTime, endTime) as {
+      agent: string;
+      bucket_start: number;
+      bucket_end: number;
+      status: string | null;
+    }[];
 
     return rows.map((b) => ({
       agent: b.agent,
@@ -1110,33 +1271,47 @@ export class SqliteChannelOutboxStore implements OutboxStore {
   constructor(private db: Database) {}
 
   async append(payload: string): Promise<number> {
-    const result = this.db.prepare(
-      `INSERT INTO channel_outbox (payload, created_at) VALUES (?, ?)`
-    ).run(payload, Date.now());
+    const result = this.db
+      .prepare(`INSERT INTO channel_outbox (payload, created_at) VALUES (?, ?)`)
+      .run(payload, Date.now());
     return Number(result.lastInsertRowid);
   }
 
   async read(fromId: number | null, limit: number): Promise<OutboxEntry[]> {
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(`
       SELECT id, payload, created_at FROM channel_outbox
       WHERE id > ? ORDER BY id ASC LIMIT ?
-    `).all(fromId ?? 0, limit) as { id: number; payload: string; created_at: number }[];
-    return rows.map((r) => ({ id: r.id, payload: r.payload, createdAt: r.created_at }));
+    `)
+      .all(fromId ?? 0, limit) as {
+      id: number;
+      payload: string;
+      created_at: number;
+    }[];
+    return rows.map((r) => ({
+      id: r.id,
+      payload: r.payload,
+      createdAt: r.created_at,
+    }));
   }
 
   async getCursor(workerId: string): Promise<number | null> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT cursor FROM outbox_cursors
       WHERE outbox = 'channel' AND worker_id = ?
       ORDER BY id DESC LIMIT 1
-    `).get(workerId) as { cursor: number } | undefined;
+    `)
+      .get(workerId) as { cursor: number } | undefined;
     return row?.cursor ?? null;
   }
 
   async advanceCursor(workerId: string, cursor: number): Promise<void> {
-    this.db.prepare(
-      `INSERT INTO outbox_cursors (outbox, worker_id, cursor, created_at) VALUES ('channel', ?, ?, ?)`
-    ).run(workerId, cursor, Date.now());
+    this.db
+      .prepare(
+        `INSERT INTO outbox_cursors (outbox, worker_id, cursor, created_at) VALUES ('channel', ?, ?, ?)`,
+      )
+      .run(workerId, cursor, Date.now());
   }
 
   async close(): Promise<void> {
@@ -1148,33 +1323,47 @@ export class SqliteSinkOutboxStore implements OutboxStore {
   constructor(private db: Database) {}
 
   async append(payload: string): Promise<number> {
-    const result = this.db.prepare(
-      `INSERT INTO sink_outbox (payload, created_at) VALUES (?, ?)`
-    ).run(payload, Date.now());
+    const result = this.db
+      .prepare(`INSERT INTO sink_outbox (payload, created_at) VALUES (?, ?)`)
+      .run(payload, Date.now());
     return Number(result.lastInsertRowid);
   }
 
   async read(fromId: number | null, limit: number): Promise<OutboxEntry[]> {
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(`
       SELECT id, payload, created_at FROM sink_outbox
       WHERE id > ? ORDER BY id ASC LIMIT ?
-    `).all(fromId ?? 0, limit) as { id: number; payload: string; created_at: number }[];
-    return rows.map((r) => ({ id: r.id, payload: r.payload, createdAt: r.created_at }));
+    `)
+      .all(fromId ?? 0, limit) as {
+      id: number;
+      payload: string;
+      created_at: number;
+    }[];
+    return rows.map((r) => ({
+      id: r.id,
+      payload: r.payload,
+      createdAt: r.created_at,
+    }));
   }
 
   async getCursor(workerId: string): Promise<number | null> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(`
       SELECT cursor FROM outbox_cursors
       WHERE outbox = 'sink' AND worker_id = ?
       ORDER BY id DESC LIMIT 1
-    `).get(workerId) as { cursor: number } | undefined;
+    `)
+      .get(workerId) as { cursor: number } | undefined;
     return row?.cursor ?? null;
   }
 
   async advanceCursor(workerId: string, cursor: number): Promise<void> {
-    this.db.prepare(
-      `INSERT INTO outbox_cursors (outbox, worker_id, cursor, created_at) VALUES ('sink', ?, ?, ?)`
-    ).run(workerId, cursor, Date.now());
+    this.db
+      .prepare(
+        `INSERT INTO outbox_cursors (outbox, worker_id, cursor, created_at) VALUES ('sink', ?, ?, ?)`,
+      )
+      .run(workerId, cursor, Date.now());
   }
 
   async close(): Promise<void> {

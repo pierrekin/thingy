@@ -26,11 +26,11 @@ export class ResticRepoError extends ResticError {
   }
 }
 
-export type ResticConfig = {
+export type ResticAuth = { password: string } | { passwordFile: string };
+
+export type ResticConfig = ResticAuth & {
   repository: string;
-  password?: string;
-  passwordFile?: string;
-  env?: Record<string, string>;
+  env?: Record<string, string> | undefined;
 };
 
 export type ResticSnapshot = {
@@ -48,8 +48,8 @@ export class ResticClient {
    * Get the latest snapshot, optionally filtered by host and/or tags.
    */
   async getLatestSnapshot(options?: {
-    host?: string;
-    tags?: string[];
+    host?: string | undefined;
+    tags?: string[] | undefined;
   }): Promise<ResticSnapshot | null> {
     const args = ["snapshots", "--json", "--latest", "1"];
 
@@ -72,21 +72,18 @@ export class ResticClient {
       RESTIC_REPOSITORY: this.config.repository,
     };
 
-    if (this.config.password) {
+    if ("password" in this.config) {
       env.RESTIC_PASSWORD = this.config.password;
-    }
-    if (this.config.passwordFile) {
+    } else {
       env.RESTIC_PASSWORD_FILE = this.config.passwordFile;
     }
 
     return env;
   }
 
-  private async exec<T>(args: string[]): Promise<T> {
-    let proc: Awaited<ReturnType<typeof Bun.spawn>>;
-
+  private spawn(args: string[]) {
     try {
-      proc = Bun.spawn(["restic", ...args], {
+      return Bun.spawn(["restic", ...args], {
         env: { ...process.env, ...this.buildEnv() },
         stdout: "pipe",
         stderr: "pipe",
@@ -96,7 +93,10 @@ export class ResticClient {
         `Failed to spawn restic: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
+  }
 
+  private async exec<T>(args: string[]): Promise<T> {
+    const proc = this.spawn(args);
     const exitCode = await proc.exited;
     const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
@@ -107,22 +107,34 @@ export class ResticClient {
         stderr.includes("wrong password") ||
         stderr.includes("unable to open config")
       ) {
-        throw new ResticRepoError("repo_access", `Cannot access repository: ${stderr.trim()}`);
+        throw new ResticRepoError(
+          "repo_access",
+          `Cannot access repository: ${stderr.trim()}`,
+        );
       }
       if (
         stderr.includes("connection refused") ||
         stderr.includes("no such host") ||
         stderr.includes("timeout")
       ) {
-        throw new ResticRepoError("repo_unreachable", `Repository unreachable: ${stderr.trim()}`);
+        throw new ResticRepoError(
+          "repo_unreachable",
+          `Repository unreachable: ${stderr.trim()}`,
+        );
       }
-      throw new ResticError("command_failed", `restic ${args[0]} failed (exit ${exitCode}): ${stderr.trim()}`);
+      throw new ResticError(
+        "command_failed",
+        `restic ${args[0]} failed (exit ${exitCode}): ${stderr.trim()}`,
+      );
     }
 
     try {
       return JSON.parse(stdout) as T;
     } catch {
-      throw new ResticError("parse_error", `Failed to parse restic output: ${stdout.slice(0, 200)}`);
+      throw new ResticError(
+        "parse_error",
+        `Failed to parse restic output: ${stdout.slice(0, 200)}`,
+      );
     }
   }
 }

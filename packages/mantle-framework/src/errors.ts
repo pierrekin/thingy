@@ -1,22 +1,27 @@
 export class OperationalError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = "OperationalError";
-	}
+  constructor(message: string) {
+    super(message);
+    this.name = "OperationalError";
+  }
 }
 
-export function handleOperationalErrors<
-	T extends { args: Record<string, unknown> },
->(fn: (ctx: T) => Promise<void>) {
-	return async (ctx: T) => {
-		try {
-			await fn(ctx);
-		} catch (err) {
-			if (err instanceof OperationalError) {
-				console.error(err.message);
-				process.exit(1);
-			}
-			throw err;
-		}
-	};
+export class InvariantError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvariantError";
+  }
+}
+
+/**
+ * Assert a contract holds. Use when an external system (sqlite, OS,
+ * filesystem) has promised a condition and we want to crash with context
+ * if that promise is broken.
+ */
+export function invariant(
+  condition: unknown,
+  message: string,
+): asserts condition {
+  if (!condition) {
+    throw new InvariantError(message);
+  }
 }

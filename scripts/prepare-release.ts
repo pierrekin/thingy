@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join } from "node:path";
 
 const semver = process.argv[2];
 
@@ -84,13 +84,13 @@ if (!changelogContent || changelogContent === "placeholder") {
 
 const pkg = JSON.parse(await Bun.file(packageJsonPath).text());
 pkg.version = semver;
-await Bun.write(packageJsonPath, JSON.stringify(pkg, null, 2) + "\n");
+await Bun.write(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
 const filesToStage = [packageJsonPath];
 
 if (!isPrerelease) {
   const versionPath = join(changelogsDir, `${semver}.md`);
-  await Bun.write(versionPath, changelogContent + "\n");
+  await Bun.write(versionPath, `${changelogContent}\n`);
   await Bun.write(nextPath, "placeholder\n");
   filesToStage.push(versionPath, nextPath);
 }

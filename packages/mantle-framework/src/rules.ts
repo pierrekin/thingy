@@ -35,7 +35,9 @@ export function evaluate(
       continue;
     }
 
-    const resolved = enumValues ? resolveEnumThreshold(threshold, enumValues) : threshold;
+    const resolved = enumValues
+      ? resolveEnumThreshold(threshold, enumValues)
+      : threshold;
 
     const violation = evaluateOperator(checkName, op, value, resolved);
     if (violation) {
@@ -53,7 +55,10 @@ export function evaluate(
 /**
  * If the threshold is a string enum tag, resolve it to its numeric index.
  */
-function resolveEnumThreshold(threshold: unknown, enumValues: EnumValues): unknown {
+function resolveEnumThreshold(
+  threshold: unknown,
+  enumValues: EnumValues,
+): unknown {
   if (typeof threshold === "string" && threshold in enumValues) {
     return enumValues[threshold];
   }
@@ -83,7 +88,12 @@ function evaluateOperator(
 
     case "equals": {
       if (actual !== threshold) {
-        return { code: `${checkName}:equals`, rule: "equals", threshold, actual };
+        return {
+          code: `${checkName}:equals`,
+          rule: "equals",
+          threshold,
+          actual,
+        };
       }
       return null;
     }

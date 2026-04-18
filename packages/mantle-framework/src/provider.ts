@@ -1,11 +1,8 @@
 import { z } from "zod";
 import {
-  type CheckDefinition,
   type CheckConfig,
-  type Operator,
+  type CheckDefinition,
   checkConfigSchema,
-  ENABLED,
-  DISABLED,
 } from "./check.ts";
 
 type CheckBinding<TCheck extends CheckDefinition> = {
@@ -160,4 +157,4 @@ export function allTargetConfigsSchema<
   return z.union(schemas as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
 }
 
-export type { ProviderDefinition, TargetTypeDefinition, CheckBinding };
+export type { CheckBinding, ProviderDefinition, TargetTypeDefinition };

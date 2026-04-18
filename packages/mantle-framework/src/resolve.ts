@@ -1,15 +1,23 @@
-import { type CheckConfig, type Operator, type EnumValues } from "./check.ts";
-import type { ProviderDefinition } from "./provider.ts";
+import type { CheckConfig, EnumValues, Operator } from "./check.ts";
 import type { AgentConfig } from "./config.ts";
-import { parseInterval } from "./interval.ts";
+import { parseDuration } from "./duration.ts";
+import type { ProviderDefinition } from "./provider.ts";
 import { resolveCheckConfig } from "./rules.ts";
 
-export type ResolvedCheck = {
-  name: string;
-  config: CheckConfig;
-  operators: readonly Operator[];
-  enumValues?: EnumValues;
-};
+export type ResolvedCheck =
+  | {
+      kind: "numeric";
+      name: string;
+      config: CheckConfig;
+      operators: readonly Operator[];
+    }
+  | {
+      kind: "enum";
+      name: string;
+      config: CheckConfig;
+      operators: readonly Operator[];
+      enumValues: EnumValues;
+    };
 
 export type ResolvedTarget = {
   name: string;
@@ -27,12 +35,16 @@ export type ResolvedTarget = {
 export function resolveAgentConfig(
   agentConfig: AgentConfig,
   providerConfigs: Record<string, unknown>,
-  getProviderDefinition: (providerType: string) => ProviderDefinition | undefined,
+  getProviderDefinition: (
+    providerType: string,
+  ) => ProviderDefinition | undefined,
 ): ResolvedTarget[] {
   const resolved: ResolvedTarget[] = [];
 
   for (const target of agentConfig.targets) {
-    const providerConfig = providerConfigs[target.provider] as Record<string, unknown> | undefined;
+    const providerConfig = providerConfigs[target.provider] as
+      | Record<string, unknown>
+      | undefined;
     const providerType = getProviderType(target.provider, providerConfig);
     const providerDef = getProviderDefinition(providerType);
 
@@ -50,7 +62,9 @@ export function resolveAgentConfig(
       continue;
     }
 
-    const providerIntervals = providerConfig?.intervals as Record<string, string> | undefined;
+    const providerIntervals = providerConfig?.intervals as
+      | Record<string, string>
+      | undefined;
     const providerInterval = providerConfig?.interval as string | undefined;
 
     const intervalStr =
@@ -62,7 +76,9 @@ export function resolveAgentConfig(
       providerDef.defaultInterval ??
       "30s";
 
-    const providerChecks = providerConfig?.checks as Record<string, Record<string, unknown>> | undefined;
+    const providerChecks = providerConfig?.checks as
+      | Record<string, Record<string, unknown>>
+      | undefined;
     const providerTypeChecks = providerChecks?.[targetType];
 
     const resolvedChecks: ResolvedCheck[] = [];
@@ -74,19 +90,38 @@ export function resolveAgentConfig(
       const enabledByDefault = binding.enabled !== false;
 
       const config = resolveCheckConfig(
-        targetCheckConfig as "__enabled__" | "__disabled__" | Partial<CheckConfig> | undefined,
-        providerCheckConfig as "__enabled__" | "__disabled__" | Partial<CheckConfig> | undefined,
+        targetCheckConfig as
+          | "__enabled__"
+          | "__disabled__"
+          | Partial<CheckConfig>
+          | undefined,
+        providerCheckConfig as
+          | "__enabled__"
+          | "__disabled__"
+          | Partial<CheckConfig>
+          | undefined,
         defaultConfig,
         enabledByDefault,
       );
 
       if (config !== false) {
-        resolvedChecks.push({
-          name: checkName,
-          config,
-          operators: binding.check.operators,
-          enumValues: binding.check.enumValues,
-        });
+        const enumValues = binding.check.enumValues;
+        resolvedChecks.push(
+          enumValues
+            ? {
+                kind: "enum",
+                name: checkName,
+                config,
+                operators: binding.check.operators,
+                enumValues,
+              }
+            : {
+                kind: "numeric",
+                name: checkName,
+                config,
+                operators: binding.check.operators,
+              },
+        );
       }
     }
 
@@ -94,7 +129,7 @@ export function resolveAgentConfig(
       name: target.name,
       provider: target.provider,
       type: targetType,
-      interval: parseInterval(intervalStr),
+      interval: parseDuration(intervalStr),
       checks: resolvedChecks,
       target,
     });
@@ -103,7 +138,10 @@ export function resolveAgentConfig(
   return resolved;
 }
 
-function getProviderType(instanceName: string, instanceConfig: unknown): string {
+function getProviderType(
+  instanceName: string,
+  instanceConfig: unknown,
+): string {
   if (
     instanceConfig &&
     typeof instanceConfig === "object" &&

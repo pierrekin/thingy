@@ -1,9 +1,10 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
 const WHISPARR_URL = process.env.WHISPARR_URL ?? "http://localhost:6969";
-const WHISPARR_API_KEY = process.env.WHISPARR_API_KEY ?? "e2etestapikeyfortesting12345678";
+const WHISPARR_API_KEY =
+  process.env.WHISPARR_API_KEY ?? "e2etestapikeyfortesting12345678";
 
 async function whisparrGet<T>(path: string): Promise<T> {
   const res = await fetch(`${WHISPARR_URL}${path}`, {
@@ -20,13 +21,18 @@ describe("smoke: api", () => {
   });
 
   test("system/status returns a version string", async () => {
-    const status = await whisparrGet<{ version: string }>("/api/v3/system/status");
+    const status = await whisparrGet<{ version: string }>(
+      "/api/v3/system/status",
+    );
     expect(status.version).toBeString();
     expect(status.version.length).toBeGreaterThan(0);
   });
 
   test("health returns an array of items with expected shape", async () => {
-    const health = await whisparrGet<{ source: string; type: string; message: string }[]>("/api/v3/health");
+    const health =
+      await whisparrGet<{ source: string; type: string; message: string }[]>(
+        "/api/v3/health",
+      );
     expect(health).toBeArray();
     for (const item of health) {
       expect(item.source).toBeString();
@@ -36,7 +42,10 @@ describe("smoke: api", () => {
   });
 
   test("queue returns totalRecords and records array", async () => {
-    const queue = await whisparrGet<{ totalRecords: number; records: unknown[] }>("/api/v3/queue");
+    const queue = await whisparrGet<{
+      totalRecords: number;
+      records: unknown[];
+    }>("/api/v3/queue");
     expect(queue.totalRecords).toBeNumber();
     expect(queue.records).toBeArray();
   });
@@ -44,7 +53,10 @@ describe("smoke: api", () => {
 
 describe("provider: checks", () => {
   const whisparr = providers.find((p) => p.name === "@mantle/whisparr/remote")!;
-  const instance = whisparr.createInstance!({ url: WHISPARR_URL, api_key: WHISPARR_API_KEY });
+  const instance = whisparr.createInstance?.({
+    url: WHISPARR_URL,
+    api_key: WHISPARR_API_KEY,
+  });
 
   test("health.errors returns a non-negative count", async () => {
     const [result] = await instance.check({ type: "health" }, ["errors"]);

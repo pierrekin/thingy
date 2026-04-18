@@ -1,6 +1,19 @@
-import type { EventStore, OutboxStore, ProviderEventRecord, TargetEventRecord, CheckEventRecord } from "mantle-store";
-import type { ProviderEventPublisher, TargetEventPublisher, CheckEventPublisher } from "./pubsub.ts";
+import type {
+  CheckEventEndedRecord,
+  CheckEventRecord,
+  EventStore,
+  OutboxStore,
+  ProviderEventEndedRecord,
+  ProviderEventRecord,
+  TargetEventEndedRecord,
+  TargetEventRecord,
+} from "mantle-store";
 import type { ChannelOutboxPayload } from "./channel-outbox.ts";
+import type {
+  CheckEventPublisher,
+  ProviderEventPublisher,
+  TargetEventPublisher,
+} from "./pubsub.ts";
 
 type OpenEvent = {
   id: number;
@@ -36,7 +49,9 @@ export class EventTracker {
     this.publishers = publishers;
   }
 
-  private async appendToChannelOutbox(payload: ChannelOutboxPayload): Promise<void> {
+  private async appendToChannelOutbox(
+    payload: ChannelOutboxPayload,
+  ): Promise<void> {
     if (this.channelOutbox) {
       await this.channelOutbox.append(JSON.stringify(payload));
     }
@@ -50,7 +65,11 @@ export class EventTracker {
     return this.targetEvents.get(`${provider}:${target}`)?.id;
   }
 
-  getOpenCheckEventId(provider: string, target: string, check: string): number | undefined {
+  getOpenCheckEventId(
+    provider: string,
+    target: string,
+    check: string,
+  ): number | undefined {
     return this.checkEvents.get(`${provider}:${target}:${check}`)?.id;
   }
 
@@ -91,7 +110,8 @@ export class EventTracker {
       });
     }
 
-    const total = providerEvents.length + targetEvents.length + checkEvents.length;
+    const total =
+      providerEvents.length + targetEvents.length + checkEvents.length;
     if (total > 0) {
       console.log(`Loaded ${total} open events from database`);
     }
@@ -100,7 +120,7 @@ export class EventTracker {
   async handleProviderOutcome(
     provider: string,
     time: Date,
-    outcome: { code: string; title: string; message: string } | null
+    outcome: { code: string; title: string; message: string } | null,
   ): Promise<void> {
     const key = provider;
     const open = this.providerEvents.get(key);
@@ -111,7 +131,7 @@ export class EventTracker {
       }
       if (open) {
         await this.store.closeProviderEvent(open.id, time);
-        const closedEvent: ProviderEventRecord = {
+        const closedEvent: ProviderEventEndedRecord = {
           id: open.id,
           provider,
           code: open.code,
@@ -120,7 +140,10 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        await this.appendToChannelOutbox({ type: "provider_event_ended", event: closedEvent });
+        await this.appendToChannelOutbox({
+          type: "provider_event_ended",
+          event: closedEvent,
+        });
         this.publishers.provider.publish(closedEvent);
       }
       const startTime = time.getTime();
@@ -129,9 +152,15 @@ export class EventTracker {
         outcome.code,
         outcome.title,
         time,
-        outcome.message
+        outcome.message,
       );
-      this.providerEvents.set(key, { id, code: outcome.code, title: outcome.title, startTime, message: outcome.message });
+      this.providerEvents.set(key, {
+        id,
+        code: outcome.code,
+        title: outcome.title,
+        startTime,
+        message: outcome.message,
+      });
       const openedEvent: ProviderEventRecord = {
         id,
         provider,
@@ -141,13 +170,18 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
-      await this.appendToChannelOutbox({ type: "provider_event_started", event: openedEvent });
+      await this.appendToChannelOutbox({
+        type: "provider_event_started",
+        event: openedEvent,
+      });
       this.publishers.provider.publish(openedEvent);
-      console.log(`[${provider}] EVENT OPENED: ${outcome.code} - ${outcome.title}`);
+      console.log(
+        `[${provider}] EVENT OPENED: ${outcome.code} - ${outcome.title}`,
+      );
     } else {
       if (open) {
         await this.store.closeProviderEvent(open.id, time);
-        const closedEvent: ProviderEventRecord = {
+        const closedEvent: ProviderEventEndedRecord = {
           id: open.id,
           provider,
           code: open.code,
@@ -156,7 +190,10 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        await this.appendToChannelOutbox({ type: "provider_event_ended", event: closedEvent });
+        await this.appendToChannelOutbox({
+          type: "provider_event_ended",
+          event: closedEvent,
+        });
         this.publishers.provider.publish(closedEvent);
         this.providerEvents.delete(key);
         console.log(`[${provider}] EVENT CLOSED: ${open.code}`);
@@ -168,7 +205,7 @@ export class EventTracker {
     provider: string,
     target: string,
     time: Date,
-    outcome: { code: string; title: string; message: string } | null
+    outcome: { code: string; title: string; message: string } | null,
   ): Promise<void> {
     const key = `${provider}:${target}`;
     const open = this.targetEvents.get(key);
@@ -179,7 +216,7 @@ export class EventTracker {
       }
       if (open) {
         await this.store.closeTargetEvent(open.id, time);
-        const closedEvent: TargetEventRecord = {
+        const closedEvent: TargetEventEndedRecord = {
           id: open.id,
           provider,
           target,
@@ -189,7 +226,10 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        await this.appendToChannelOutbox({ type: "target_event_ended", event: closedEvent });
+        await this.appendToChannelOutbox({
+          type: "target_event_ended",
+          event: closedEvent,
+        });
         this.publishers.target.publish(closedEvent);
       }
       const startTime = time.getTime();
@@ -199,9 +239,15 @@ export class EventTracker {
         outcome.code,
         outcome.title,
         time,
-        outcome.message
+        outcome.message,
       );
-      this.targetEvents.set(key, { id, code: outcome.code, title: outcome.title, startTime, message: outcome.message });
+      this.targetEvents.set(key, {
+        id,
+        code: outcome.code,
+        title: outcome.title,
+        startTime,
+        message: outcome.message,
+      });
       const openedEvent: TargetEventRecord = {
         id,
         provider,
@@ -212,13 +258,18 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
-      await this.appendToChannelOutbox({ type: "target_event_started", event: openedEvent });
+      await this.appendToChannelOutbox({
+        type: "target_event_started",
+        event: openedEvent,
+      });
       this.publishers.target.publish(openedEvent);
-      console.log(`[${target}] EVENT OPENED: ${outcome.code} - ${outcome.title}`);
+      console.log(
+        `[${target}] EVENT OPENED: ${outcome.code} - ${outcome.title}`,
+      );
     } else {
       if (open) {
         await this.store.closeTargetEvent(open.id, time);
-        const closedEvent: TargetEventRecord = {
+        const closedEvent: TargetEventEndedRecord = {
           id: open.id,
           provider,
           target,
@@ -228,7 +279,10 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        await this.appendToChannelOutbox({ type: "target_event_ended", event: closedEvent });
+        await this.appendToChannelOutbox({
+          type: "target_event_ended",
+          event: closedEvent,
+        });
         this.publishers.target.publish(closedEvent);
         this.targetEvents.delete(key);
         console.log(`[${target}] EVENT CLOSED: ${open.code}`);
@@ -241,7 +295,12 @@ export class EventTracker {
     target: string,
     check: string,
     time: Date,
-    outcome: { code: string; title: string; kind: "error" | "violation"; message: string } | null
+    outcome: {
+      code: string;
+      title: string;
+      kind: "error" | "violation";
+      message: string;
+    } | null,
   ): Promise<void> {
     const key = `${provider}:${target}:${check}`;
     const open = this.checkEvents.get(key);
@@ -252,7 +311,7 @@ export class EventTracker {
       }
       if (open) {
         await this.store.closeCheckEvent(open.id, time);
-        const closedEvent: CheckEventRecord = {
+        const closedEvent: CheckEventEndedRecord = {
           id: open.id,
           provider,
           target,
@@ -263,7 +322,10 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        await this.appendToChannelOutbox({ type: "check_event_ended", event: closedEvent });
+        await this.appendToChannelOutbox({
+          type: "check_event_ended",
+          event: closedEvent,
+        });
         this.publishers.check.publish(closedEvent);
       }
       const startTime = time.getTime();
@@ -275,9 +337,15 @@ export class EventTracker {
         outcome.title,
         outcome.kind,
         time,
-        outcome.message
+        outcome.message,
       );
-      this.checkEvents.set(key, { id, code: outcome.code, title: outcome.title, startTime, message: outcome.message });
+      this.checkEvents.set(key, {
+        id,
+        code: outcome.code,
+        title: outcome.title,
+        startTime,
+        message: outcome.message,
+      });
       const openedEvent: CheckEventRecord = {
         id,
         provider,
@@ -289,13 +357,18 @@ export class EventTracker {
         endTime: null,
         message: outcome.message,
       };
-      await this.appendToChannelOutbox({ type: "check_event_started", event: openedEvent });
+      await this.appendToChannelOutbox({
+        type: "check_event_started",
+        event: openedEvent,
+      });
       this.publishers.check.publish(openedEvent);
-      console.log(`[${target}] ${check} EVENT OPENED: ${outcome.code} - ${outcome.title}`);
+      console.log(
+        `[${target}] ${check} EVENT OPENED: ${outcome.code} - ${outcome.title}`,
+      );
     } else {
       if (open) {
         await this.store.closeCheckEvent(open.id, time);
-        const closedEvent: CheckEventRecord = {
+        const closedEvent: CheckEventEndedRecord = {
           id: open.id,
           provider,
           target,
@@ -306,7 +379,10 @@ export class EventTracker {
           endTime: time.getTime(),
           message: open.message,
         };
-        await this.appendToChannelOutbox({ type: "check_event_ended", event: closedEvent });
+        await this.appendToChannelOutbox({
+          type: "check_event_ended",
+          event: closedEvent,
+        });
         this.publishers.check.publish(closedEvent);
         this.checkEvents.delete(key);
         console.log(`[${target}] ${check} EVENT CLOSED: ${open.code}`);

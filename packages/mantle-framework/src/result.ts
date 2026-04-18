@@ -11,13 +11,13 @@ export type CheckResult =
     };
 
 export function isCheckError(
-  result: CheckResult
+  result: CheckResult,
 ): result is { check: string; error: OutcomeError } {
   return "error" in result;
 }
 
 export function isCheckSuccess(
-  result: CheckResult
+  result: CheckResult,
 ): result is { check: string; value: number } {
   return "value" in result;
 }

@@ -2,8 +2,9 @@ import type { AgentConfig } from "./config.ts";
 import type { OutcomeError, Violation } from "./types.ts";
 
 export type CheckResultPayload =
-  | { ok: true; measurement: number; violation?: Violation }
-  | { ok: false; error: OutcomeError };
+  | { status: "compliant"; measurement: number }
+  | { status: "violation"; measurement: number; violation: Violation }
+  | { status: "error"; error: OutcomeError };
 
 export type AgentMessage =
   | {

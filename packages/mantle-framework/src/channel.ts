@@ -1,22 +1,25 @@
-import type { z } from "zod";
 import type {
-	ProviderEventRecord,
-	TargetEventRecord,
-	CheckEventRecord,
+  CheckEventEndedRecord,
+  CheckEventRecord,
+  ProviderEventEndedRecord,
+  ProviderEventRecord,
+  TargetEventEndedRecord,
+  TargetEventRecord,
 } from "mantle-store";
+import type { z } from "zod";
 
 export interface ChannelInstance {
-	onProviderEventStarted(event: ProviderEventRecord): void;
-	onProviderEventEnded(event: ProviderEventRecord): void;
-	onTargetEventStarted(event: TargetEventRecord): void;
-	onTargetEventEnded(event: TargetEventRecord): void;
-	onCheckEventStarted(event: CheckEventRecord): void;
-	onCheckEventEnded(event: CheckEventRecord): void;
-	close(): Promise<void>;
+  onProviderEventStarted(event: ProviderEventRecord): void;
+  onProviderEventEnded(event: ProviderEventEndedRecord): void;
+  onTargetEventStarted(event: TargetEventRecord): void;
+  onTargetEventEnded(event: TargetEventEndedRecord): void;
+  onCheckEventStarted(event: CheckEventRecord): void;
+  onCheckEventEnded(event: CheckEventEndedRecord): void;
+  close(): Promise<void>;
 }
 
 export interface Channel {
-	name: string;
-	configSchema: z.ZodType | null;
-	createInstance(config: unknown): ChannelInstance;
+  name: string;
+  configSchema: z.ZodType | null;
+  createInstance(config: unknown): ChannelInstance;
 }

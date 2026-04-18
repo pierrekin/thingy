@@ -1,4 +1,14 @@
-import type { Hub, Provider, Channel, Agent, AgentInstance, Target, Check, Event, StatusSlot } from "../types";
+import type {
+  Agent,
+  AgentInstance,
+  Channel,
+  Check,
+  Event,
+  Hub,
+  Provider,
+  StatusSlot,
+  Target,
+} from "../types";
 import { useDataStore } from "./data-store";
 import type { StateSubscriptionParams } from "./types";
 
@@ -7,269 +17,306 @@ import type { StateSubscriptionParams } from "./types";
  * In live mode, calculates the current rolling window.
  * In historical mode, returns the fixed range.
  */
-function getVisibleTimeWindow(params: StateSubscriptionParams): { start: number; end: number } {
-	if (params.end === null) {
-		// Live mode: calculate current window
-		const now = Date.now();
-		// Calculate how many buckets to show based on original start time
-		const duration = now - params.start;
-		const bucketCount = Math.ceil(duration / params.bucketDurationMs);
-		const windowStart = now - bucketCount * params.bucketDurationMs;
-		return { start: windowStart, end: now };
-	} else {
-		// Historical mode: use fixed range
-		return { start: params.start, end: params.end };
-	}
+function getVisibleTimeWindow(params: StateSubscriptionParams): {
+  start: number;
+  end: number;
+} {
+  if (params.end === null) {
+    // Live mode: calculate current window
+    const now = Date.now();
+    // Calculate how many buckets to show based on original start time
+    const duration = now - params.start;
+    const bucketCount = Math.ceil(duration / params.bucketDurationMs);
+    const windowStart = now - bucketCount * params.bucketDurationMs;
+    return { start: windowStart, end: now };
+  } else {
+    // Historical mode: use fixed range
+    return { start: params.start, end: params.end };
+  }
 }
 
 /**
  * Filter slots to only those in the visible window
  */
-function filterSlotsInWindow(slots: StatusSlot[], window: { start: number; end: number }): StatusSlot[] {
-	return slots.filter((s) => s.start >= window.start && s.start < window.end);
+function filterSlotsInWindow(
+  slots: StatusSlot[],
+  window: { start: number; end: number },
+): StatusSlot[] {
+  return slots.filter((s) => s.start >= window.start && s.start < window.end);
 }
 
 /**
  * Convert bucket map to sorted status slots
  */
-function bucketsToSlots(bucketMap: Map<number, { bucketStart: number; bucketEnd: number; status: "green" | "red" | "grey" | null }>): StatusSlot[] {
-	const entries = Array.from(bucketMap.values());
-	entries.sort((a, b) => a.bucketStart - b.bucketStart);
-	return entries.map((b) => ({
-		start: b.bucketStart,
-		end: b.bucketEnd,
-		status: b.status,
-	}));
+function bucketsToSlots(
+  bucketMap: Map<
+    number,
+    {
+      bucketStart: number;
+      bucketEnd: number;
+      status: "green" | "red" | "grey" | null;
+    }
+  >,
+): StatusSlot[] {
+  const entries = Array.from(bucketMap.values());
+  entries.sort((a, b) => a.bucketStart - b.bucketStart);
+  return entries.map((b) => ({
+    start: b.bucketStart,
+    end: b.bucketEnd,
+    status: b.status,
+  }));
 }
 
 /**
  * Convert raw event data to display Event type
  */
 function toEvent(e: {
-	id: number;
-	code: string;
-	title: string;
-	message: string;
-	startTime: number;
-	endTime: number | null;
+  id: number;
+  code: string;
+  title: string;
+  message: string;
+  startTime: number;
+  endTime: number | null;
 }): Event {
-	return {
-		id: e.id,
-		code: e.code,
-		title: e.title,
-		message: e.message,
-		startTime: new Date(e.startTime),
-		endTime: e.endTime ? new Date(e.endTime) : null,
-	};
+  return {
+    id: e.id,
+    code: e.code,
+    title: e.title,
+    message: e.message,
+    startTime: new Date(e.startTime),
+    endTime: e.endTime ? new Date(e.endTime) : null,
+  };
 }
 
 /**
  * Derive the Hub view from subscription data.
  * This performs transformation and applies windowing based on subscription parameters.
  */
-export function deriveHub(subscriptionId: string, params: StateSubscriptionParams): Hub {
-	const window = getVisibleTimeWindow(params);
-	const state = useDataStore.getState();
+export function deriveHub(
+  subscriptionId: string,
+  params: StateSubscriptionParams,
+): Hub {
+  const window = getVisibleTimeWindow(params);
+  const state = useDataStore.getState();
 
-	// Get all data for this subscription
-	const providerBucketsMap = state.providerBuckets.get(subscriptionId) ?? new Map();
-	const targetBucketsMap = state.targetBuckets.get(subscriptionId) ?? new Map();
-	const checkBucketsMap = state.checkBuckets.get(subscriptionId) ?? new Map();
-	const providerEventsMap = state.providerEvents.get(subscriptionId) ?? new Map();
-	const targetEventsMap = state.targetEvents.get(subscriptionId) ?? new Map();
-	const checkEventsMap = state.checkEvents.get(subscriptionId) ?? new Map();
-	const channelBucketsMap = state.channelBuckets.get(subscriptionId) ?? new Map();
-	const channelEventsMap = state.channelEvents.get(subscriptionId) ?? new Map();
-	const agentBucketsMap = state.agentBuckets.get(subscriptionId) ?? new Map();
-	const agentEventsMap = state.agentEvents.get(subscriptionId) ?? new Map();
+  // Get all data for this subscription
+  const providerBucketsMap =
+    state.providerBuckets.get(subscriptionId) ?? new Map();
+  const targetBucketsMap = state.targetBuckets.get(subscriptionId) ?? new Map();
+  const checkBucketsMap = state.checkBuckets.get(subscriptionId) ?? new Map();
+  const providerEventsMap =
+    state.providerEvents.get(subscriptionId) ?? new Map();
+  const targetEventsMap = state.targetEvents.get(subscriptionId) ?? new Map();
+  const checkEventsMap = state.checkEvents.get(subscriptionId) ?? new Map();
+  const channelBucketsMap =
+    state.channelBuckets.get(subscriptionId) ?? new Map();
+  const channelEventsMap = state.channelEvents.get(subscriptionId) ?? new Map();
+  const agentBucketsMap = state.agentBuckets.get(subscriptionId) ?? new Map();
+  const agentEventsMap = state.agentEvents.get(subscriptionId) ?? new Map();
 
-	// Collect all unique provider names
-	const providerNames = new Set<string>();
-	for (const provider of providerBucketsMap.keys()) {
-		providerNames.add(provider);
-	}
+  // Collect all unique provider names
+  const providerNames = new Set<string>();
+  for (const provider of providerBucketsMap.keys()) {
+    providerNames.add(provider);
+  }
 
-	// Collect all targets
-	const targetKeys = new Map<string, { provider: string; target: string }>();
-	for (const key of targetBucketsMap.keys()) {
-		const [provider, target] = key.split("/") as [string, string];
-		providerNames.add(provider);
-		targetKeys.set(key, { provider, target });
-	}
+  // Collect all targets
+  const targetKeys = new Map<string, { provider: string; target: string }>();
+  for (const key of targetBucketsMap.keys()) {
+    const [provider, target] = key.split("/") as [string, string];
+    providerNames.add(provider);
+    targetKeys.set(key, { provider, target });
+  }
 
-	// Collect all checks
-	const checkKeys = new Map<string, { provider: string; target: string; check: string }>();
-	for (const key of checkBucketsMap.keys()) {
-		const [provider, target, check] = key.split("/") as [string, string, string];
-		providerNames.add(provider);
-		const targetKey = `${provider}/${target}`;
-		if (!targetKeys.has(targetKey)) {
-			targetKeys.set(targetKey, { provider, target });
-		}
-		checkKeys.set(key, { provider, target, check });
-	}
+  // Collect all checks
+  const checkKeys = new Map<
+    string,
+    { provider: string; target: string; check: string }
+  >();
+  for (const key of checkBucketsMap.keys()) {
+    const [provider, target, check] = key.split("/") as [
+      string,
+      string,
+      string,
+    ];
+    providerNames.add(provider);
+    const targetKey = `${provider}/${target}`;
+    if (!targetKeys.has(targetKey)) {
+      targetKeys.set(targetKey, { provider, target });
+    }
+    checkKeys.set(key, { provider, target, check });
+  }
 
-	// Build providers
-	const providers: Provider[] = Array.from(providerNames)
-		.sort()
-		.map((name) => {
-			const events: Event[] = [];
-			for (const e of providerEventsMap.values()) {
-				if (e.provider === name) {
-					events.push(toEvent(e));
-				}
-			}
-			events.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+  // Build providers
+  const providers: Provider[] = Array.from(providerNames)
+    .sort()
+    .map((name) => {
+      const events: Event[] = [];
+      for (const e of providerEventsMap.values()) {
+        if (e.provider === name) {
+          events.push(toEvent(e));
+        }
+      }
+      events.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 
-			const bucketMap = providerBucketsMap.get(name);
-			const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
-			const visibleSlots = filterSlotsInWindow(slots, window);
-			const latestStatus = state.providerStatuses.get(name) ?? null;
+      const bucketMap = providerBucketsMap.get(name);
+      const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
+      const visibleSlots = filterSlotsInWindow(slots, window);
+      const latestStatus = state.providerStatuses.get(name) ?? null;
 
-			return {
-				name,
-				statusSlots: visibleSlots,
-				latestStatus,
-				events,
-			};
-		});
+      return {
+        name,
+        statusSlots: visibleSlots,
+        latestStatus,
+        events,
+      };
+    });
 
-	// Build targets with checks
-	const targetsByProvider = new Map<string, Target[]>();
-	for (const [key, { provider, target }] of targetKeys) {
-		// Get checks for this target
-		const checksForTarget: Check[] = [];
-		for (const [checkKey, checkInfo] of checkKeys) {
-			if (checkInfo.provider === provider && checkInfo.target === target) {
-				const checkEvents: Event[] = [];
-				for (const e of checkEventsMap.values()) {
-					if (e.provider === provider && e.target === target && e.check === checkInfo.check) {
-						checkEvents.push(toEvent(e));
-					}
-				}
-				checkEvents.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+  // Build targets with checks
+  const targetsByProvider = new Map<string, Target[]>();
+  for (const [key, { provider, target }] of targetKeys) {
+    // Get checks for this target
+    const checksForTarget: Check[] = [];
+    for (const [checkKey, checkInfo] of checkKeys) {
+      if (checkInfo.provider === provider && checkInfo.target === target) {
+        const checkEvents: Event[] = [];
+        for (const e of checkEventsMap.values()) {
+          if (
+            e.provider === provider &&
+            e.target === target &&
+            e.check === checkInfo.check
+          ) {
+            checkEvents.push(toEvent(e));
+          }
+        }
+        checkEvents.sort(
+          (a, b) => b.startTime.getTime() - a.startTime.getTime(),
+        );
 
-				const bucketMap = checkBucketsMap.get(checkKey);
-				const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
-				const visibleSlots = filterSlotsInWindow(slots, window);
+        const bucketMap = checkBucketsMap.get(checkKey);
+        const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
+        const visibleSlots = filterSlotsInWindow(slots, window);
 
-				checksForTarget.push({
-					name: checkInfo.check,
-					statusSlots: visibleSlots,
-					events: checkEvents,
-				});
-			}
-		}
-		checksForTarget.sort((a, b) => a.name.localeCompare(b.name));
+        checksForTarget.push({
+          name: checkInfo.check,
+          statusSlots: visibleSlots,
+          events: checkEvents,
+        });
+      }
+    }
+    checksForTarget.sort((a, b) => a.name.localeCompare(b.name));
 
-		// Get events for this target
-		const targetEvents: Event[] = [];
-		for (const e of targetEventsMap.values()) {
-			if (e.provider === provider && e.target === target) {
-				targetEvents.push(toEvent(e));
-			}
-		}
-		targetEvents.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+    // Get events for this target
+    const targetEvents: Event[] = [];
+    for (const e of targetEventsMap.values()) {
+      if (e.provider === provider && e.target === target) {
+        targetEvents.push(toEvent(e));
+      }
+    }
+    targetEvents.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 
-		const bucketMap = targetBucketsMap.get(key);
-		const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
-		const visibleSlots = filterSlotsInWindow(slots, window);
+    const bucketMap = targetBucketsMap.get(key);
+    const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
+    const visibleSlots = filterSlotsInWindow(slots, window);
 
-		const latestStatus = state.targetStatuses.get(`${provider}/${target}`) ?? null;
-		const allGreen = visibleSlots.length > 0 && visibleSlots.every((s) => s.status === "green");
+    const latestStatus =
+      state.targetStatuses.get(`${provider}/${target}`) ?? null;
+    const allGreen =
+      visibleSlots.length > 0 &&
+      visibleSlots.every((s) => s.status === "green");
 
-		const targetObj: Target = {
-			name: target,
-			provider,
-			statusSlots: visibleSlots,
-			latestStatus,
-			allGreen,
-			events: targetEvents,
-			checks: checksForTarget,
-		};
+    const targetObj: Target = {
+      name: target,
+      provider,
+      statusSlots: visibleSlots,
+      latestStatus,
+      allGreen,
+      events: targetEvents,
+      checks: checksForTarget,
+    };
 
-		const existing = targetsByProvider.get(provider) ?? [];
-		existing.push(targetObj);
-		targetsByProvider.set(provider, existing);
-	}
+    const existing = targetsByProvider.get(provider) ?? [];
+    existing.push(targetObj);
+    targetsByProvider.set(provider, existing);
+  }
 
-	const targets: Target[] = [];
-	for (const providerTargets of targetsByProvider.values()) {
-		providerTargets.sort((a, b) => a.name.localeCompare(b.name));
-		targets.push(...providerTargets);
-	}
+  const targets: Target[] = [];
+  for (const providerTargets of targetsByProvider.values()) {
+    providerTargets.sort((a, b) => a.name.localeCompare(b.name));
+    targets.push(...providerTargets);
+  }
 
-	// Build channels
-	const channels: Channel[] = Array.from(channelBucketsMap.keys())
-		.sort()
-		.map((name) => {
-			const events: Event[] = [];
-			for (const e of channelEventsMap.values()) {
-				if (e.channel === name) {
-					events.push(toEvent(e));
-				}
-			}
-			events.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+  // Build channels
+  const channels: Channel[] = Array.from(channelBucketsMap.keys())
+    .sort()
+    .map((name) => {
+      const events: Event[] = [];
+      for (const e of channelEventsMap.values()) {
+        if (e.channel === name) {
+          events.push(toEvent(e));
+        }
+      }
+      events.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 
-			const bucketMap = channelBucketsMap.get(name);
-			const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
-			const visibleSlots = filterSlotsInWindow(slots, window);
-			const latestStatus = state.channelStatuses.get(name) ?? null;
+      const bucketMap = channelBucketsMap.get(name);
+      const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
+      const visibleSlots = filterSlotsInWindow(slots, window);
+      const latestStatus = state.channelStatuses.get(name) ?? null;
 
-			return {
-				name,
-				statusSlots: visibleSlots,
-				latestStatus,
-				events,
-			};
-		});
+      return {
+        name,
+        statusSlots: visibleSlots,
+        latestStatus,
+        events,
+      };
+    });
 
-	// Build agents — include agents that have buckets OR live instances
-	const agentNames = new Set<string>(agentBucketsMap.keys());
-	for (const name of state.agentInstances.keys()) {
-		agentNames.add(name);
-	}
+  // Build agents — include agents that have buckets OR live instances
+  const agentNames = new Set<string>(agentBucketsMap.keys());
+  for (const name of state.agentInstances.keys()) {
+    agentNames.add(name);
+  }
 
-	const agents: Agent[] = Array.from(agentNames)
-		.sort()
-		.map((name) => {
-			const events: Event[] = [];
-			for (const e of agentEventsMap.values()) {
-				if (e.agent === name) {
-					events.push(toEvent(e));
-				}
-			}
-			events.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+  const agents: Agent[] = Array.from(agentNames)
+    .sort()
+    .map((name) => {
+      const events: Event[] = [];
+      for (const e of agentEventsMap.values()) {
+        if (e.agent === name) {
+          events.push(toEvent(e));
+        }
+      }
+      events.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 
-			const bucketMap = agentBucketsMap.get(name);
-			const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
-			const visibleSlots = filterSlotsInWindow(slots, window);
-			const latestStatus = state.agentStatuses.get(name) ?? null;
+      const bucketMap = agentBucketsMap.get(name);
+      const slots = bucketMap ? bucketsToSlots(bucketMap) : [];
+      const visibleSlots = filterSlotsInWindow(slots, window);
+      const latestStatus = state.agentStatuses.get(name) ?? null;
 
-			const rawInstances = state.agentInstances.get(name) ?? [];
-			const instances: AgentInstance[] = rawInstances.map((i) => ({
-				instanceId: i.instanceId,
-				role: i.role,
-				connectedAt: new Date(i.connectedAt),
-			}));
-			// Placeholder badge count until we define "notable" instances
-			const badgeCount = instances.length > 1 ? instances.length - 1 : 0;
+      const rawInstances = state.agentInstances.get(name) ?? [];
+      const instances: AgentInstance[] = rawInstances.map((i) => ({
+        instanceId: i.instanceId,
+        role: i.role,
+        connectedAt: new Date(i.connectedAt),
+      }));
+      // Placeholder badge count until we define "notable" instances
+      const badgeCount = instances.length > 1 ? instances.length - 1 : 0;
 
-			return {
-				name,
-				statusSlots: visibleSlots,
-				latestStatus,
-				events,
-				instances,
-				badgeCount,
-			};
-		});
+      return {
+        name,
+        statusSlots: visibleSlots,
+        latestStatus,
+        events,
+        instances,
+        badgeCount,
+      };
+    });
 
-	return {
-		name: "Hub",
-		providers,
-		channels,
-		agents,
-		targets,
-	};
+  return {
+    name: "Hub",
+    providers,
+    channels,
+    agents,
+    targets,
+  };
 }

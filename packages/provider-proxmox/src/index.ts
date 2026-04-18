@@ -1,20 +1,19 @@
-import { z } from "zod";
 import {
+  allTargetConfigsSchema,
+  bindCheck,
+  type CheckResult,
   defineCheck,
   defineProvider,
-  bindCheck,
-  providerConfigSchema,
-  allTargetConfigsSchema,
-  DISABLED,
-  type CheckResult,
   type Provider,
+  providerConfigSchema,
 } from "mantle-framework";
-import { ProxmoxClient, ProxmoxApiError } from "./client.ts";
+import { z } from "zod";
+import { ProxmoxApiError, ProxmoxClient } from "./client.ts";
 
 class TargetNotFoundError extends Error {
   constructor(
     public readonly code: string,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "TargetNotFoundError";
@@ -145,7 +144,12 @@ export class ProxmoxProviderInstance {
   }
 
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; name: string; vmId?: number; node?: string };
+    const t = target as {
+      type: string;
+      name: string;
+      vmId?: number;
+      node?: string;
+    };
     const results: CheckResult[] = [];
 
     for (const checkName of checks) {
@@ -192,7 +196,7 @@ export class ProxmoxProviderInstance {
 
   private async runCheck(
     target: { type: string; name: string; vmId?: number; node?: string },
-    checkName: string
+    checkName: string,
   ): Promise<number> {
     switch (target.type) {
       case "vm":
@@ -217,7 +221,11 @@ export class ProxmoxProviderInstance {
     switch (checkName) {
       case "state":
         // Convert state to number: running=1, stopped=0, other=0.5
-        return status.status === "running" ? 1 : status.status === "stopped" ? 0 : 0.5;
+        return status.status === "running"
+          ? 1
+          : status.status === "stopped"
+            ? 0
+            : 0.5;
       case "cpu":
         return status.cpu * 100;
       case "memory":
@@ -238,7 +246,11 @@ export class ProxmoxProviderInstance {
     switch (checkName) {
       case "state":
         // Convert state to number: running=1, stopped=0, other=0.5
-        return status.status === "running" ? 1 : status.status === "stopped" ? 0 : 0.5;
+        return status.status === "running"
+          ? 1
+          : status.status === "stopped"
+            ? 0
+            : 0.5;
       case "cpu":
         return status.cpu * 100;
       case "memory":
@@ -248,7 +260,10 @@ export class ProxmoxProviderInstance {
     }
   }
 
-  private async runNodeCheck(nodeName: string, checkName: string): Promise<number> {
+  private async runNodeCheck(
+    nodeName: string,
+    checkName: string,
+  ): Promise<number> {
     const status = await this.client.getNodeStatus(nodeName);
 
     switch (checkName) {
@@ -270,7 +285,8 @@ export const proxmoxStatic = {
   definition: proxmoxProvider,
   providerConfigSchema: proxmoxProviderConfigSchema,
   targetConfigSchema: proxmoxTargetConfigSchema,
-  createInstance: (config: unknown) => new ProxmoxProviderInstance(config as ProxmoxProviderConfig),
+  createInstance: (config: unknown) =>
+    new ProxmoxProviderInstance(config as ProxmoxProviderConfig),
 } satisfies Provider;
 
 export const providers: Provider[] = [proxmoxStatic];

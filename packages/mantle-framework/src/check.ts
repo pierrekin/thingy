@@ -56,13 +56,9 @@ export function checkConfigSchema<TOperators extends readonly Operator[]>(
     }
   }
 
-  operatorFields["over"] = z.string().optional();
+  operatorFields.over = z.string().optional();
 
   const configObject = z.object(operatorFields).passthrough();
 
-  return z.union([
-    z.literal(DISABLED),
-    z.literal(ENABLED),
-    configObject,
-  ]);
+  return z.union([z.literal(DISABLED), z.literal(ENABLED), configObject]);
 }

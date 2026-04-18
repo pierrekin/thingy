@@ -20,9 +20,11 @@ export class MetricsSubscription extends Subscription {
   }
 
   matches(provider: string, target: string, check: string): boolean {
-    return this.provider === provider &&
-           this.target === target &&
-           this.check === check;
+    return (
+      this.provider === provider &&
+      this.target === target &&
+      this.check === check
+    );
   }
 
   isInRange(bucketStart: number): boolean {

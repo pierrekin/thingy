@@ -1,2 +1,2 @@
-export type { Scheduler, ScheduledTask } from "./types.ts";
 export { IntervalScheduler } from "./interval.ts";
+export type { ScheduledTask, Scheduler } from "./types.ts";

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { invariant } from "mantle-framework";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
@@ -30,8 +31,9 @@ describe("smoke: api", () => {
 });
 
 describe("provider: checks", () => {
-  const caddy = providers.find((p) => p.name === "@mantle/caddy/remote")!;
-  const instance = caddy.createInstance?.({ url: CADDY_URL });
+  const caddy = providers.find((p) => p.name === "@mantle/caddy/remote");
+  invariant(caddy, "provider @mantle/caddy/remote not registered");
+  const instance = caddy.createInstance({ url: CADDY_URL });
 
   test("server.config_reload_success returns 1", async () => {
     const [result] = await instance.check({ type: "server" }, [

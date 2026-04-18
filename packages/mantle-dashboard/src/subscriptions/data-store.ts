@@ -91,7 +91,7 @@ type AgentEvent = {
 /**
  * The Zustand store state
  */
-interface DataStoreState {
+export interface DataStoreState {
   // Buckets organized by: subscriptionId -> entityKey -> bucketStart -> data
   providerBuckets: Map<string, Map<string, Map<number, BucketData>>>;
   targetBuckets: Map<string, Map<string, Map<number, BucketData>>>;

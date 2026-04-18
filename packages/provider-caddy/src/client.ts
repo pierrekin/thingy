@@ -58,7 +58,8 @@ export class CaddyClient {
     const text = await this.getText("/metrics");
     for (const line of text.split("\n")) {
       if (line.startsWith("caddy_config_last_reload_successful ")) {
-        const val = parseFloat(line.split(" ")[1]!);
+        const [, value] = line.split(" ");
+        const val = value ? parseFloat(value) : NaN;
         if (Number.isNaN(val))
           throw new CaddyApiError(
             "api_error",

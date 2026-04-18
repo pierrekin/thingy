@@ -23,12 +23,12 @@ export function getAgentConfig(
   agent?: string,
 ): { id: string; config: AgentConfig } {
   const availableIds = Object.keys(config.agents);
-
-  if (availableIds.length === 0) {
+  const [firstId] = availableIds;
+  if (!firstId) {
     throw new OperationalError("No agent defined in config");
   }
 
-  const id = agent ?? availableIds[0]!;
+  const id = agent ?? firstId;
   const agentConfig = config.agents[id];
 
   if (!agentConfig) {

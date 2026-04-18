@@ -122,6 +122,8 @@ const mylarrProvider = defineProvider({
 
 // --- Provider instance ---
 
+type MylarrTarget = { type: "comic"; comicId: string } | { type: "wanted" };
+
 class MylarrProviderInstance {
   private client: MylarrClient;
   constructor(config: { url: string; api_key: string; timeoutMs: number }) {
@@ -137,14 +139,12 @@ class MylarrProviderInstance {
   }
 
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; comicId?: string };
+    const t = target as MylarrTarget;
     switch (t.type) {
       case "comic":
-        return this.checkComic(t.comicId!, checks);
+        return this.checkComic(t.comicId, checks);
       case "wanted":
         return this.checkWanted(checks);
-      default:
-        throw new Error(`Unknown target type: ${t.type}`);
     }
   }
 
@@ -163,14 +163,14 @@ class MylarrProviderInstance {
       }
       return unknownError(checks, err);
     }
-    if (result.comic.length === 0) {
+    const [comic] = result.comic;
+    if (!comic) {
       const notFound = new MylarrApiError(
         "not_found",
         `No comic found with id: ${id}`,
       );
       return targetError(checks, notFound);
     }
-    const comic = result.comic[0]!;
     const downloaded = result.issues.filter(
       (i) => i.status === "Downloaded",
     ).length;

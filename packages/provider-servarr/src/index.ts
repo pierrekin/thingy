@@ -243,6 +243,11 @@ const sonarrProvider = defineProvider({
   },
 });
 
+type SonarrTarget =
+  | { type: "series"; seriesId: number }
+  | { type: "queue" }
+  | { type: "health" };
+
 class SonarrProviderInstance {
   private client: ServarrClientV3;
   constructor(config: { url: string; api_key: string; timeoutMs: number }) {
@@ -256,16 +261,14 @@ class SonarrProviderInstance {
     return errorTitle(code);
   }
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; seriesId?: number };
+    const t = target as SonarrTarget;
     switch (t.type) {
       case "series":
-        return this.checkSeries(t.seriesId!, checks);
+        return this.checkSeries(t.seriesId, checks);
       case "queue":
         return checkQueue(this.client, checks);
       case "health":
         return checkHealth(this.client, checks);
-      default:
-        throw new Error(`Unknown target type: ${t.type}`);
     }
   }
   private async checkSeries(
@@ -340,6 +343,11 @@ const radarrProvider = defineProvider({
   },
 });
 
+type RadarrTarget =
+  | { type: "movie"; movieId: number }
+  | { type: "queue" }
+  | { type: "health" };
+
 class RadarrProviderInstance {
   private client: ServarrClientV3;
   constructor(config: { url: string; api_key: string; timeoutMs: number }) {
@@ -353,16 +361,14 @@ class RadarrProviderInstance {
     return errorTitle(code);
   }
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; movieId?: number };
+    const t = target as RadarrTarget;
     switch (t.type) {
       case "movie":
-        return this.checkMovie(t.movieId!, checks);
+        return this.checkMovie(t.movieId, checks);
       case "queue":
         return checkQueue(this.client, checks);
       case "health":
         return checkHealth(this.client, checks);
-      default:
-        throw new Error(`Unknown target type: ${t.type}`);
     }
   }
   private async checkMovie(
@@ -435,6 +441,11 @@ const lidarrProvider = defineProvider({
   },
 });
 
+type LidarrTarget =
+  | { type: "artist"; artistId: number }
+  | { type: "queue" }
+  | { type: "health" };
+
 class LidarrProviderInstance {
   private client: ServarrClientV1;
   constructor(config: { url: string; api_key: string; timeoutMs: number }) {
@@ -448,16 +459,14 @@ class LidarrProviderInstance {
     return errorTitle(code);
   }
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; artistId?: number };
+    const t = target as LidarrTarget;
     switch (t.type) {
       case "artist":
-        return this.checkArtist(t.artistId!, checks);
+        return this.checkArtist(t.artistId, checks);
       case "queue":
         return checkQueue(this.client, checks);
       case "health":
         return checkHealth(this.client, checks);
-      default:
-        throw new Error(`Unknown target type: ${t.type}`);
     }
   }
   private async checkArtist(
@@ -523,6 +532,10 @@ const prowlarrProvider = defineProvider({
   },
 });
 
+type ProwlarrTarget =
+  | { type: "indexer"; indexerId: number }
+  | { type: "health" };
+
 class ProwlarrProviderInstance {
   private client: ServarrClientV1;
   constructor(config: { url: string; api_key: string; timeoutMs: number }) {
@@ -536,14 +549,12 @@ class ProwlarrProviderInstance {
     return errorTitle(code);
   }
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; indexerId?: number };
+    const t = target as ProwlarrTarget;
     switch (t.type) {
       case "indexer":
-        return this.checkIndexer(t.indexerId!, checks);
+        return this.checkIndexer(t.indexerId, checks);
       case "health":
         return checkHealth(this.client, checks);
-      default:
-        throw new Error(`Unknown target type: ${t.type}`);
     }
   }
   private async checkIndexer(
@@ -614,6 +625,11 @@ const whisparrV2Provider = defineProvider({
   },
 });
 
+type WhisparrV2Target =
+  | { type: "series"; seriesId: number }
+  | { type: "queue" }
+  | { type: "health" };
+
 class WhisparrV2ProviderInstance {
   private client: ServarrClientV3;
   constructor(config: { url: string; api_key: string; timeoutMs: number }) {
@@ -627,16 +643,14 @@ class WhisparrV2ProviderInstance {
     return errorTitle(code);
   }
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; seriesId?: number };
+    const t = target as WhisparrV2Target;
     switch (t.type) {
       case "series":
-        return this.checkSeries(t.seriesId!, checks);
+        return this.checkSeries(t.seriesId, checks);
       case "queue":
         return checkQueue(this.client, checks);
       case "health":
         return checkHealth(this.client, checks);
-      default:
-        throw new Error(`Unknown target type: ${t.type}`);
     }
   }
   private async checkSeries(
@@ -711,6 +725,11 @@ const whisparrProvider = defineProvider({
   },
 });
 
+type WhisparrTarget =
+  | { type: "scene"; sceneId: number }
+  | { type: "queue" }
+  | { type: "health" };
+
 class WhisparrProviderInstance {
   private client: ServarrClientV3;
   constructor(config: { url: string; api_key: string; timeoutMs: number }) {
@@ -724,16 +743,14 @@ class WhisparrProviderInstance {
     return errorTitle(code);
   }
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as { type: string; sceneId?: number };
+    const t = target as WhisparrTarget;
     switch (t.type) {
       case "scene":
-        return this.checkScene(t.sceneId!, checks);
+        return this.checkScene(t.sceneId, checks);
       case "queue":
         return checkQueue(this.client, checks);
       case "health":
         return checkHealth(this.client, checks);
-      default:
-        throw new Error(`Unknown target type: ${t.type}`);
     }
   }
   private async checkScene(

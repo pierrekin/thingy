@@ -79,8 +79,8 @@ export class AgentRegistry {
     }
 
     // If the removed instance was the leader, promote the newest standby
-    if (instance.role === "leader") {
-      const next = instances[0]!;
+    const [next] = instances;
+    if (instance.role === "leader" && next) {
       next.role = "leader";
       this.publishFor(instance.agentId);
       return next;

@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import { invariant } from "mantle-framework";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
@@ -41,8 +42,9 @@ describe("provider: checks", () => {
   test("health.sessions returns a non-negative count", async () => {
     const jellyfin = providers.find(
       (p) => p.name === "@mantle/jellyfin/remote",
-    )!;
-    const instance = jellyfin.createInstance?.({
+    );
+    invariant(jellyfin, "provider @mantle/jellyfin/remote not registered");
+    const instance = jellyfin.createInstance({
       url: JELLYFIN_URL,
       api_key: token,
     });

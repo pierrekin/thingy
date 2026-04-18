@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { invariant } from "./errors.ts";
 import { spawn } from "./process.ts";
 
 export type RunnerConfig = {
@@ -54,24 +55,27 @@ async function collect(proc: {
   return [out, err].filter(Boolean).join("\n");
 }
 
-async function getImageDigest(
-  image: string,
-  tag: string,
-): Promise<string | null> {
+async function getImageDigest(image: string, tag: string): Promise<string> {
+  const ref = `${image}:${tag}`;
   const proc = spawn(
-    [
-      "docker",
-      "inspect",
-      "--format",
-      "{{index .RepoDigests 0}}",
-      `${image}:${tag}`,
-    ],
+    ["docker", "inspect", "--format", "{{index .RepoDigests 0}}", ref],
     { stdout: "pipe", stderr: "pipe" },
   );
-  const out = await new Response(proc.stdout).text();
-  await proc.exited;
-  const str = out.trim();
-  return str.includes("@") ? str.split("@")[1]! : null;
+  const [out, err, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  invariant(
+    code === 0,
+    `docker inspect failed for ${ref} (exit ${code}): ${err.trim()}`,
+  );
+  const [, digest] = out.trim().split("@");
+  invariant(
+    digest,
+    `docker inspect returned no digest for ${ref}: ${out.trim()}`,
+  );
+  return digest;
 }
 
 async function runVersion(
@@ -222,11 +226,12 @@ export async function createRunner(
     }
     entries = target.versions;
   } else if (target_arg === "latest") {
-    if (target.versions.length === 0) {
+    const last = target.versions.at(-1);
+    if (!last) {
       console.log(`SKIP  ${config.name}: no versions in target.json`);
       return;
     }
-    entries = [target.versions[target.versions.length - 1]!];
+    entries = [last];
   } else {
     const entry = target.versions.find(
       (v) => v.tag === target_arg || v.softwareVersion === target_arg,

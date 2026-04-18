@@ -96,10 +96,8 @@ async function storagePut(
 function parseChecksums(text: string): Artifact[] {
   const artifacts: Artifact[] = [];
   for (const line of text.trim().split("\n")) {
-    const parts = line.trim().split(/\s+/);
-    if (parts.length < 2) continue;
-    const checksum = parts[0]!;
-    const filename = parts[1]!;
+    const [checksum, filename] = line.trim().split(/\s+/);
+    if (!checksum || !filename) continue;
     const meta = ARTIFACT_META[filename];
     if (!meta) continue;
     artifacts.push({ ...meta, filename, checksum });
@@ -132,7 +130,7 @@ async function main() {
 
   const newRelease: Release = {
     version,
-    date: new Date().toISOString().split("T")[0]!,
+    date: new Date().toISOString().slice(0, 10),
     notes: notes.trim(),
     artifacts,
   };

@@ -95,7 +95,7 @@ jobs:
 
       - name: Codesign binary
         env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
         run: |
           set -euo pipefail
           codesign --remove-signature mantle-${{ matrix.artifact }}
@@ -107,8 +107,8 @@ jobs:
       - name: Notarize binary
         env:
           APPLE_NOTARY_API_KEY_P8_BASE64: ${{ secrets.APPLE_NOTARY_API_KEY_P8_BASE64 }}
-          APPLE_NOTARY_API_KEY_ID: ${{ secrets.APPLE_NOTARY_API_KEY_ID }}
-          APPLE_NOTARY_API_ISSUER_ID: ${{ secrets.APPLE_NOTARY_API_ISSUER_ID }}
+          APPLE_NOTARY_API_KEY_ID: ${{ vars.APPLE_NOTARY_API_KEY_ID }}
+          APPLE_NOTARY_API_ISSUER_ID: ${{ vars.APPLE_NOTARY_API_ISSUER_ID }}
         run: |
           set -euo pipefail
           KEY_PATH="$RUNNER_TEMP/notary.p8"

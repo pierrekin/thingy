@@ -22,6 +22,7 @@ type VersionResult = {
   passed: boolean;
   output: string;
   dockerOutput: string;
+  testOutput: string;
 };
 
 const activeComposeDirs = new Set<string>();
@@ -58,36 +59,16 @@ function findPackageRoot(startDir: string): string {
 async function drain(
   readable: ReadableStream<Uint8Array>,
   live = false,
-  prefix = "",
 ): Promise<string> {
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   const reader = readable.getReader();
-  let pending = "";
-  const flushLines = (force: boolean) => {
-    while (true) {
-      const idx = pending.indexOf("\n");
-      if (idx < 0) break;
-      process.stdout.write(`${prefix}${pending.slice(0, idx + 1)}`);
-      pending = pending.slice(idx + 1);
-    }
-    if (force && pending) {
-      process.stdout.write(`${prefix}${pending}\n`);
-      pending = "";
-    }
-  };
   while (true) {
     const { done, value } = await reader.read();
-    if (done) {
-      if (live) flushLines(true);
-      break;
-    }
+    if (done) break;
     const text = decoder.decode(value);
+    if (live) process.stdout.write(text);
     chunks.push(text);
-    if (live) {
-      pending += text;
-      flushLines(false);
-    }
   }
   return chunks.join("").trimEnd();
 }
@@ -98,11 +79,10 @@ async function collect(
     stderr: ReadableStream<Uint8Array>;
   },
   live = false,
-  prefix = "",
 ): Promise<string> {
   const [out, err] = await Promise.all([
-    drain(proc.stdout, live, prefix),
-    drain(proc.stderr, live, prefix),
+    drain(proc.stdout, live),
+    drain(proc.stderr, live),
   ]);
   return [out, err].filter(Boolean).join("\n");
 }
@@ -197,8 +177,7 @@ async function runVersion(
       stderr: "pipe",
       env,
     });
-    const prefix = `${config.name}@${entry.softwareVersion}  `;
-    testOutput = await collect(test, true, prefix);
+    testOutput = await collect(test, process.stdout.isTTY === true);
     passed = (await test.exited) === 0;
   } catch (err) {
     logDocker(err instanceof Error ? err.message : String(err));
@@ -216,7 +195,7 @@ async function runVersion(
 
   const dockerOutput = dockerLines.join("\n");
   const output = [dockerOutput, testOutput].filter(Boolean).join("\n");
-  return { entry, passed, output, dockerOutput };
+  return { entry, passed, output, dockerOutput, testOutput };
 }
 
 export async function createRunner(
@@ -306,6 +285,9 @@ export async function createRunner(
   const results: VersionResult[] = [];
 
   for (const entry of entries) {
+    const isTTY = process.stdout.isTTY === true;
+    const header = `\n--- ${config.name}@${entry.softwareVersion} (${entry.tag}) ---`;
+    if (isTTY) console.log(header);
     const result = await runVersion(
       config,
       baseDir,
@@ -313,6 +295,11 @@ export async function createRunner(
       target,
       entry,
     );
+    if (!isTTY) {
+      console.log(
+        result.testOutput ? `${header}\n${result.testOutput}` : header,
+      );
+    }
     if (!result.passed && result.dockerOutput) {
       console.log(result.dockerOutput);
     }

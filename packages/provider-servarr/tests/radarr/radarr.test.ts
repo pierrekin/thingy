@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { invariant } from "mantle-framework";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
@@ -64,8 +65,9 @@ describe("smoke: api", () => {
 });
 
 describe("provider: checks", () => {
-  const radarr = providers.find((p) => p.name === "@mantle/radarr/remote")!;
-  const instance = radarr.createInstance?.({
+  const radarr = providers.find((p) => p.name === "@mantle/radarr/remote");
+  invariant(radarr, "provider @mantle/radarr/remote not registered");
+  const instance = radarr.createInstance({
     url: RADARR_URL,
     api_key: RADARR_API_KEY,
   });

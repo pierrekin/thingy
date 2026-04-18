@@ -4,15 +4,16 @@ import { z } from "zod";
 import { OperationalError } from "./errors.ts";
 
 const listenSchema = z.string().transform((val, ctx) => {
-  const match = val.match(/^(.+):(\d+)$/);
-  if (!match) {
+  const match = val.match(/^(?<ipPart>.+):(?<portPart>\d+)$/);
+  const ipPart = match?.groups?.ipPart;
+  const portPart = match?.groups?.portPart;
+  if (!ipPart || !portPart) {
     ctx.addIssue({ code: "custom", message: "Must be ip:port" });
     return z.NEVER;
   }
 
-  // Safe: regex guarantees two capture groups when match succeeds
-  let ip = match[1]!;
-  const port = parseInt(match[2]!, 10);
+  let ip = ipPart;
+  const port = parseInt(portPart, 10);
 
   // Handle IPv6 brackets
   if (ip.startsWith("[") && ip.endsWith("]")) {
@@ -125,14 +126,15 @@ function resolvePlacements(
       }
       result[ref] = def;
     } else {
-      const keys = Object.keys(ref);
-      if (keys.length !== 1) {
+      const entries = Object.entries(ref);
+      const [entry, ...rest] = entries;
+      if (!entry || rest.length > 0) {
         throw new OperationalError(
           `Inline ${kind} placement must have exactly one key`,
         );
       }
-      const name = keys[0]!;
-      result[name] = ref[name];
+      const [name, value] = entry;
+      result[name] = value;
     }
   }
   return result;

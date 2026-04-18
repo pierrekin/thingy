@@ -1,7 +1,7 @@
 import type { MantleClient } from "@mantle-team/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEventSubscription } from "../hooks/useEventSubscription";
-import { useDataStore } from "../subscriptions/data-store";
+import { type DataStoreState, useDataStore } from "../subscriptions/data-store";
 import type { Event } from "../types";
 import type { ConnectionStatus } from "../ws-store";
 
@@ -47,13 +47,11 @@ export function EventDetailModal({
   const subscriptionId = useEventSubscription(params, client, connectionStatus);
 
   const selectInfo = useCallback(
-    (state: { eventInfo: Map<string, any> }) =>
-      state.eventInfo.get(subscriptionId),
+    (state: DataStoreState) => state.eventInfo.get(subscriptionId),
     [subscriptionId],
   );
   const selectOutcomes = useCallback(
-    (state: { eventOutcomes: Map<string, any> }) =>
-      state.eventOutcomes.get(subscriptionId),
+    (state: DataStoreState) => state.eventOutcomes.get(subscriptionId),
     [subscriptionId],
   );
   const info = useDataStore(selectInfo);
@@ -64,7 +62,7 @@ export function EventDetailModal({
   const current = outcomes[currentIndex];
 
   const title = info?.title ?? event.title;
-  const isOngoing = (info?.endTime ?? event.endTime) === null;
+  const endTime = info?.endTime ?? event.endTime;
 
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -84,12 +82,10 @@ export function EventDetailModal({
             <h2 className="text-lg font-semibold text-bone">{title}</h2>
             <div className="text-sm text-warm-grey mt-1">
               {formatTime(event.startTime)} -
-              {isOngoing ? (
+              {endTime === null ? (
                 <span className="text-critical ml-1">ongoing</span>
               ) : (
-                <span className="ml-1">
-                  {formatTime(new Date(info?.endTime ?? event.endTime!))}
-                </span>
+                <span className="ml-1">{formatTime(new Date(endTime))}</span>
               )}
             </div>
           </div>

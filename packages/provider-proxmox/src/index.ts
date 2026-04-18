@@ -128,6 +128,11 @@ const ERROR_TITLES: Record<string, string> = {
   lxc_not_found: "LXC container not found",
 };
 
+type ProxmoxTarget =
+  | { type: "vm"; name: string; vmId: number }
+  | { type: "lxc"; name: string; vmId: number }
+  | { type: "node"; name: string; node: string };
+
 export class ProxmoxProviderInstance {
   private client: ProxmoxClient;
 
@@ -144,12 +149,7 @@ export class ProxmoxProviderInstance {
   }
 
   async check(target: unknown, checks: string[]): Promise<CheckResult[]> {
-    const t = target as {
-      type: string;
-      name: string;
-      vmId?: number;
-      node?: string;
-    };
+    const t = target as ProxmoxTarget;
     const results: CheckResult[] = [];
 
     for (const checkName of checks) {
@@ -195,18 +195,16 @@ export class ProxmoxProviderInstance {
   }
 
   private async runCheck(
-    target: { type: string; name: string; vmId?: number; node?: string },
+    target: ProxmoxTarget,
     checkName: string,
   ): Promise<number> {
     switch (target.type) {
       case "vm":
-        return this.runVmCheck(target.vmId!, checkName);
+        return this.runVmCheck(target.vmId, checkName);
       case "lxc":
-        return this.runLxcCheck(target.vmId!, checkName);
+        return this.runLxcCheck(target.vmId, checkName);
       case "node":
-        return this.runNodeCheck(target.node!, checkName);
-      default:
-        throw new Error(`Unknown target type: ${target.type}`);
+        return this.runNodeCheck(target.node, checkName);
     }
   }
 

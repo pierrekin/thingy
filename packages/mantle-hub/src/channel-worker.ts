@@ -104,9 +104,8 @@ class WebSocketConsumer implements OutboxConsumer {
 
   async next(): Promise<OutboxEntry | null> {
     if (this.closed) return null;
-    if (this.queue.length > 0) {
-      return this.queue.shift()!;
-    }
+    const entry = this.queue.shift();
+    if (entry) return entry;
     return new Promise((resolve) => {
       this.entryWaiter = resolve;
     });

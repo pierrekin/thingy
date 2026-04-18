@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { invariant } from "mantle-framework";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
@@ -64,8 +65,9 @@ describe("smoke: api", () => {
 });
 
 describe("provider: checks", () => {
-  const lidarr = providers.find((p) => p.name === "@mantle/lidarr/remote")!;
-  const instance = lidarr.createInstance?.({
+  const lidarr = providers.find((p) => p.name === "@mantle/lidarr/remote");
+  invariant(lidarr, "provider @mantle/lidarr/remote not registered");
+  const instance = lidarr.createInstance({
     url: LIDARR_URL,
     api_key: LIDARR_API_KEY,
   });

@@ -88,7 +88,11 @@ async function pool<T>(
 ): Promise<void> {
   const queue = [...items];
   async function worker() {
-    while (queue.length > 0) await fn(queue.shift()!);
+    while (true) {
+      const item = queue.shift();
+      if (item === undefined) break;
+      await fn(item);
+    }
   }
   await Promise.all(Array.from({ length: concurrency }, worker));
 }

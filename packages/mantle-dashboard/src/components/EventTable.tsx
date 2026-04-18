@@ -13,9 +13,10 @@ function formatTime(date: Date): string {
 
 function EventRow({ event, onClick }: { event: Event; onClick: () => void }) {
   const isOngoing = event.endTime === null;
-  const timeRange = isOngoing
-    ? `${formatTime(event.startTime)} -`
-    : `${formatTime(event.startTime)} - ${formatTime(event.endTime!)}`;
+  const timeRange =
+    event.endTime === null
+      ? `${formatTime(event.startTime)} -`
+      : `${formatTime(event.startTime)} - ${formatTime(event.endTime)}`;
 
   return (
     <button

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { invariant } from "mantle-framework";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
@@ -64,8 +65,9 @@ describe("smoke: api", () => {
 });
 
 describe("provider: checks", () => {
-  const sonarr = providers.find((p) => p.name === "@mantle/sonarr/remote")!;
-  const instance = sonarr.createInstance?.({
+  const sonarr = providers.find((p) => p.name === "@mantle/sonarr/remote");
+  invariant(sonarr, "provider @mantle/sonarr/remote not registered");
+  const instance = sonarr.createInstance({
     url: SONARR_URL,
     api_key: SONARR_API_KEY,
   });

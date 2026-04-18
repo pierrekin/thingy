@@ -146,15 +146,14 @@ export function allTargetConfigsSchema<
     targetConfigSchema(name, targetType),
   );
 
-  if (schemas.length === 0) {
+  const [first, second, ...rest] = schemas;
+  if (!first) {
     throw new Error("Provider must have at least one target type");
   }
-
-  if (schemas.length === 1) {
-    return schemas[0]!;
+  if (!second) {
+    return first;
   }
-
-  return z.union(schemas as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+  return z.union([first, second, ...rest]);
 }
 
 export type { CheckBinding, ProviderDefinition, TargetTypeDefinition };

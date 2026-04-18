@@ -9,7 +9,11 @@ document
   .querySelector('meta[name="theme-color"]')
   ?.setAttribute("content", colors.charcoal);
 
-createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root");
+if (!root) {
+  throw new Error('index.html is missing a <div id="root"> element');
+}
+createRoot(root).render(
   <StrictMode>
     <App navbarIcon={<img src={markDark} alt="Mantle" />} />
   </StrictMode>,

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { invariant } from "mantle-framework";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
@@ -52,8 +53,9 @@ describe("smoke: api", () => {
 });
 
 describe("provider: checks", () => {
-  const whisparr = providers.find((p) => p.name === "@mantle/whisparr/remote")!;
-  const instance = whisparr.createInstance?.({
+  const whisparr = providers.find((p) => p.name === "@mantle/whisparr/remote");
+  invariant(whisparr, "provider @mantle/whisparr/remote not registered");
+  const instance = whisparr.createInstance({
     url: WHISPARR_URL,
     api_key: WHISPARR_API_KEY,
   });

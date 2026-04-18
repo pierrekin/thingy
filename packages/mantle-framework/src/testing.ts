@@ -19,6 +19,7 @@ type Target = {
 };
 type VersionResult = {
   entry: VersionEntry;
+  digest: string;
   passed: boolean;
   output: string;
   dockerOutput: string;
@@ -87,10 +88,18 @@ async function collect(
   return [out, err].filter(Boolean).join("\n");
 }
 
-async function getImageDigest(image: string, tag: string): Promise<string> {
+async function resolveDigest(image: string, tag: string): Promise<string> {
   const ref = `${image}:${tag}`;
   const proc = spawn(
-    ["docker", "inspect", "--format", "{{index .RepoDigests 0}}", ref],
+    [
+      "docker",
+      "buildx",
+      "imagetools",
+      "inspect",
+      ref,
+      "--format",
+      "{{.Manifest.Digest}}",
+    ],
     { stdout: "pipe", stderr: "pipe" },
   );
   const [out, err, code] = await Promise.all([
@@ -100,12 +109,12 @@ async function getImageDigest(image: string, tag: string): Promise<string> {
   ]);
   invariant(
     code === 0,
-    `docker inspect failed for ${ref} (exit ${code}): ${err.trim()}`,
+    `failed to resolve digest for ${ref} (exit ${code}): ${err.trim()}`,
   );
-  const [, digest] = out.trim().split("@");
+  const digest = out.trim();
   invariant(
-    digest,
-    `docker inspect returned no digest for ${ref}: ${out.trim()}`,
+    digest.startsWith("sha256:"),
+    `unexpected digest format for ${ref}: ${digest}`,
   );
   return digest;
 }
@@ -119,10 +128,11 @@ async function runVersion(
 ): Promise<VersionResult> {
   const composeDir = resolve(baseDir, dirname(config.compose));
   const testFile = resolve(baseDir, config.tests);
+  const digest = await resolveDigest(target.image, entry.tag);
   const env = {
     ...process.env,
     TARGET_IMAGE: target.image,
-    TARGET_VERSION: entry.tag,
+    TARGET_VERSION: `${entry.tag}@${digest}`,
   };
   const dockerLines: string[] = [];
   const logDocker = (s: string) => {
@@ -205,7 +215,7 @@ async function runVersion(
     logDocker(await collect(down));
     await down.exited;
     const rmi = spawn(
-      ["docker", "rmi", "--force", `${target.image}:${entry.tag}`],
+      ["docker", "rmi", "--force", `${target.image}@${digest}`],
       { stdout: "pipe", stderr: "pipe" },
     );
     logDocker(await collect(rmi));
@@ -215,7 +225,7 @@ async function runVersion(
 
   const dockerOutput = dockerLines.join("\n");
   const output = [dockerOutput, testOutput].filter(Boolean).join("\n");
-  return { entry, passed, output, dockerOutput, testOutput };
+  return { entry, digest, passed, output, dockerOutput, testOutput };
 }
 
 export async function createRunner(
@@ -326,13 +336,12 @@ export async function createRunner(
     results.push(result);
 
     if (result.passed && record) {
-      const imageDigest = await getImageDigest(target.image, entry.tag);
       const record = {
         provider: config.name,
         providerVersion,
         image: target.image,
         imageTag: entry.tag,
-        imageDigest,
+        imageDigest: result.digest,
         softwareVersion: entry.softwareVersion,
         testedAt: new Date().toISOString(),
         log: result.output,

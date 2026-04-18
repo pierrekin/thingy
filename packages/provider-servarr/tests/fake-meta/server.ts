@@ -3,7 +3,9 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
     const body = req.method !== "GET" ? await req.text().catch(() => "") : "";
-    console.log(`[fake-meta] ${req.method} ${url.pathname}${url.search}${body ? ` body=${body}` : ""}`);
+    console.log(
+      `[fake-meta] ${req.method} ${url.pathname}${url.search}${body ? ` body=${body}` : ""}`,
+    );
     return new Response(JSON.stringify({}), {
       headers: { "Content-Type": "application/json" },
     });

@@ -8,7 +8,10 @@
     ".": "./src/index.ts",
     "./compatibility": "./compatibility/index.ts"
   },
-  "files": ["src", "compatibility"],
+  "files": [
+    "src",
+    "compatibility"
+  ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },

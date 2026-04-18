@@ -1,9 +1,10 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
 const PROWLARR_URL = process.env.PROWLARR_URL ?? "http://localhost:9696";
-const PROWLARR_API_KEY = process.env.PROWLARR_API_KEY ?? "e2etestapikeyfortesting12345678";
+const PROWLARR_API_KEY =
+  process.env.PROWLARR_API_KEY ?? "e2etestapikeyfortesting12345678";
 
 async function prowlarrGet<T>(path: string): Promise<T> {
   const res = await fetch(`${PROWLARR_URL}${path}`, {
@@ -20,13 +21,18 @@ describe("smoke: api", () => {
   });
 
   test("system/status returns a version string", async () => {
-    const status = await prowlarrGet<{ version: string }>("/api/v1/system/status");
+    const status = await prowlarrGet<{ version: string }>(
+      "/api/v1/system/status",
+    );
     expect(status.version).toBeString();
     expect(status.version.length).toBeGreaterThan(0);
   });
 
   test("health returns an array of items with expected shape", async () => {
-    const health = await prowlarrGet<{ source: string; type: string; message: string }[]>("/api/v1/health");
+    const health =
+      await prowlarrGet<{ source: string; type: string; message: string }[]>(
+        "/api/v1/health",
+      );
     expect(health).toBeArray();
     for (const item of health) {
       expect(item.source).toBeString();
@@ -43,7 +49,10 @@ describe("smoke: api", () => {
 
 describe("provider: checks", () => {
   const prowlarr = providers.find((p) => p.name === "@mantle/prowlarr/remote")!;
-  const instance = prowlarr.createInstance!({ url: PROWLARR_URL, api_key: PROWLARR_API_KEY });
+  const instance = prowlarr.createInstance?.({
+    url: PROWLARR_URL,
+    api_key: PROWLARR_API_KEY,
+  });
 
   test("health.errors returns a non-negative count", async () => {
     const [result] = await instance.check({ type: "health" }, ["errors"]);

@@ -1,5 +1,5 @@
-import { Subscription } from "./base.ts";
 import type { MantleSocket } from "../mantle-socket.ts";
+import { Subscription } from "./base.ts";
 
 /**
  * StateSubscription manages a client's subscription to entity state data
@@ -10,39 +10,39 @@ import type { MantleSocket } from "../mantle-socket.ts";
  * backfill and then only updates to existing data.
  */
 export class StateSubscription extends Subscription {
-	constructor(
-		id: string,
-		ws: MantleSocket<unknown>,
-		public readonly start: number,
-		public readonly end: number | null,
-		public readonly bucketDurationMs: number,
-	) {
-		super(id, ws);
-	}
+  constructor(
+    id: string,
+    ws: MantleSocket<unknown>,
+    public readonly start: number,
+    public readonly end: number | null,
+    public readonly bucketDurationMs: number,
+  ) {
+    super(id, ws);
+  }
 
-	getType(): string {
-		return "state";
-	}
+  getType(): string {
+    return "state";
+  }
 
-	/**
-	 * Check if a bucket falls within this subscription's time range
-	 */
-	isInRange(bucketStart: number): boolean {
-		if (bucketStart < this.start) {
-			return false;
-		}
+  /**
+   * Check if a bucket falls within this subscription's time range
+   */
+  isInRange(bucketStart: number): boolean {
+    if (bucketStart < this.start) {
+      return false;
+    }
 
-		if (this.end !== null && bucketStart >= this.end) {
-			return false;
-		}
+    if (this.end !== null && bucketStart >= this.end) {
+      return false;
+    }
 
-		return true;
-	}
+    return true;
+  }
 
-	/**
-	 * Check if this is a live subscription (rolling window)
-	 */
-	isLive(): boolean {
-		return this.end === null;
-	}
+  /**
+   * Check if this is a live subscription (rolling window)
+   */
+  isLive(): boolean {
+    return this.end === null;
+  }
 }

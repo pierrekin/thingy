@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join, dirname, resolve } from "path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { spawn } from "./process.ts";
 
 export type RunnerConfig = {
   name: string;
@@ -9,7 +10,12 @@ export type RunnerConfig = {
 };
 
 type VersionEntry = { tag: string; softwareVersion: string };
-type Target = { image: string; imageSource: string; softwareSource: string; versions: VersionEntry[] };
+type Target = {
+  image: string;
+  imageSource: string;
+  softwareSource: string;
+  versions: VersionEntry[];
+};
 type VersionResult = { entry: VersionEntry; passed: boolean; output: string };
 
 function findPackageRoot(startDir: string): string {
@@ -17,13 +23,13 @@ function findPackageRoot(startDir: string): string {
   while (true) {
     if (existsSync(join(dir, "package.json"))) return dir;
     const parent = dirname(dir);
-    if (parent === dir) throw new Error(`Could not find package root from ${startDir}`);
+    if (parent === dir)
+      throw new Error(`Could not find package root from ${startDir}`);
     dir = parent;
   }
 }
 
-async function drain(readable: ReadableStream<Uint8Array> | null): Promise<string> {
-  if (!readable) return "";
+async function drain(readable: ReadableStream<Uint8Array>): Promise<string> {
   const decoder = new TextDecoder();
   const chunks: string[] = [];
   const reader = readable.getReader();
@@ -37,14 +43,29 @@ async function drain(readable: ReadableStream<Uint8Array> | null): Promise<strin
   return chunks.join("").trimEnd();
 }
 
-async function collect(proc: ReturnType<typeof Bun.spawn>): Promise<string> {
-  const [out, err] = await Promise.all([drain(proc.stdout), drain(proc.stderr)]);
+async function collect(proc: {
+  stdout: ReadableStream<Uint8Array>;
+  stderr: ReadableStream<Uint8Array>;
+}): Promise<string> {
+  const [out, err] = await Promise.all([
+    drain(proc.stdout),
+    drain(proc.stderr),
+  ]);
   return [out, err].filter(Boolean).join("\n");
 }
 
-async function getImageDigest(image: string, tag: string): Promise<string | null> {
-  const proc = Bun.spawn(
-    ["docker", "inspect", "--format", "{{index .RepoDigests 0}}", `${image}:${tag}`],
+async function getImageDigest(
+  image: string,
+  tag: string,
+): Promise<string | null> {
+  const proc = spawn(
+    [
+      "docker",
+      "inspect",
+      "--format",
+      "{{index .RepoDigests 0}}",
+      `${image}:${tag}`,
+    ],
     { stdout: "pipe", stderr: "pipe" },
   );
   const out = await new Response(proc.stdout).text();
@@ -62,47 +83,70 @@ async function runVersion(
 ): Promise<VersionResult> {
   const composeDir = resolve(baseDir, dirname(config.compose));
   const testFile = resolve(baseDir, config.tests);
-  const env = { ...process.env, TARGET_IMAGE: target.image, TARGET_VERSION: entry.tag };
+  const env = {
+    ...process.env,
+    TARGET_IMAGE: target.image,
+    TARGET_VERSION: entry.tag,
+  };
   const lines: string[] = [];
-  const log = (s: string) => { if (s) lines.push(s); };
+  const log = (s: string) => {
+    if (s) lines.push(s);
+  };
   let passed = false;
 
   try {
-    const up = Bun.spawn(["docker", "compose", "up", "-d", "--wait"], {
-      cwd: composeDir, stdout: "pipe", stderr: "pipe", env,
+    const up = spawn(["docker", "compose", "up", "-d", "--wait"], {
+      cwd: composeDir,
+      stdout: "pipe",
+      stderr: "pipe",
+      env,
     });
     log(await collect(up));
     if ((await up.exited) !== 0) throw new Error("compose up failed");
 
     // Wait for any one-shot containers labeled mantle.wait=true
-    const ps = Bun.spawn(
-      ["docker", "compose", "ps", "-a", "--format", "json"],
-      { cwd: composeDir, stdout: "pipe", stderr: "pipe", env },
-    );
+    const ps = spawn(["docker", "compose", "ps", "-a", "--format", "json"], {
+      cwd: composeDir,
+      stdout: "pipe",
+      stderr: "pipe",
+      env,
+    });
     const psOut = await new Response(ps.stdout).text();
     await ps.exited;
-    const containers = psOut.trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
+    const containers = psOut
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
     for (const c of containers) {
-      if (c.Labels && c.Labels.includes("mantle.wait=true")) {
-        const wait = Bun.spawn(["docker", "wait", c.Name], {
-          stdout: "pipe", stderr: "pipe",
+      if (c.Labels?.includes("mantle.wait=true")) {
+        const wait = spawn(["docker", "wait", c.Name], {
+          stdout: "pipe",
+          stderr: "pipe",
         });
         const code = (await new Response(wait.stdout).text()).trim();
         await wait.exited;
-        if (code !== "0") throw new Error(`${c.Service} exited with code ${code}`);
+        if (code !== "0")
+          throw new Error(`${c.Service} exited with code ${code}`);
       }
     }
 
-    const test = Bun.spawn(["bun", "test", testFile], {
-      cwd: packageRoot, stdout: "pipe", stderr: "pipe", env,
+    const test = spawn(["bun", "test", testFile], {
+      cwd: packageRoot,
+      stdout: "pipe",
+      stderr: "pipe",
+      env,
     });
     log(await collect(test));
     passed = (await test.exited) === 0;
   } catch (err) {
     log(err instanceof Error ? err.message : String(err));
   } finally {
-    const down = Bun.spawn(["docker", "compose", "down", "--volumes"], {
-      cwd: composeDir, stdout: "pipe", stderr: "pipe", env,
+    const down = spawn(["docker", "compose", "down", "--volumes"], {
+      cwd: composeDir,
+      stdout: "pipe",
+      stderr: "pipe",
+      env,
     });
     log(await collect(down));
     await down.exited;
@@ -111,27 +155,36 @@ async function runVersion(
   return { entry, passed, output: lines.join("\n") };
 }
 
-export async function createRunner(meta: ImportMeta, config: RunnerConfig): Promise<void> {
+export async function createRunner(
+  meta: ImportMeta,
+  config: RunnerConfig,
+): Promise<void> {
   const baseDir = meta.dirname;
   const packageRoot = findPackageRoot(baseDir);
   const compatDir = resolve(baseDir, config.compat);
   const targetPath = join(compatDir, "target.json");
   const target: Target = JSON.parse(readFileSync(targetPath, "utf8"));
-  const { version: providerVersion } = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
+  const { version: providerVersion } = JSON.parse(
+    readFileSync(join(packageRoot, "package.json"), "utf8"),
+  );
 
   const rawArgs = Bun.argv.slice(2);
   const record = rawArgs.includes("--record");
-  const positional = rawArgs.filter(a => !a.startsWith("-"));
+  const positional = rawArgs.filter((a) => !a.startsWith("-"));
   const command = positional[0];
   const target_arg = positional[1];
 
   if (command !== "test" && command !== "lint") {
-    console.error(`Usage: bun run run.ts <test [--record] <latest|all|missing|<version>>|lint>`);
+    console.error(
+      `Usage: bun run run.ts <test [--record] <latest|all|missing|<version>>|lint>`,
+    );
     process.exit(1);
   }
 
   if (command === "lint") {
-    const missing = target.versions.filter(v => !existsSync(join(compatDir, `${v.softwareVersion}.json`)));
+    const missing = target.versions.filter(
+      (v) => !existsSync(join(compatDir, `${v.softwareVersion}.json`)),
+    );
     for (const v of missing) {
       console.error(`MISSING  ${config.name}@${v.softwareVersion}`);
     }
@@ -141,7 +194,9 @@ export async function createRunner(meta: ImportMeta, config: RunnerConfig): Prom
   }
 
   if (!target_arg) {
-    console.error(`Usage: bun run run.ts test [--record] <latest|all|missing|<version>>`);
+    console.error(
+      `Usage: bun run run.ts test [--record] <latest|all|missing|<version>>`,
+    );
     process.exit(1);
   }
 
@@ -153,28 +208,54 @@ export async function createRunner(meta: ImportMeta, config: RunnerConfig): Prom
   let entries: VersionEntry[];
 
   if (record && target_arg === "missing") {
-    entries = target.versions.filter(v => !existsSync(join(compatDir, `${v.softwareVersion}.json`)));
-    if (entries.length === 0) { console.log(`OK  ${config.name}: all versions recorded`); return; }
+    entries = target.versions.filter(
+      (v) => !existsSync(join(compatDir, `${v.softwareVersion}.json`)),
+    );
+    if (entries.length === 0) {
+      console.log(`OK  ${config.name}: all versions recorded`);
+      return;
+    }
   } else if (target_arg === "all") {
-    if (target.versions.length === 0) { console.log(`SKIP  ${config.name}: no versions in target.json`); return; }
+    if (target.versions.length === 0) {
+      console.log(`SKIP  ${config.name}: no versions in target.json`);
+      return;
+    }
     entries = target.versions;
   } else if (target_arg === "latest") {
-    if (target.versions.length === 0) { console.log(`SKIP  ${config.name}: no versions in target.json`); return; }
+    if (target.versions.length === 0) {
+      console.log(`SKIP  ${config.name}: no versions in target.json`);
+      return;
+    }
     entries = [target.versions[target.versions.length - 1]!];
   } else {
-    const entry = target.versions.find(v => v.tag === target_arg || v.softwareVersion === target_arg);
-    if (!entry) { console.error(`Version "${target_arg}" not found in target.json`); process.exit(1); }
+    const entry = target.versions.find(
+      (v) => v.tag === target_arg || v.softwareVersion === target_arg,
+    );
+    if (!entry) {
+      console.error(`Version "${target_arg}" not found in target.json`);
+      process.exit(1);
+    }
     entries = [entry];
   }
 
   const results: VersionResult[] = [];
 
   for (const entry of entries) {
-    const result = await runVersion(config, baseDir, packageRoot, target, entry);
+    const result = await runVersion(
+      config,
+      baseDir,
+      packageRoot,
+      target,
+      entry,
+    );
     if (process.stdout.isTTY) {
-      console.log(`\n--- ${config.name}@${entry.softwareVersion} (${entry.tag}) ---`);
+      console.log(
+        `\n--- ${config.name}@${entry.softwareVersion} (${entry.tag}) ---`,
+      );
     } else {
-      console.log(`\n--- ${config.name}@${entry.softwareVersion} (${entry.tag}) ---\n${result.output}`);
+      console.log(
+        `\n--- ${config.name}@${entry.softwareVersion} (${entry.tag}) ---\n${result.output}`,
+      );
     }
     results.push(result);
 
@@ -191,7 +272,10 @@ export async function createRunner(meta: ImportMeta, config: RunnerConfig): Prom
         log: result.output,
       };
       mkdirSync(compatDir, { recursive: true });
-      writeFileSync(join(compatDir, `${entry.softwareVersion}.json`), JSON.stringify(record, null, 2) + "\n");
+      writeFileSync(
+        join(compatDir, `${entry.softwareVersion}.json`),
+        `${JSON.stringify(record, null, 2)}\n`,
+      );
       console.log(`PASS  ${config.name}@${entry.softwareVersion} → recorded`);
     } else if (!result.passed) {
       console.error(`FAIL  ${config.name}@${entry.softwareVersion}`);

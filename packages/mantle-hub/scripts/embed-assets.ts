@@ -1,5 +1,11 @@
-import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, relative, dirname } from "node:path";
+import {
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join, relative } from "node:path";
 
 const dashboardDistDir = join(__dirname, "../../mantle-dashboard/dist");
 const outputPath = join(__dirname, "../generated/assets.ts");
@@ -7,35 +13,35 @@ const outputPath = join(__dirname, "../generated/assets.ts");
 const assets: Record<string, { content: string; contentType: string }> = {};
 
 function walk(dir: string) {
-	for (const entry of readdirSync(dir)) {
-		const fullPath = join(dir, entry);
-		const stat = statSync(fullPath);
-		if (stat.isDirectory()) {
-			walk(fullPath);
-		} else {
-			const relativePath = relative(dashboardDistDir, fullPath);
-			const content = readFileSync(fullPath);
-			const contentType = getContentType(entry);
-			assets[relativePath] = {
-				content: content.toString("base64"),
-				contentType,
-			};
-		}
-	}
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      walk(fullPath);
+    } else {
+      const relativePath = relative(dashboardDistDir, fullPath);
+      const content = readFileSync(fullPath);
+      const contentType = getContentType(entry);
+      assets[relativePath] = {
+        content: content.toString("base64"),
+        contentType,
+      };
+    }
+  }
 }
 
 function getContentType(filename: string): string {
-	const ext = filename.split(".").pop()?.toLowerCase();
-	const types: Record<string, string> = {
-		html: "text/html",
-		js: "application/javascript",
-		css: "text/css",
-		json: "application/json",
-		svg: "image/svg+xml",
-		png: "image/png",
-		ico: "image/x-icon",
-	};
-	return types[ext || ""] || "application/octet-stream";
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const types: Record<string, string> = {
+    html: "text/html",
+    js: "application/javascript",
+    css: "text/css",
+    json: "application/json",
+    svg: "image/svg+xml",
+    png: "image/png",
+    ico: "image/x-icon",
+  };
+  return types[ext || ""] || "application/octet-stream";
 }
 
 mkdirSync(dirname(outputPath), { recursive: true });

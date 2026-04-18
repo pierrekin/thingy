@@ -1,9 +1,10 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
 const LIDARR_URL = process.env.LIDARR_URL ?? "http://localhost:8686";
-const LIDARR_API_KEY = process.env.LIDARR_API_KEY ?? "e2etestapikeyfortesting12345678";
+const LIDARR_API_KEY =
+  process.env.LIDARR_API_KEY ?? "e2etestapikeyfortesting12345678";
 
 async function lidarrGet<T>(path: string): Promise<T> {
   const res = await fetch(`${LIDARR_URL}${path}`, {
@@ -20,13 +21,18 @@ describe("smoke: api", () => {
   });
 
   test("system/status returns a version string", async () => {
-    const status = await lidarrGet<{ version: string }>("/api/v1/system/status");
+    const status = await lidarrGet<{ version: string }>(
+      "/api/v1/system/status",
+    );
     expect(status.version).toBeString();
     expect(status.version.length).toBeGreaterThan(0);
   });
 
   test("health returns an array of items with expected shape", async () => {
-    const health = await lidarrGet<{ source: string; type: string; message: string }[]>("/api/v1/health");
+    const health =
+      await lidarrGet<{ source: string; type: string; message: string }[]>(
+        "/api/v1/health",
+      );
     expect(health).toBeArray();
     for (const item of health) {
       expect(item.source).toBeString();
@@ -36,7 +42,10 @@ describe("smoke: api", () => {
   });
 
   test("diskspace returns entries with freeSpace and totalSpace", async () => {
-    const disks = await lidarrGet<{ freeSpace: number; totalSpace: number }[]>("/api/v1/diskspace");
+    const disks =
+      await lidarrGet<{ freeSpace: number; totalSpace: number }[]>(
+        "/api/v1/diskspace",
+      );
     expect(disks).toBeArray();
     expect(disks.length).toBeGreaterThan(0);
     for (const disk of disks) {
@@ -46,7 +55,9 @@ describe("smoke: api", () => {
   });
 
   test("queue returns totalRecords and records array", async () => {
-    const queue = await lidarrGet<{ totalRecords: number; records: unknown[] }>("/api/v1/queue");
+    const queue = await lidarrGet<{ totalRecords: number; records: unknown[] }>(
+      "/api/v1/queue",
+    );
     expect(queue.totalRecords).toBeNumber();
     expect(queue.records).toBeArray();
   });
@@ -54,7 +65,10 @@ describe("smoke: api", () => {
 
 describe("provider: checks", () => {
   const lidarr = providers.find((p) => p.name === "@mantle/lidarr/remote")!;
-  const instance = lidarr.createInstance!({ url: LIDARR_URL, api_key: LIDARR_API_KEY });
+  const instance = lidarr.createInstance?.({
+    url: LIDARR_URL,
+    api_key: LIDARR_API_KEY,
+  });
 
   test("health.errors returns a non-negative count", async () => {
     const [result] = await instance.check({ type: "health" }, ["errors"]);

@@ -1,6 +1,6 @@
-import { tmpdir } from "os";
-import { join } from "path";
-import { readFile } from "fs/promises";
+import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * Publishes a release manifest entry to object storage.
@@ -153,7 +153,11 @@ async function main() {
     : { releases: [] };
 
   releaseFile.releases.push(newRelease);
-  await storagePut(bucket, releaseFileKey, JSON.stringify(releaseFile, null, 2));
+  await storagePut(
+    bucket,
+    releaseFileKey,
+    JSON.stringify(releaseFile, null, 2),
+  );
 
   if (releaseFile.releases.length >= RELEASES_PER_FILE) {
     index.fileCount += 1;
@@ -167,7 +171,9 @@ async function main() {
 
   await storagePut(bucket, INDEX_KEY, JSON.stringify(index, null, 2));
 
-  console.log(`Published release ${version} (total: ${index.total}, release files: ${index.fileCount})`);
+  console.log(
+    `Published release ${version} (total: ${index.total}, release files: ${index.fileCount})`,
+  );
 }
 
 main().catch((err) => {

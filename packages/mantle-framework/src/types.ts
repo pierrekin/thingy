@@ -23,8 +23,9 @@ export type TargetOutcome =
   | { success: false; error: OutcomeError };
 
 export type CheckOutcome =
-  | { success: true; value: number; violation?: Violation }
-  | { success: false; error: OutcomeError };
+  | { status: "compliant"; value: number }
+  | { status: "violation"; value: number; violation: Violation }
+  | { status: "error"; error: OutcomeError };
 
 export type ChannelOutcome =
   | { success: true }

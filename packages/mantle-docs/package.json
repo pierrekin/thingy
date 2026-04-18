@@ -5,7 +5,11 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "files": ["src", "docs", "dist"],
+  "files": [
+    "src",
+    "docs",
+    "dist"
+  ],
   "scripts": {
     "build:compatibility": "bun run scripts/build-compatibility.ts"
   },

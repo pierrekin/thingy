@@ -1,9 +1,10 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { providers } from "../../src/index.ts";
 import { expectSuccess } from "../helpers.ts";
 
 const BAZARR_URL = process.env.BAZARR_URL ?? "http://localhost:6767";
-const BAZARR_API_KEY = process.env.BAZARR_API_KEY ?? "e2etestapikeyfortesting123bazarr";
+const BAZARR_API_KEY =
+  process.env.BAZARR_API_KEY ?? "e2etestapikeyfortesting123bazarr";
 
 async function bazarrGet<T>(path: string): Promise<T> {
   const res = await fetch(`${BAZARR_URL}${path}`, {
@@ -15,7 +16,9 @@ async function bazarrGet<T>(path: string): Promise<T> {
 
 describe("smoke: api", () => {
   test("system/status returns a version string", async () => {
-    const status = await bazarrGet<{ data: { bazarr_version: string } }>("/api/system/status");
+    const status = await bazarrGet<{ data: { bazarr_version: string } }>(
+      "/api/system/status",
+    );
     expect(status.data.bazarr_version).toBeString();
     expect(status.data.bazarr_version.length).toBeGreaterThan(0);
   });
@@ -26,13 +29,17 @@ describe("smoke: api", () => {
   });
 
   test("movies/wanted returns data array and total", async () => {
-    const result = await bazarrGet<{ data: unknown[]; total: number }>("/api/movies/wanted");
+    const result = await bazarrGet<{ data: unknown[]; total: number }>(
+      "/api/movies/wanted",
+    );
     expect(result.data).toBeArray();
     expect(result.total).toBeNumber();
   });
 
   test("episodes/wanted returns data array and total", async () => {
-    const result = await bazarrGet<{ data: unknown[]; total: number }>("/api/episodes/wanted");
+    const result = await bazarrGet<{ data: unknown[]; total: number }>(
+      "/api/episodes/wanted",
+    );
     expect(result.data).toBeArray();
     expect(result.total).toBeNumber();
   });
@@ -47,7 +54,10 @@ describe("smoke: api", () => {
 
 describe("provider: checks", () => {
   const bazarr = providers.find((p) => p.name === "@mantle/bazarr/remote")!;
-  const instance = bazarr.createInstance!({ url: BAZARR_URL, api_key: BAZARR_API_KEY });
+  const instance = bazarr.createInstance?.({
+    url: BAZARR_URL,
+    api_key: BAZARR_API_KEY,
+  });
 
   test("health.issues returns a non-negative count", async () => {
     const [result] = await instance.check({ type: "health" }, ["issues"]);
@@ -60,7 +70,9 @@ describe("provider: checks", () => {
   });
 
   test("wanted_episodes.count returns a non-negative count", async () => {
-    const [result] = await instance.check({ type: "wanted_episodes" }, ["count"]);
+    const [result] = await instance.check({ type: "wanted_episodes" }, [
+      "count",
+    ]);
     expect(expectSuccess(result, "count")).toBeGreaterThanOrEqual(0);
   });
 });

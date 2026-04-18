@@ -1,18 +1,20 @@
-import { z } from "zod";
 import {
+  allTargetConfigsSchema,
+  bindCheck,
+  type CheckResult,
   defineCheck,
   defineProvider,
-  bindCheck,
-  providerConfigSchema,
-  allTargetConfigsSchema,
-  type CheckResult,
+  invariant,
   type Provider,
+  providerConfigSchema,
 } from "mantle-framework";
+import { z } from "zod";
 import {
-  ResticClient,
+  type ResticAuth,
   ResticBinaryError,
-  ResticRepoError,
+  ResticClient,
   ResticError,
+  ResticRepoError,
 } from "./restic.ts";
 
 const freshnessCheck = defineCheck({
@@ -23,7 +25,7 @@ const freshnessCheck = defineCheck({
 });
 
 const resticProviderConfig = z.object({
-  env: z.record(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
 });
 
 export const resticProvider = defineProvider({
@@ -32,14 +34,22 @@ export const resticProvider = defineProvider({
   defaultInterval: "5m",
   targetTypes: {
     repo: {
-      schema: z.object({
-        repository: z.string(),
-        password: z.string().optional(),
-        passwordFile: z.string().optional(),
-        env: z.record(z.string()).optional(),
-        host: z.string().optional(),
-        tags: z.array(z.string()).optional(),
-      }),
+      schema: z
+        .object({
+          repository: z.string(),
+          password: z.string().optional(),
+          passwordFile: z.string().optional(),
+          env: z.record(z.string(), z.string()).optional(),
+          host: z.string().optional(),
+          tags: z.array(z.string()).optional(),
+        })
+        .refine(
+          (t) => (t.password !== undefined) !== (t.passwordFile !== undefined),
+          {
+            message:
+              "restic target requires exactly one of password or passwordFile",
+          },
+        ),
       checks: {
         freshness: bindCheck(freshnessCheck),
       },
@@ -95,11 +105,22 @@ export class ResticProviderInstance {
       tags?: string[];
     };
 
+    let auth: ResticAuth;
+    if (t.password !== undefined) {
+      auth = { password: t.password };
+    } else if (t.passwordFile !== undefined) {
+      auth = { passwordFile: t.passwordFile };
+    } else {
+      invariant(
+        false,
+        "restic target passed validation without password or passwordFile — schema refine not enforced",
+      );
+    }
+
     // Merge provider-level env with target-level env (target wins)
     const client = new ResticClient({
       repository: t.repository,
-      password: t.password,
-      passwordFile: t.passwordFile,
+      ...auth,
       env: { ...this.config.env, ...t.env },
     });
 

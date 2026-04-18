@@ -1,4 +1,4 @@
-import type { Scheduler, ScheduledTask } from "./types.ts";
+import type { ScheduledTask, Scheduler } from "./types.ts";
 
 type RunningTask = {
   task: ScheduledTask;

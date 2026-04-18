@@ -1,25 +1,28 @@
-import { join } from "path";
+import { basename, join } from "node:path";
 import { providers } from "./providers.ts";
-
-import { basename } from "path";
 
 const rawArgs = Bun.argv.slice(2);
 const record = rawArgs.includes("--record");
 const dirty = rawArgs.includes("--dirty");
-const packagesArg = rawArgs.find(a => a.startsWith("--packages="))?.split("=")[1];
-const positional = rawArgs.filter(a => !a.startsWith("-"));
+const packagesArg = rawArgs
+  .find((a) => a.startsWith("--packages="))
+  ?.split("=")[1];
+const positional = rawArgs.filter((a) => !a.startsWith("-"));
 const [command, ...rest] = positional;
 
 const ALL_PACKAGES = ["mantle-framework", "provider-e2e"];
 
 async function isDirty(dir: string): Promise<boolean> {
-  const proc = Bun.spawn(["git", "diff", "--quiet", "--", dir], { stdout: "ignore", stderr: "ignore" });
+  const proc = Bun.spawn(["git", "diff", "--quiet", "--", dir], {
+    stdout: "ignore",
+    stderr: "ignore",
+  });
   return (await proc.exited) !== 0;
 }
 
 function filterByPackages(packages: string[]): typeof providers {
-  if (packages.some(p => ALL_PACKAGES.includes(p))) return providers;
-  return providers.filter(p => packages.includes(basename(p.packageDir)));
+  if (packages.some((p) => ALL_PACKAGES.includes(p))) return providers;
+  return providers.filter((p) => packages.includes(basename(p.packageDir)));
 }
 
 async function filterProviders() {
@@ -38,7 +41,13 @@ async function filterProviders() {
   return selected;
 }
 
-if (command !== "test" && command !== "lint" && command !== "discover" && command !== "pr" && command !== "issue") {
+if (
+  command !== "test" &&
+  command !== "lint" &&
+  command !== "discover" &&
+  command !== "pr" &&
+  command !== "issue"
+) {
   console.error("Usage: bun run run.ts <test|lint|discover|pr|issue>");
   process.exit(1);
 }
@@ -46,7 +55,9 @@ if (command !== "test" && command !== "lint" && command !== "discover" && comman
 if (command === "test") {
   const target = rest[0];
   if (!target) {
-    console.error("Usage: bun run run.ts test [--record] <latest|all|missing|<version>>");
+    console.error(
+      "Usage: bun run run.ts test [--record] <latest|all|missing|<version>>",
+    );
     process.exit(1);
   }
   if (target === "missing" && !record) {
@@ -55,7 +66,9 @@ if (command === "test") {
   }
 }
 
-async function drain(readable: ReadableStream<Uint8Array> | null): Promise<void> {
+async function drain(
+  readable: ReadableStream<Uint8Array> | null,
+): Promise<void> {
   if (!readable) return;
   const reader = readable.getReader();
   const decoder = new TextDecoder();
@@ -68,7 +81,11 @@ async function drain(readable: ReadableStream<Uint8Array> | null): Promise<void>
 
 const CONCURRENCY = 4;
 
-async function pool<T>(items: T[], fn: (item: T) => Promise<void>, concurrency: number): Promise<void> {
+async function pool<T>(
+  items: T[],
+  fn: (item: T) => Promise<unknown>,
+  concurrency: number,
+): Promise<void> {
   const queue = [...items];
   async function worker() {
     while (queue.length > 0) await fn(queue.shift()!);
@@ -83,13 +100,18 @@ if (command === "test" || command === "lint") {
     process.exit(0);
   }
 
-  const description = command === "lint" ? "lint" : `test${record ? " --record" : ""} ${rest[0]}`;
-  console.log(`Running e2e (${description}) for: ${selected.map((p) => p.name).join(", ")}`);
+  const description =
+    command === "lint" ? "lint" : `test${record ? " --record" : ""} ${rest[0]}`;
+  console.log(
+    `Running e2e (${description}) for: ${selected.map((p) => p.name).join(", ")}`,
+  );
 
   // Forward args without --dirty (subprocesses don't need it)
-  const forwardArgs = rawArgs.filter(a => a !== "--dirty");
+  const forwardArgs = rawArgs.filter((a) => a !== "--dirty");
 
-  async function run(provider: typeof providers[number]): Promise<{ name: string; passed: boolean }> {
+  async function run(
+    provider: (typeof providers)[number],
+  ): Promise<{ name: string; passed: boolean }> {
     console.log(`START ${provider.name}`);
     const proc = Bun.spawn(["bun", "run", provider.script, ...forwardArgs], {
       cwd: provider.packageDir,
@@ -130,14 +152,21 @@ if (command === "discover") {
     process.exit(1);
   }
 
-  console.log(`Discovering versions for: ${targets.map((t) => t.name).join(", ")}`);
+  console.log(
+    `Discovering versions for: ${targets.map((t) => t.name).join(", ")}`,
+  );
 
-  async function collect(readable: ReadableStream<Uint8Array> | null): Promise<string> {
+  async function collect(
+    readable: ReadableStream<Uint8Array> | null,
+  ): Promise<string> {
     if (!readable) return "";
     return new Response(readable).text();
   }
 
-  async function discover(target: { name: string; dir: string }): Promise<{ name: string; passed: boolean }> {
+  async function discover(target: {
+    name: string;
+    dir: string;
+  }): Promise<{ name: string; passed: boolean }> {
     console.log(`START  ${target.name}`);
 
     const proc = Bun.spawn([discoverScript, target.dir, ...discoverArgs], {
@@ -145,7 +174,10 @@ if (command === "discover") {
       stderr: "pipe",
     });
 
-    const [stdout, stderr] = await Promise.all([collect(proc.stdout), collect(proc.stderr)]);
+    const [stdout, stderr] = await Promise.all([
+      collect(proc.stdout),
+      collect(proc.stderr),
+    ]);
     const passed = (await proc.exited) === 0;
 
     const label = passed ? "PASS" : "FAIL";
@@ -157,7 +189,11 @@ if (command === "discover") {
   }
 
   const results: { name: string; passed: boolean }[] = [];
-  await pool(targets, async (t) => results.push(await discover(t)), CONCURRENCY);
+  await pool(
+    targets,
+    async (t) => results.push(await discover(t)),
+    CONCURRENCY,
+  );
 
   console.log("\n=== Summary ===");
   for (const { name, passed } of results) {
@@ -170,7 +206,9 @@ if (command === "discover") {
 if (command === "pr") {
   const prScript = join(import.meta.dirname, "pr.sh");
 
-  async function collect(readable: ReadableStream<Uint8Array> | null): Promise<string> {
+  async function collect(
+    readable: ReadableStream<Uint8Array> | null,
+  ): Promise<string> {
     if (!readable) return "";
     return new Response(readable).text();
   }
@@ -187,7 +225,10 @@ if (command === "pr") {
       stderr: "pipe",
     });
 
-    const [stdout, stderr] = await Promise.all([collect(proc.stdout), collect(proc.stderr)]);
+    const [stdout, stderr] = await Promise.all([
+      collect(proc.stdout),
+      collect(proc.stderr),
+    ]);
     const passed = (await proc.exited) === 0;
     if (!passed) failed = true;
 
@@ -203,12 +244,16 @@ if (command === "pr") {
 if (command === "issue") {
   const issueScript = join(import.meta.dirname, "issue.sh");
 
-  async function collect(readable: ReadableStream<Uint8Array> | null): Promise<string> {
+  async function collect(
+    readable: ReadableStream<Uint8Array> | null,
+  ): Promise<string> {
     if (!readable) return "";
     return new Response(readable).text();
   }
 
-  console.log(`Checking issues for: ${providers.map((p) => p.name).join(", ")}`);
+  console.log(
+    `Checking issues for: ${providers.map((p) => p.name).join(", ")}`,
+  );
 
   let failed = false;
   for (const provider of providers) {
@@ -220,7 +265,10 @@ if (command === "issue") {
       stderr: "pipe",
     });
 
-    const [stdout, stderr] = await Promise.all([collect(proc.stdout), collect(proc.stderr)]);
+    const [stdout, stderr] = await Promise.all([
+      collect(proc.stdout),
+      collect(proc.stderr),
+    ]);
     const passed = (await proc.exited) === 0;
     if (!passed) failed = true;
 

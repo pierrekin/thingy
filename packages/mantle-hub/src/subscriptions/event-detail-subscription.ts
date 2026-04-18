@@ -1,19 +1,19 @@
-import { Subscription } from "./base.ts";
 import type { MantleSocket } from "../mantle-socket.ts";
+import { Subscription } from "./base.ts";
 
 export type EventLevel = "provider" | "target" | "check";
 
 export class EventDetailSubscription extends Subscription {
-	constructor(
-		id: string,
-		ws: MantleSocket<unknown>,
-		public readonly eventId: number,
-		public readonly eventLevel: EventLevel,
-	) {
-		super(id, ws);
-	}
+  constructor(
+    id: string,
+    ws: MantleSocket<unknown>,
+    public readonly eventId: number,
+    public readonly eventLevel: EventLevel,
+  ) {
+    super(id, ws);
+  }
 
-	getType(): string {
-		return "event_detail";
-	}
+  getType(): string {
+    return "event_detail";
+  }
 }

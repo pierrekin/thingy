@@ -12,12 +12,23 @@
     ".": "./src/index.ts",
     "./styles": "./src/index.css"
   },
-  "files": ["src/**", "dist/**"],
+  "files": [
+    "src/**",
+    "dist/**"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build --configLoader runner",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check": "bun run check:typecheck && bun run check:lint && bun run check:format && bun run check:organise",
+    "check:typecheck": "tsc -b",
+    "check:lint": "biome lint .",
+    "check:format": "biome format .",
+    "check:organise": "biome check --linter-enabled=false --formatter-enabled=false .",
+    "fix": "bun run fix:lint && bun run fix:organise && bun run fix:format",
+    "fix:lint": "biome lint --write .",
+    "fix:format": "biome format --write .",
+    "fix:organise": "biome check --linter-enabled=false --formatter-enabled=false --write ."
   },
   "dependencies": {
     "@mantle-team/client": "workspace:*",
@@ -29,19 +40,14 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@biomejs/biome": "^2.4.12",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1",
     "vite-plugin-pwa": "^1.2.0"
   }

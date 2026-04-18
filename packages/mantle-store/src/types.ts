@@ -1,4 +1,11 @@
-import type { OutcomeError, Violation, ProviderOutcome, TargetOutcome, CheckOutcome, ChannelOutcome, AgentOutcome, BucketStatus } from "mantle-framework";
+import type {
+  AgentOutcome,
+  BucketStatus,
+  ChannelOutcome,
+  CheckOutcome,
+  ProviderOutcome,
+  TargetOutcome,
+} from "mantle-framework";
 
 export type StoredOutcome = {
   id: number;
@@ -41,20 +48,27 @@ export interface OutcomeStore {
     offset?: number,
   ): Promise<StoredOutcome[]>;
 
-  getLatestProviderStatuses(): Promise<Array<{
-    provider: string;
-    status: BucketStatus;
-  }>>;
+  getLatestProviderStatuses(): Promise<
+    Array<{
+      provider: string;
+      status: BucketStatus;
+    }>
+  >;
 
   getLatestProviderStatus(provider: string): Promise<BucketStatus>;
 
-  getLatestTargetStatuses(): Promise<Array<{
-    provider: string;
-    target: string;
-    status: BucketStatus;
-  }>>;
+  getLatestTargetStatuses(): Promise<
+    Array<{
+      provider: string;
+      target: string;
+      status: BucketStatus;
+    }>
+  >;
 
-  getLatestTargetStatus(provider: string, target: string): Promise<BucketStatus>;
+  getLatestTargetStatus(
+    provider: string,
+    target: string,
+  ): Promise<BucketStatus>;
 
   close(): Promise<void>;
 }
@@ -99,7 +113,7 @@ export interface EventStore {
     code: string,
     title: string,
     time: Date,
-    message: string
+    message: string,
   ): Promise<number>;
 
   closeProviderEvent(id: number, time: Date): Promise<void>;
@@ -110,7 +124,7 @@ export interface EventStore {
     code: string,
     title: string,
     time: Date,
-    message: string
+    message: string,
   ): Promise<number>;
 
   closeTargetEvent(id: number, time: Date): Promise<void>;
@@ -123,7 +137,7 @@ export interface EventStore {
     title: string,
     kind: "error" | "violation",
     time: Date,
-    message: string
+    message: string,
   ): Promise<number>;
 
   closeCheckEvent(id: number, time: Date): Promise<void>;
@@ -143,6 +157,10 @@ export type ProviderEventRecord = {
   message: string;
 };
 
+export type ProviderEventEndedRecord = ProviderEventRecord & {
+  endTime: number;
+};
+
 export type TargetEventRecord = {
   id: number;
   provider: string;
@@ -152,6 +170,10 @@ export type TargetEventRecord = {
   startTime: number;
   endTime: number | null;
   message: string;
+};
+
+export type TargetEventEndedRecord = TargetEventRecord & {
+  endTime: number;
 };
 
 export type CheckEventRecord = {
@@ -164,6 +186,10 @@ export type CheckEventRecord = {
   startTime: number;
   endTime: number | null;
   message: string;
+};
+
+export type CheckEventEndedRecord = CheckEventRecord & {
+  endTime: number;
 };
 
 export type ProviderBucket = {
@@ -225,7 +251,7 @@ export interface BucketStore {
     provider: string,
     bucketStart: number,
     bucketEnd: number,
-    status: BucketStatus
+    status: BucketStatus,
   ): Promise<void>;
 
   setTargetBucket(
@@ -233,7 +259,7 @@ export interface BucketStore {
     target: string,
     bucketStart: number,
     bucketEnd: number,
-    status: BucketStatus
+    status: BucketStatus,
   ): Promise<void>;
 
   setCheckBucket(
@@ -242,7 +268,7 @@ export interface BucketStore {
     check: string,
     bucketStart: number,
     bucketEnd: number,
-    status: BucketStatus
+    status: BucketStatus,
   ): Promise<void>;
 
   getBuckets(startTime: number, endTime: number): Promise<StoredBuckets>;
@@ -299,10 +325,12 @@ export interface ChannelOutcomeStore {
     eventId?: number,
   ): Promise<void>;
 
-  getLatestChannelStatuses(): Promise<Array<{
-    channel: string;
-    status: BucketStatus;
-  }>>;
+  getLatestChannelStatuses(): Promise<
+    Array<{
+      channel: string;
+      status: BucketStatus;
+    }>
+  >;
 
   getLatestChannelStatus(channel: string): Promise<BucketStatus>;
 
@@ -322,7 +350,10 @@ export interface ChannelEventStore {
 
   closeChannelEvent(id: number, time: Date): Promise<void>;
 
-  getChannelEventsInRange(startTime: number, endTime: number): Promise<ChannelEventRecord[]>;
+  getChannelEventsInRange(
+    startTime: number,
+    endTime: number,
+  ): Promise<ChannelEventRecord[]>;
 
   close(): Promise<void>;
 }
@@ -340,7 +371,10 @@ export interface ChannelBucketStore {
     status: BucketStatus,
   ): Promise<void>;
 
-  getChannelBuckets(startTime: number, endTime: number): Promise<ChannelBucket[]>;
+  getChannelBuckets(
+    startTime: number,
+    endTime: number,
+  ): Promise<ChannelBucket[]>;
 
   close(): Promise<void>;
 }
@@ -381,10 +415,12 @@ export interface AgentOutcomeStore {
     eventId?: number,
   ): Promise<void>;
 
-  getLatestAgentStatuses(): Promise<Array<{
-    agent: string;
-    status: BucketStatus;
-  }>>;
+  getLatestAgentStatuses(): Promise<
+    Array<{
+      agent: string;
+      status: BucketStatus;
+    }>
+  >;
 
   getLatestAgentStatus(agent: string): Promise<BucketStatus>;
 
@@ -404,7 +440,10 @@ export interface AgentEventStore {
 
   closeAgentEvent(id: number, time: Date): Promise<void>;
 
-  getAgentEventsInRange(startTime: number, endTime: number): Promise<AgentEventRecord[]>;
+  getAgentEventsInRange(
+    startTime: number,
+    endTime: number,
+  ): Promise<AgentEventRecord[]>;
 
   close(): Promise<void>;
 }
@@ -454,7 +493,7 @@ export interface MetricsStore {
     check: string,
     startTime: number,
     endTime: number,
-    bucketDurationMs: number
+    bucketDurationMs: number,
   ): Promise<MetricBucket[]>;
 
   close(): Promise<void>;

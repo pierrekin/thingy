@@ -14,7 +14,11 @@
     "./mark-dark.svg": "./assets/mark-dark.svg",
     "./mark-light.svg": "./assets/mark-light.svg"
   },
-  "files": ["index.css", "tokens.ts", "assets/*.svg"],
+  "files": [
+    "index.css",
+    "tokens.ts",
+    "assets/*.svg"
+  ],
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
     "@fontsource-variable/inconsolata": "^5.2.8",

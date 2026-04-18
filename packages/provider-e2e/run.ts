@@ -86,7 +86,7 @@ const parsedEnvConcurrency = concurrencyEnv
   : Number.NaN;
 const CONCURRENCY = Number.isFinite(parsedEnvConcurrency)
   ? Math.max(1, parsedEnvConcurrency)
-  : availableParallelism() * 2;
+  : availableParallelism();
 
 async function pool<T>(
   items: T[],

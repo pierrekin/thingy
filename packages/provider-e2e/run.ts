@@ -104,14 +104,59 @@ if (command === "test" || command === "lint") {
     process.exit(0);
   }
 
-  const description =
-    command === "lint" ? "lint" : `test${record ? " --record" : ""} ${rest[0]}`;
+  // Forward args without --dirty (subprocesses don't need it)
+  const forwardArgs = rawArgs.filter((a) => a !== "--dirty");
+
+  if (command === "lint") {
+    async function lintOne(
+      provider: (typeof providers)[number],
+    ): Promise<{ name: string; passed: boolean; output: string }> {
+      const proc = Bun.spawn(["bun", "run", provider.script, ...forwardArgs], {
+        cwd: provider.packageDir,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const [stdout, stderr] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+      ]);
+      const passed = (await proc.exited) === 0;
+      return {
+        name: provider.name,
+        passed,
+        output: `${stdout}${stderr}`,
+      };
+    }
+
+    const start = performance.now();
+    const results: { name: string; passed: boolean; output: string }[] = [];
+    await pool(
+      selected,
+      async (p) => results.push(await lintOne(p)),
+      CONCURRENCY,
+    );
+    const elapsed = Math.round(performance.now() - start);
+
+    const failures = results.filter((r) => !r.passed);
+    if (failures.length === 0) {
+      console.log(`Checked ${results.length} providers in ${elapsed}ms.`);
+      process.exit(0);
+    }
+
+    for (const { name, output } of failures) {
+      console.log(`FAIL  ${name}`);
+      if (output.trim()) console.log(output.trimEnd());
+    }
+    console.log(
+      `Checked ${results.length} providers in ${elapsed}ms. ${failures.length} failed.`,
+    );
+    process.exit(1);
+  }
+
+  const description = `test${record ? " --record" : ""} ${rest[0]}`;
   console.log(
     `Running e2e (${description}) for: ${selected.map((p) => p.name).join(", ")}`,
   );
-
-  // Forward args without --dirty (subprocesses don't need it)
-  const forwardArgs = rawArgs.filter((a) => a !== "--dirty");
 
   async function run(
     provider: (typeof providers)[number],

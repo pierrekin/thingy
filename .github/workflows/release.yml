@@ -12,31 +12,21 @@ permissions:
   packages: write
 
 jobs:
-  build:
+  build-linux:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            target: bun-linux-x64
+          - target: bun-linux-x64
             artifact: linux-x86_64
-          - os: ubuntu-latest
-            target: bun-linux-arm64
+          - target: bun-linux-arm64
             artifact: linux-aarch64
-          - os: ubuntu-latest
-            container: oven/bun:1-alpine
+          - container: oven/bun:1-alpine
             target: bun-linux-x64
             artifact: linux-x86_64-musl
-          - os: ubuntu-latest
-            container: oven/bun:1-alpine
+          - container: oven/bun:1-alpine
             target: bun-linux-arm64
             artifact: linux-aarch64-musl
-          - os: macos-26
-            target: bun-darwin-x64
-            artifact: darwin-x86_64
-          - os: macos-26
-            target: bun-darwin-arm64
-            artifact: darwin-aarch64
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     container: ${{ matrix.container || '' }}
     steps:
       - uses: actions/checkout@v6
@@ -54,8 +44,38 @@ jobs:
       - name: Build binary
         run: TARGET=${{ matrix.target }} OUTFILE=mantle-${{ matrix.artifact }} bun run build
 
-      - name: Import signing certificate (macOS)
-        if: ${{ startsWith(matrix.os, 'macos') }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mantle-${{ matrix.artifact }}
+          path: mantle-${{ matrix.artifact }}
+
+  build-macos:
+    environment: apple-signing
+    strategy:
+      matrix:
+        include:
+          - target: bun-darwin-x64
+            artifact: darwin-x86_64
+          - target: bun-darwin-arm64
+            artifact: darwin-aarch64
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bun install
+
+      - name: Build binary
+        run: TARGET=${{ matrix.target }} OUTFILE=mantle-${{ matrix.artifact }} bun run build
+
+      - name: Import signing certificate
         env:
           APPLE_SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
           APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
@@ -73,8 +93,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" > /dev/null
           rm -f "$CERT_PATH"
 
-      - name: Codesign binary (macOS)
-        if: ${{ startsWith(matrix.os, 'macos') }}
+      - name: Codesign binary
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
@@ -85,8 +104,7 @@ jobs:
             mantle-${{ matrix.artifact }}
           codesign --verify --verbose=2 mantle-${{ matrix.artifact }}
 
-      - name: Notarize binary (macOS)
-        if: ${{ startsWith(matrix.os, 'macos') }}
+      - name: Notarize binary
         env:
           APPLE_NOTARY_API_KEY_P8_BASE64: ${{ secrets.APPLE_NOTARY_API_KEY_P8_BASE64 }}
           APPLE_NOTARY_API_KEY_ID: ${{ secrets.APPLE_NOTARY_API_KEY_ID }}
@@ -104,8 +122,8 @@ jobs:
             --wait
           rm -f "$KEY_PATH" "$ZIP_PATH"
 
-      - name: Clean up keychain (macOS)
-        if: ${{ always() && startsWith(matrix.os, 'macos') }}
+      - name: Clean up keychain
+        if: ${{ always() }}
         run: |
           security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
           rm -f "$RUNNER_TEMP/cert.p12" "$RUNNER_TEMP/notary.p8"
@@ -117,7 +135,7 @@ jobs:
           path: mantle-${{ matrix.artifact }}
 
   publish-github-release:
-    needs: build
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -168,7 +186,7 @@ jobs:
           fi
 
   publish-r2-release:
-    needs: build
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -259,7 +277,7 @@ jobs:
           git push
 
   publish-docker-image:
-    needs: build
+    needs: build-linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

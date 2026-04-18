@@ -22,4 +22,4 @@ jobs:
         run: bun install
 
       - name: Lint compatibility records
-        run: bun run lint:compatibility
+        run: bun run check:compatibility

@@ -135,12 +135,23 @@ async function runVersion(
   activeComposeDirs.add(composeDir);
 
   try {
-    const up = spawn(["docker", "compose", "--progress=plain", "up", "-d", "--wait", "--quiet-pull"], {
-      cwd: composeDir,
-      stdout: "pipe",
-      stderr: "pipe",
-      env,
-    });
+    const up = spawn(
+      [
+        "docker",
+        "compose",
+        "--progress=plain",
+        "up",
+        "-d",
+        "--wait",
+        "--quiet-pull",
+      ],
+      {
+        cwd: composeDir,
+        stdout: "pipe",
+        stderr: "pipe",
+        env,
+      },
+    );
     logDocker(await collect(up));
     if ((await up.exited) !== 0) throw new Error("compose up failed");
 
@@ -182,12 +193,15 @@ async function runVersion(
   } catch (err) {
     logDocker(err instanceof Error ? err.message : String(err));
   } finally {
-    const down = spawn(["docker", "compose", "--progress=plain", "down", "--volumes"], {
-      cwd: composeDir,
-      stdout: "pipe",
-      stderr: "pipe",
-      env,
-    });
+    const down = spawn(
+      ["docker", "compose", "--progress=plain", "down", "--volumes"],
+      {
+        cwd: composeDir,
+        stdout: "pipe",
+        stderr: "pipe",
+        env,
+      },
+    );
     logDocker(await collect(down));
     await down.exited;
     activeComposeDirs.delete(composeDir);

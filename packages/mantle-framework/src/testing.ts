@@ -34,7 +34,7 @@ function installSignalHandler(): void {
   const handler = (signal: NodeJS.Signals) => {
     for (const dir of activeComposeDirs) {
       Bun.spawnSync(
-        ["docker", "compose", "--progress=plain", "down", "--volumes"],
+        ["docker", "compose", "--progress=plain", "down", "--volumes", "--rmi=all"],
         { cwd: dir, stdout: "ignore", stderr: "ignore" },
       );
     }
@@ -194,7 +194,7 @@ async function runVersion(
     logDocker(err instanceof Error ? err.message : String(err));
   } finally {
     const down = spawn(
-      ["docker", "compose", "--progress=plain", "down", "--volumes"],
+      ["docker", "compose", "--progress=plain", "down", "--volumes", "--rmi=all"],
       {
         cwd: composeDir,
         stdout: "pipe",

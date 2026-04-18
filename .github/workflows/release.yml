@@ -54,11 +54,61 @@ jobs:
       - name: Build binary
         run: TARGET=${{ matrix.target }} OUTFILE=mantle-${{ matrix.artifact }} bun run build
 
+      - name: Import signing certificate (macOS)
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        env:
+          APPLE_SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
+          APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo -n "$APPLE_SIGNING_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$APPLE_SIGNING_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychain -d user | tr -d '" ')
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" > /dev/null
+          rm -f "$CERT_PATH"
+
       - name: Codesign binary (macOS)
         if: ${{ startsWith(matrix.os, 'macos') }}
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
+          set -euo pipefail
           codesign --remove-signature mantle-${{ matrix.artifact }}
-          codesign --sign - mantle-${{ matrix.artifact }}
+          codesign --force --options runtime --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            mantle-${{ matrix.artifact }}
+          codesign --verify --verbose=2 mantle-${{ matrix.artifact }}
+
+      - name: Notarize binary (macOS)
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        env:
+          APPLE_NOTARY_API_KEY_P8_BASE64: ${{ secrets.APPLE_NOTARY_API_KEY_P8_BASE64 }}
+          APPLE_NOTARY_API_KEY_ID: ${{ secrets.APPLE_NOTARY_API_KEY_ID }}
+          APPLE_NOTARY_API_ISSUER_ID: ${{ secrets.APPLE_NOTARY_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/notary.p8"
+          ZIP_PATH="$RUNNER_TEMP/mantle-${{ matrix.artifact }}.zip"
+          echo -n "$APPLE_NOTARY_API_KEY_P8_BASE64" | base64 --decode > "$KEY_PATH"
+          /usr/bin/ditto -c -k --keepParent mantle-${{ matrix.artifact }} "$ZIP_PATH"
+          xcrun notarytool submit "$ZIP_PATH" \
+            --key "$KEY_PATH" \
+            --key-id "$APPLE_NOTARY_API_KEY_ID" \
+            --issuer "$APPLE_NOTARY_API_ISSUER_ID" \
+            --wait
+          rm -f "$KEY_PATH" "$ZIP_PATH"
+
+      - name: Clean up keychain (macOS)
+        if: ${{ always() && startsWith(matrix.os, 'macos') }}
+        run: |
+          security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
+          rm -f "$RUNNER_TEMP/cert.p12" "$RUNNER_TEMP/notary.p8"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

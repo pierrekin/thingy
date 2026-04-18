@@ -186,7 +186,7 @@ jobs:
           fi
 
   publish-r2-release:
-    needs: [build-linux, build-macos]
+    needs: publish-github-release
     runs-on: ubuntu-latest
     environment: binary-distribution
     steps:
@@ -277,7 +277,7 @@ jobs:
           git push
 
   publish-docker-image:
-    needs: build-linux
+    needs: publish-github-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

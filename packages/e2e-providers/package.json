@@ -1,5 +1,5 @@
 {
-  "name": "provider-e2e",
+  "name": "e2e-providers",
   "version": "0.0.1",
   "private": true,
   "type": "module",

@@ -26,16 +26,28 @@ image=$(jq -r '.image' "$dir/target.json")
 software_source=$(jq -r '.softwareSource' "$dir/target.json")
 
 for version in "${missing[@]}"; do
-  echo "Creating issue for $provider@$version"
-
-  gh issue create \
-    --label "compatibility-failure" --label "claude-triage" \
-    --title "Compatibility failure: $provider $version" \
-    --body "$(cat <<EOF
+  title="Compatibility failure: $provider $version"
+  body="$(cat <<EOF
 $provider $version failed compatibility testing.
 
 - Image: \`$image:$version\`
 - Release: $software_source/releases
 EOF
 )"
+
+  if [[ -n "${DRY_RUN:-}" ]]; then
+    echo "[dry-run] Would create issue for $provider@$version:"
+    echo "  title: $title"
+    echo "  labels: compatibility-failure, claude-triage"
+    echo "  body:"
+    echo "$body" | sed 's/^/    /'
+    continue
+  fi
+
+  echo "Creating issue for $provider@$version"
+
+  gh issue create \
+    --label "compatibility-failure" --label "claude-triage" \
+    --title "$title" \
+    --body "$body"
 done

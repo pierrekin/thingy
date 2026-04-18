@@ -29,20 +29,29 @@ fi
 
 latest_version=$(echo "$new_versions" | tail -1)
 branch_name="provider/$provider/$latest_version"
+title="feat(provider): add compatibility for $provider $latest_version"
+body="$(cat <<EOF
+Add compatibility verification for $provider:
+$(echo "$new_versions" | sed 's/^/- /')
+EOF
+)"
+
+if [[ -n "${DRY_RUN:-}" ]]; then
+  echo "[dry-run] Would create PR for $provider:"
+  echo "  branch: $branch_name"
+  echo "  title: $title"
+  echo "  body:"
+  echo "$body" | sed 's/^/    /'
+  exit 0
+fi
 
 echo "Creating PR for $provider: $latest_version"
 
 git checkout -b "$branch_name" main
 git add $changed
-git commit -m "feat(provider): add compatibility for $provider $latest_version"
+git commit -m "$title"
 git push -u origin "$branch_name"
 
-gh pr create \
-  --title "feat(provider): add compatibility for $provider $latest_version" \
-  --body "$(cat <<EOF
-Add compatibility verification for $provider:
-$(echo "$new_versions" | sed 's/^/- /')
-EOF
-)"
+gh pr create --title "$title" --body "$body"
 
 git checkout -

@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "packages/provider-**"
+      - "packages/e2e-providers/**"
+      - "packages/mantle-framework/**"
   workflow_dispatch:
 
 jobs:
@@ -27,7 +29,7 @@ jobs:
         id: detect
         run: |
           packages=$(git diff --name-only HEAD~1 HEAD \
-            | grep -E '^packages/(provider-|mantle-framework)' \
+            | grep -E '^packages/(provider-|e2e-providers|mantle-framework)' \
             | cut -d/ -f2 \
             | sort -u \
             | paste -sd, -)

@@ -23,7 +23,7 @@ The issue body contains the Docker image and the upstream release URL.
 Run the test for the specific provider and version:
 
 ```
-bun run packages/provider-e2e/validate.ts <provider>@<version>
+bun run packages/e2e-providers/validate.ts <provider>@<version>
 ```
 
 Read the test output to understand what failed.
@@ -50,7 +50,7 @@ Classify the failure into one of two categories:
 **If Category 1:**
 1. Fix the provider code to work with the new version, in a new branch called `claude/provider/{provider}/{version}`.
 2. Run `bun run check` from the `mantle/` directory to verify no type errors or lint failures were introduced
-3. Run the test again to verify the fix: `bun run packages/provider-e2e/validate.ts <provider>@<version>`
+3. Run the test again to verify the fix: `bun run packages/e2e-providers/validate.ts <provider>@<version>`
 4. Create a PR with the fix, the updated target.json, and the verification record, use a single line commit and reuse this as the PR title "feat(provider): add compatibility for {provider} {version}". Set the PR body as per your findings.
 5. Remove the `claude-triage` label from the issue
 6. Comment on the issue linking the PR

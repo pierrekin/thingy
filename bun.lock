@@ -63,6 +63,10 @@
         "zod": "^4.3.6",
       },
     },
+    "packages/e2e-providers": {
+      "name": "e2e-providers",
+      "version": "0.0.1",
+    },
     "packages/mantle": {
       "name": "mantle",
       "version": "0.0.13",
@@ -194,10 +198,6 @@
         "mantle-framework": "workspace:*",
         "zod": "^4.3.6",
       },
-    },
-    "packages/provider-e2e": {
-      "name": "provider-e2e",
-      "version": "0.0.1",
     },
     "packages/provider-jellyfin": {
       "name": "provider-jellyfin",
@@ -691,6 +691,8 @@
 
     "dunder-proto": ["dunder-proto@1.0.1", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.1", "es-errors": "^1.3.0", "gopd": "^1.2.0" } }, "sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A=="],
 
+    "e2e-providers": ["e2e-providers@workspace:packages/e2e-providers"],
+
     "ejs": ["ejs@3.1.10", "", { "dependencies": { "jake": "^10.8.5" }, "bin": { "ejs": "bin/cli.js" } }, "sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA=="],
 
     "electron-to-chromium": ["electron-to-chromium@1.5.332", "", {}, "sha512-7OOtytmh/rINMLwaFTbcMVvYXO3AUm029X0LcyfYk0B557RlPkdpTpnH9+htMlfu5dKwOmT0+Zs2Aw+lnn6TeQ=="],
@@ -942,8 +944,6 @@
     "provider-bazarr": ["provider-bazarr@workspace:packages/provider-bazarr"],
 
     "provider-caddy": ["provider-caddy@workspace:packages/provider-caddy"],
-
-    "provider-e2e": ["provider-e2e@workspace:packages/provider-e2e"],
 
     "provider-jellyfin": ["provider-jellyfin@workspace:packages/provider-jellyfin"],
 

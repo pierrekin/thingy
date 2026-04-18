@@ -11,7 +11,7 @@ const packagesArg = rawArgs
 const positional = rawArgs.filter((a) => !a.startsWith("-"));
 const [command, ...rest] = positional;
 
-const ALL_PACKAGES = ["mantle-framework", "provider-e2e"];
+const ALL_PACKAGES = ["mantle-framework", "e2e-providers"];
 
 async function isDirty(dir: string): Promise<boolean> {
   const proc = Bun.spawn(["git", "diff", "--quiet", "--", dir], {

@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { NavButton } from "./components/NavButton";
 import { Navbar } from "./components/Navbar";
 import {
@@ -27,6 +27,10 @@ type AppContentProps = {
 export function AppContent({ navbarIcon, navbarTrailing }: AppContentProps) {
   const [page, setPage] = useState<Page>("main");
   const { status } = useWebSocketContext();
+
+  useEffect(() => {
+    if (status === "connected") window.mantleLoader?.finish();
+  }, [status]);
 
   // Calculate display window (dashboard is source of truth)
   const subscriptionParams = useMemo(() => {

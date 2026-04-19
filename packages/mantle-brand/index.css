@@ -1,18 +1,10 @@
-/* ── Mantle Brand Tokens ──────────────────────────────────
-   Import this in any app alongside tailwindcss:
+/* GENERATED — do not edit. Source: mantle-business/brand/ */
 
-     @import "@mantle-team/brand";
-     @import "tailwindcss";
-   ─────────────────────────────────────────────────────── */
-
-/* Fonts (self-hosted, no external requests) */
 @import "@fontsource-variable/plus-jakarta-sans";
 @import "@fontsource-variable/inconsolata";
 @import "@fontsource-variable/syne";
 
-/* Tailwind v4 theme tokens */
 @theme {
-  /* ── Palette ── */
   --color-charcoal: #1a1a1a;
   --color-charcoal-mid: #242424;
   --color-surface: #2e2e2e;
@@ -24,18 +16,15 @@
   --color-amber: #e8b97a;
   --color-critical: #c07070;
 
-  /* Light-mode accent variants (darkened for contrast on white) */
   --color-signal-light: #4a8a67;
   --color-amber-light: #c49450;
   --color-critical-light: #a85050;
 
-  /* ── Font stacks ── */
   --font-display: "Syne Variable", sans-serif;
   --font-body: "Plus Jakarta Sans Variable", sans-serif;
   --font-mono: "Inconsolata Variable", monospace;
 }
 
-/* ── Base defaults ── */
 body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;

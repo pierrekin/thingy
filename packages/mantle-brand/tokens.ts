@@ -1,3 +1,5 @@
+// GENERATED — do not edit. Source: mantle-business/brand/
+
 export const colors = {
   charcoal: "#1a1a1a",
   charcoalMid: "#242424",

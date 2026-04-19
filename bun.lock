@@ -98,6 +98,15 @@
         "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
         "@fontsource-variable/syne": "^5.2.7",
       },
+      "devDependencies": {
+        "vite": "^8.0.1",
+      },
+      "peerDependencies": {
+        "vite": "^6.0.0 || ^7.0.0 || ^8.0.0",
+      },
+      "optionalPeers": [
+        "vite",
+      ],
     },
     "packages/mantle-client": {
       "name": "@mantle-team/client",

@@ -5,6 +5,15 @@ import markDark from "@mantle-team/mantle-brand/mark-dark.svg";
 import { colors } from "@mantle-team/mantle-brand/tokens";
 import App from "./App.tsx";
 
+declare global {
+  interface Window {
+    mantleLoader?: {
+      finish: (onDone?: () => void) => void;
+      active: () => boolean;
+    };
+  }
+}
+
 document
   .querySelector('meta[name="theme-color"]')
   ?.setAttribute("content", colors.charcoal);

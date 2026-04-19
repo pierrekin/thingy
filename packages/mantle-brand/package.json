@@ -9,19 +9,48 @@
   "exports": {
     ".": "./index.css",
     "./tokens": "./tokens.ts",
+    "./mark-geometry": "./mark-geometry.ts",
+    "./vite": "./vite.ts",
     "./logo-dark.svg": "./assets/logo-dark.svg",
     "./logo-light.svg": "./assets/logo-light.svg",
     "./mark-dark.svg": "./assets/mark-dark.svg",
-    "./mark-light.svg": "./assets/mark-light.svg"
+    "./mark-light.svg": "./assets/mark-light.svg",
+    "./favicon.svg": "./favicon.svg",
+    "./apple-touch-icon-180x180.png": "./apple-touch-icon-180x180.png",
+    "./pwa-192x192.png": "./pwa-192x192.png",
+    "./pwa-512x512.png": "./pwa-512x512.png",
+    "./loader/bundle.html": "./loader/bundle.html",
+    "./loader/bundle-dark.html": "./loader/bundle-dark.html",
+    "./loader/bundle-light.html": "./loader/bundle-light.html",
+    "./loader/styles.css": "./loader/styles.css",
+    "./loader/script.js": "./loader/script.js",
+    "./loader/mark-dark.html": "./loader/mark-dark.html",
+    "./loader/mark-light.html": "./loader/mark-light.html"
   },
   "files": [
     "index.css",
     "tokens.ts",
-    "assets/*.svg"
+    "mark-geometry.ts",
+    "vite.ts",
+    "assets/*.svg",
+    "favicon.svg",
+    "apple-touch-icon-180x180.png",
+    "pwa-192x192.png",
+    "pwa-512x512.png",
+    "loader"
   ],
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
     "@fontsource-variable/inconsolata": "^5.2.8",
     "@fontsource-variable/syne": "^5.2.7"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": { "optional": true }
+  },
+  "devDependencies": {
+    "vite": "^8.0.1"
   }
 }

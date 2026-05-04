@@ -26,6 +26,22 @@
     {
       "tag": "8.6.0",
       "softwareVersion": "8.6.0"
+    },
+    {
+      "tag": "8.7.0",
+      "softwareVersion": "8.7.0"
+    },
+    {
+      "tag": "8.7.1",
+      "softwareVersion": "8.7.1"
+    },
+    {
+      "tag": "8.8.0",
+      "softwareVersion": "8.8.0"
+    },
+    {
+      "tag": "8.8.1",
+      "softwareVersion": "8.8.1"
     }
   ]
 }
